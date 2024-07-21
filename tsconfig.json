@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "outDir": "lsp-dist",
+        "lib": ["es2016", "dom"],
+        "declaration": true
+    },
+    "include": [
+        "lsp"
+    ]
+}
