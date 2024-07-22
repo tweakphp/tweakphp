@@ -90,7 +90,7 @@
             }
 
             if (!props.readonly && props.path && props.language === 'php') {
-                await createWebSocketClient('ws://127.0.0.1:8080')
+                await createWebSocketClient(`ws://127.0.0.1:${import.meta.env.VITE_LSP_WEBSOCKET_PORT}`)
             }
         }
     })

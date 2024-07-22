@@ -1,19 +1,33 @@
-import { resolve } from 'node:path'
 import { runLanguageServer } from './server-runner.js'
-import { getLocalDirectory } from './server-commons.js'
+import { exec } from 'child_process'
 
-const processRunPath = resolve(getLocalDirectory(import.meta.url), getLocalDirectory(import.meta.url))
+export const init = async () => {
+    await freePort(process.env.VITE_LSP_WEBSOCKET_PORT)
 
-export const init = () => {
-    runLanguageServer({
+    await runLanguageServer({
         serverName: 'PHP',
         pathName: '/',
-        serverPort: 8080,
-        runCommand: '/Users/saeed/Desktop/phpactor/bin/phpactor',
+        serverPort: process.env.VITE_LSP_WEBSOCKET_PORT,
+        runCommand: process.env.LSP_EXECUTABLE_PATH,
         runCommandArgs: ['language-server'],
         wsServerOptions: {
             noServer: true,
             perMessageDeflate: false,
         },
+    })
+}
+
+const freePort = (port) => {
+    return new Promise((resolve) => {
+        exec(`lsof -i :${port} -t`, (err, stdout) => {
+            const pid = stdout.trim()
+            if (pid) {
+                exec(`kill ${pid}`, () => {
+                    resolve()
+                })
+            } else {
+                resolve()
+            }
+        })
     })
 }

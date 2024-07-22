@@ -11,47 +11,42 @@ import {
     forward,
 } from 'vscode-ws-jsonrpc/server'
 import { Message, InitializeRequest } from 'vscode-languageserver'
+import { exec } from 'child_process'
 
 /**
  * start the language server inside the current process
  */
-export const launchLanguageServer = (runconfig, socket) => {
-    const { serverName, runCommand, runCommandArgs, spawnOptions } = runconfig
+export const launchLanguageServer = async (runconfig, socket) => {
+    const { serverName, serverPort, runCommand, runCommandArgs, spawnOptions } = runconfig
     console.log(
-        `Starting ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`
+        `Starting ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`,
     )
 
     const reader = new WebSocketMessageReader(socket)
     const writer = new WebSocketMessageWriter(socket)
     const socketConnection = createConnection(reader, writer, () =>
-        socket.dispose()
+        socket.dispose(),
     )
+
     const serverConnection = createServerProcess(
         serverName,
         runCommand,
         runCommandArgs,
-        spawnOptions
+        spawnOptions,
     )
     if (serverConnection) {
         forward(socketConnection, serverConnection, message => {
             if (Message.isRequest(message)) {
-                console.log(`${serverName} Server received a request`)
                 if (message.method === InitializeRequest.type.method) {
                     const initializeParams = message.params
                     initializeParams.processId = process.pid
                 }
             }
-            if (message.method === 'textDocument/didChange') {
-                console.log(message.params)
-            }
-            if (Message.isResponse(message)) {
-                console.log(`${serverName} Server sent a response`)
-            }
             return message
         })
     } else {
         console.error(
-            `Failed to start ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`
+            `Failed to start ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`,
         )
     }
 }

@@ -1,9 +1,9 @@
 import { WebSocketServer } from 'ws'
 import express from 'express'
 import { getLocalDirectory, upgradeWsServer } from './server-commons.js'
+import { exec } from 'child_process'
 
-/** LSP server runner */
-export const runLanguageServer = languageServerRunConfig => {
+export const runLanguageServer = async (languageServerRunConfig) => {
     process.on('uncaughtException', err => {
         console.error('Uncaught Exception: ', err.toString())
         if (err.stack !== undefined) {
@@ -16,6 +16,7 @@ export const runLanguageServer = languageServerRunConfig => {
     // server the static content, i.e. index.html
     const dir = getLocalDirectory(import.meta.url)
     app.use(express.static(dir))
+
     // start the http server
     const httpServer = app.listen(languageServerRunConfig.serverPort)
     const wss = new WebSocketServer(languageServerRunConfig.wsServerOptions)

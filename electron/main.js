@@ -1,10 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'url'
 import path from 'path'
-import * as client from './client.js'
-import * as source from './source.js'
 import dotenv from 'dotenv'
-// import { init as initLSP } from './lsp/index.js'
+import * as source from './source.js'
+import * as client from './client.js'
+import { init as initLSP } from './lsp/index.js'
 
 dotenv.config()
 
@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 app.whenReady().then(async () => {
-    // initLSP()
+    await initLSP()
 
     const window = new BrowserWindow({
         minWidth: 1000,

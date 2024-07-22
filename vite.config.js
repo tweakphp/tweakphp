@@ -10,9 +10,20 @@ import vsixPlugin from '@codingame/monaco-vscode-rollup-vsix-plugin'
 export default defineConfig({
     plugins: [
         vue(),
-        electron({
-            entry: 'electron/main.js',
-        }),
+        electron([
+            {
+                entry: 'electron/main.js',
+            },
+            {
+                // Preload scripts entry file of the Electron App.
+                entry: 'electron/main.js',
+                onstart(args) {
+                    // Notify the Renderer process to reload the page when the Preload scripts build is complete,
+                    // instead of restarting the entire Electron App.
+                    args.reload()
+                },
+            },
+        ]),
         vsixPlugin(),
     ],
     resolve: {
