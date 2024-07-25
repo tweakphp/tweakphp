@@ -1,38 +1,38 @@
 {
-  "base": "vs-dark",
-  "inherit": true,
-  "rules": [
-    {
-      "token": "comment",
-      "foreground": "#6c6f85",
-      "fontStyle": "italic"
-    },
-    {
-      "token": "keyword",
-      "foreground": "#ca9ee6"
-    },
-    {
-      "token": "identifier",
-      "foreground": "#c6d0f5"
-    },
-    {
-      "token": "string",
-      "foreground": "#a6d189"
-    },
-    {
-      "token": "number",
-      "foreground": "#f5a97f"
+    "base": "vs-dark",
+    "inherit": true,
+    "rules": [
+        {
+            "token": "comment",
+            "foreground": "#6c6f85",
+            "fontStyle": "italic"
+        },
+        {
+            "token": "keyword",
+            "foreground": "#ca9ee6"
+        },
+        {
+            "token": "identifier",
+            "foreground": "#c6d0f5"
+        },
+        {
+            "token": "string",
+            "foreground": "#a6d189"
+        },
+        {
+            "token": "number",
+            "foreground": "#f5a97f"
+        }
+    ],
+    "colors": {
+        "foreground": "#c6d0f5",
+        "background": "#303446",
+        "backgroundLight": "#414559",
+        "border": "#51576d",
+        "editor.background": "#303446",
+        "editor.foreground": "#c6d0f5",
+        "editor.selectionBackground": "#51576d",
+        "editor.lineHighlightBackground": "#414559",
+        "editorCursor.foreground": "#ca9ee6"
     }
-  ],
-  "colors": {
-    "foreground": "#c6d0f5",
-    "background": "#303446",
-    "backgroundLight": "#414559",
-    "border": "#51576d",
-    "editor.background": "#303446",
-    "editor.foreground": "#c6d0f5",
-    "editor.selectionBackground": "#51576d",
-    "editor.lineHighlightBackground": "#414559",
-    "editorCursor.foreground": "#ca9ee6"
-  }
 }

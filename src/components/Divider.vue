@@ -18,10 +18,7 @@
 </script>
 
 <template>
-    <div
-        :class="classes"
-        :style="{ borderColor: settingsStore.colors.border }"
-    ></div>
+    <div :class="classes" :style="{ borderColor: settingsStore.colors.border }"></div>
 </template>
 
 <style scoped></style>

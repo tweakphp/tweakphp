@@ -20,24 +20,13 @@
             <Divider class="mt-3" />
             <div class="mt-3 grid grid-cols-2 items-center">
                 <div>PHP path</div>
-                <TextInput
-                    id="php"
-                    v-model="settingsStore.settings.php"
-                    @change="saveSettings()"
-                />
+                <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" />
             </div>
             <Divider class="mt-3" />
             <div class="mt-3 grid grid-cols-2 items-center">
                 <div>Theme</div>
-                <SelectInput
-                    id="theme"
-                    v-model="settingsStore.settings.theme"
-                    @change="saveSettings()"
-                >
-                    <option
-                        v-for="theme in settingsStore.themes"
-                        :value="theme"
-                    >
+                <SelectInput id="theme" v-model="settingsStore.settings.theme" @change="saveSettings()">
+                    <option v-for="theme in settingsStore.themes" :value="theme">
                         {{ theme }}
                     </option>
                 </SelectInput>

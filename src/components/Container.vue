@@ -17,10 +17,7 @@
 </script>
 
 <template>
-    <div
-        :class="classes"
-        :style="{ backgroundColor: settingsStore.colors.background }"
-    >
+    <div :class="classes" :style="{ backgroundColor: settingsStore.colors.background }">
         <slot></slot>
     </div>
 </template>

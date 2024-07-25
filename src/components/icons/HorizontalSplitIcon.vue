@@ -14,10 +14,7 @@
         class="fill-transparent"
     >
         <path d="M23 11V3H3v8h20Z" stroke-width="0"></path>
-        <path
-            d="M23 17V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2ZM22 11H4"
-            fill="none"
-        ></path>
+        <path d="M23 17V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2ZM22 11H4" fill="none"></path>
     </svg>
 </template>
 

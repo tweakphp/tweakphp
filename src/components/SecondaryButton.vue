@@ -19,10 +19,7 @@
 </script>
 
 <template>
-    <button
-        :class="classes"
-        :style="{ borderColor: settingsStore.colors.borderColor }"
-    >
+    <button :class="classes" :style="{ borderColor: settingsStore.colors.borderColor }">
         <slot></slot>
     </button>
 </template>

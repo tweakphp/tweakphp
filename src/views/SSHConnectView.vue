@@ -46,17 +46,11 @@
                 <TextInput id="username" v-model="form.username" />
             </div>
             <Divider />
-            <div
-                v-if="form.auth_type === 'password'"
-                class="grid grid-cols-2 items-center"
-            >
+            <div v-if="form.auth_type === 'password'" class="grid grid-cols-2 items-center">
                 <div>Password</div>
                 <TextInput id="password" v-model="form.password" />
             </div>
-            <div
-                v-if="form.auth_type === 'key'"
-                class="grid grid-cols-2 items-center"
-            >
+            <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
                 <div>Private Key Path</div>
                 <TextInput id="key" v-model="form.key" />
             </div>

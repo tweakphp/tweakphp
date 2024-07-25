@@ -11,13 +11,7 @@ useWorkerFactory({
     ignoreMapping: true,
     workerLoaders: {
         editorWorkerService: () =>
-            new Worker(
-                new URL(
-                    'monaco-editor/esm/vs/editor/editor.worker.js',
-                    import.meta.url
-                ),
-                { type: 'module' }
-            ),
+            new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url), { type: 'module' }),
     },
 })
 
