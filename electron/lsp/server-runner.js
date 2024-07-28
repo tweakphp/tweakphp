@@ -3,7 +3,7 @@ import express from 'express'
 import { getLocalDirectory, upgradeWsServer } from './server-commons.js'
 import { exec } from 'child_process'
 
-export const runLanguageServer = async (languageServerRunConfig) => {
+export const runLanguageServer = async languageServerRunConfig => {
     process.on('uncaughtException', err => {
         console.error('Uncaught Exception: ', err.toString())
         if (err.stack !== undefined) {

@@ -66,10 +66,8 @@
                 },
                 automaticLayout: true,
                 glyphMargin: false,
-                fontLigatures: true,
                 scrollBeyondLastLine: false,
                 lightbulb: { enabled: false },
-                wordBasedSuggestions: 'off',
             })
 
             const file = `${props.path}/${props.editorId}.${props.language}`

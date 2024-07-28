@@ -7,7 +7,5 @@
         "lib": ["es2016", "dom"],
         "declaration": true
     },
-    "include": [
-        "lsp"
-    ]
+    "include": ["lsp"]
 }

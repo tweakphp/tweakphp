@@ -2,7 +2,7 @@ import { runLanguageServer } from './server-runner.js'
 import { exec } from 'child_process'
 
 export const init = async () => {
-    await freePort(process.env.VITE_LSP_WEBSOCKET_PORT)
+    // await freePort(process.env.VITE_LSP_WEBSOCKET_PORT)
 
     await runLanguageServer({
         serverName: 'PHP',
@@ -17,8 +17,8 @@ export const init = async () => {
     })
 }
 
-const freePort = (port) => {
-    return new Promise((resolve) => {
+const freePort = port => {
+    return new Promise(resolve => {
         exec(`lsof -i :${port} -t`, (err, stdout) => {
             const pid = stdout.trim()
             if (pid) {

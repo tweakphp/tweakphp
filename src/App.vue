@@ -2,7 +2,7 @@
     import { RouterLink, RouterView } from 'vue-router'
     import { useColorSchemeStore } from '@/stores/color-scheme'
     import { useExecuteStore } from '@/stores/execute'
-    import { ArrowPathIcon, BoltIcon, CogIcon, FolderOpenIcon, WifiIcon } from '@heroicons/vue/24/outline'
+    import { ArrowPathIcon, BoltIcon, CogIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
     import SidebarItem from '@/components/SidebarItem.vue'
     import TitleBar from './components/TitleBar.vue'
     import { onMounted } from 'vue'
@@ -80,7 +80,7 @@
             <div class="h-full flex flex-col justify-between">
                 <div>
                     <SidebarItem :active="router.currentRoute.value.name === 'code'">
-                        <RouterLink :to="router.currentRoute.value.name === 'code' ? '/' : '/'">
+                        <RouterLink :to="router.currentRoute.value.name === 'code' ? '' : '/'">
                             <ArrowPathIcon class="w-6 h-6 animate-spin" v-if="executeStore.executing" :spin="true" />
                             <BoltIcon v-else class="w-6 h-6 hover:text-primary-500" />
                         </RouterLink>

@@ -1,3 +1,4 @@
+@import "tippy.js/dist/tippy.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

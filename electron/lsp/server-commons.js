@@ -1,15 +1,8 @@
 import { URL } from 'node:url'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-    WebSocketMessageReader,
-    WebSocketMessageWriter,
-} from 'vscode-ws-jsonrpc'
-import {
-    createConnection,
-    createServerProcess,
-    forward,
-} from 'vscode-ws-jsonrpc/server'
+import { WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
+import { createConnection, createServerProcess, forward } from 'vscode-ws-jsonrpc/server'
 import { Message, InitializeRequest } from 'vscode-languageserver'
 import { exec } from 'child_process'
 
@@ -18,22 +11,13 @@ import { exec } from 'child_process'
  */
 export const launchLanguageServer = async (runconfig, socket) => {
     const { serverName, serverPort, runCommand, runCommandArgs, spawnOptions } = runconfig
-    console.log(
-        `Starting ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`,
-    )
+    console.log(`Starting ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`)
 
     const reader = new WebSocketMessageReader(socket)
     const writer = new WebSocketMessageWriter(socket)
-    const socketConnection = createConnection(reader, writer, () =>
-        socket.dispose(),
-    )
+    const socketConnection = createConnection(reader, writer, () => socket.dispose())
 
-    const serverConnection = createServerProcess(
-        serverName,
-        runCommand,
-        runCommandArgs,
-        spawnOptions,
-    )
+    const serverConnection = createServerProcess(serverName, runCommand, runCommandArgs, spawnOptions)
     if (serverConnection) {
         forward(socketConnection, serverConnection, message => {
             if (Message.isRequest(message)) {
@@ -45,18 +29,13 @@ export const launchLanguageServer = async (runconfig, socket) => {
             return message
         })
     } else {
-        console.error(
-            `Failed to start ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`,
-        )
+        console.error(`Failed to start ${serverName} with command: ${runCommand} ${runCommandArgs.join(' ')}`)
     }
 }
 export const upgradeWsServer = (runconfig, config) => {
     config.server.on('upgrade', (request, socket, head) => {
         const baseURL = `http://${request.headers.host}/`
-        const pathName =
-            request.url !== undefined
-                ? new URL(request.url, baseURL).pathname
-                : undefined
+        const pathName = request.url !== undefined ? new URL(request.url, baseURL).pathname : undefined
         if (pathName === runconfig.pathName) {
             config.wss.handleUpgrade(request, socket, head, webSocket => {
                 const socket = {

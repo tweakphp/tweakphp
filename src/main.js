@@ -7,6 +7,8 @@ import App from './App.vue'
 import router from './router'
 import { useWorkerFactory } from 'monaco-editor-wrapper/workerFactory'
 
+import { plugin as VueTippy } from 'vue-tippy'
+
 useWorkerFactory({
     ignoreMapping: true,
     workerLoaders: {
@@ -19,5 +21,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+app.use(VueTippy)
 
 app.mount('#app')

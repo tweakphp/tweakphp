@@ -13,7 +13,7 @@
     const route = useRoute()
 
     const execute = () => {
-        if (route.path !== '/') {
+        if (route.name !== 'code') {
             router.push('/')
             return
         }
@@ -39,20 +39,22 @@
             <div class="flex-grow-0 w-[120px]"></div>
             <div class="flex-grow w-full drag flex items-center justify-center">TweakPHP</div>
             <div class="flex-grow-0 flex items-center">
-                <template v-if="$router.currentRoute.value.name === 'code'">
-                    <VerticalSplitIcon
-                        @click="updateLayout('vertical')"
-                        v-if="settingsStore.settings.layout === 'horizontal'"
-                        class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
-                    />
-                    <HorizontalSplitIcon
-                        @click="updateLayout('horizontal')"
-                        v-if="settingsStore.settings.layout === 'vertical'"
-                        class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
-                    />
-                </template>
+                <div v-tippy="'Change layout'">
+                    <template v-if="$router.currentRoute.value.name === 'code'">
+                        <VerticalSplitIcon
+                            @click="updateLayout('vertical')"
+                            v-if="settingsStore.settings.layout === 'horizontal'"
+                            class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
+                        />
+                        <HorizontalSplitIcon
+                            @click="updateLayout('horizontal')"
+                            v-if="settingsStore.settings.layout === 'vertical'"
+                            class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
+                        />
+                    </template>
+                </div>
 
-                <div class="w-5 h-5">
+                <div class="w-5 h-5" v-tippy="route.name === 'code' ? 'Cmd + R' : 'Run'">
                     <ArrowPathIcon
                         v-if="executeStore.executing"
                         :spin="true"
@@ -64,10 +66,12 @@
                         class="w-5 h-5 cursor-pointer hover:text-primary-500"
                     />
                 </div>
-                <CogIcon
-                    @click="$router.push('/settings')"
-                    class="w-5 h-5 cursor-pointer ml-1 hover:text-primary-500"
-                />
+                <div v-tippy="'Settings'">
+                    <CogIcon
+                        @click="$router.push('/settings')"
+                        class="w-5 h-5 cursor-pointer ml-1 hover:text-primary-500"
+                    />
+                </div>
             </div>
         </div>
     </div>
