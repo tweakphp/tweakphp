@@ -9,3 +9,22 @@ TweakPHP is currently alpha
 
 https://github.com/user-attachments/assets/37350e9e-a87f-4141-9eee-b2ddcf65dc3f
 
+## Setup Locally
+
+Install dependencies
+
+```
+npm install
+```
+
+Copy .env.dist as .env
+
+```
+cp .env.dist .env
+```
+
+Run the app
+
+```
+npm run dev
+```
