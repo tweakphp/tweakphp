@@ -1,9 +1,12 @@
-# TweakPHP
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/b1f2149c-2a80-47e6-b930-8366be9ccdb8" width="600px"/>
+</div>
 
-TweakPHP is currently alpha
+<br>
 
-![CleanShot 2024-09-07 at 21 44 20@2x](https://github.com/user-attachments/assets/b1f2149c-2a80-47e6-b930-8366be9ccdb8)
+TweakPHP is a desktop application with a code editor to tweak your PHP code.
 
+**TweakPHP is currently alpha**
 
 ## Demo
 
