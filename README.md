@@ -7,7 +7,7 @@ TweakPHP is currently alpha
 
 ## Demo
 
-https://github.com/user-attachments/assets/37350e9e-a87f-4141-9eee-b2ddcf65dc3f
+https://x.com/saeed_vz/status/1832507929653616953
 
 ## Setup Locally
 
@@ -28,3 +28,12 @@ Run the app
 ```
 npm run dev
 ```
+
+## Roadmap to Beta release
+
+- [ ] Symfony Loader (currently Composer loader handles it)
+- [ ] Wordpress Loader
+- [ ] Built-in Laravel
+- [ ] Build actions for Mac
+- [ ] SSH code execution
+- [ ] Docker code execution
