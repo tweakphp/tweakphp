@@ -51,6 +51,13 @@
         window.ipcRenderer.receive('ssh.connect.reply', e => {
             events.dispatchEvent(new CustomEvent('ssh.connect.reply', { detail: e }))
         })
+
+        window.ipcRenderer.send('php.path')
+        window.ipcRenderer.receive('php.path.reply', phpPath => {
+            settingsStore.settings.php = phpPath
+            settingsStore.update()
+        })
+
         await initEditor()
     })
 
