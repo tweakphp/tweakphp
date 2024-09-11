@@ -4,6 +4,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import * as source from './source.js'
 import * as client from './client.js'
+import * as php from './php.js'
 import { init as initLSP } from './lsp/index.js'
 
 dotenv.config()
@@ -42,6 +43,8 @@ app.whenReady().then(async () => {
     ipcMain.on('client.info', client.info)
     ipcMain.on('source.open', source.open)
     // ipcMain.on('ssh.connect', ssh.connect)
+    ipcMain.on('php.path', php.path)
+
 })
 
 app.on('window-all-closed', () => {
