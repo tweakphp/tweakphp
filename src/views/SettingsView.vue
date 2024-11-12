@@ -1,24 +1,23 @@
 <script setup>
-import Container from '@/components/Container.vue'
-import Title from '@/components/Title.vue'
-import Divider from '@/components/Divider.vue'
-import { useSettingsStore } from '@/stores/settings'
-import SelectInput from '@/components/SelectInput.vue'
-import TextInput from '@/components/TextInput.vue'
-import PrimaryButton from '@/components/PrimaryButton.vue'
-import { SparklesIcon } from '@heroicons/vue/24/outline'
-const settingsStore = useSettingsStore()
+    import Container from '@/components/Container.vue'
+    import Title from '@/components/Title.vue'
+    import Divider from '@/components/Divider.vue'
+    import { useSettingsStore } from '@/stores/settings'
+    import SelectInput from '@/components/SelectInput.vue'
+    import TextInput from '@/components/TextInput.vue'
+    import PrimaryButton from '@/components/PrimaryButton.vue'
+    import { SparklesIcon } from '@heroicons/vue/24/outline'
+    const settingsStore = useSettingsStore()
 
-const saveSettings = () => {
-    settingsStore.update()
-}
+    const saveSettings = () => {
+        settingsStore.update()
+    }
 
-const fixedPhpPath = async () => {
-    window.ipcRenderer.send('php.path', {
-        type: 'FIXED'
-    })
-}
-
+    const fixedPhpPath = async () => {
+        window.ipcRenderer.send('php.path', {
+            type: 'FIXED',
+        })
+    }
 </script>
 
 <template>
@@ -47,14 +46,20 @@ const fixedPhpPath = async () => {
             <Divider class="mt-3" />
             <div class="grid items-center grid-cols-2 mt-3">
                 <div>Editor font size</div>
-                <TextInput id="editor-font-size" v-model="settingsStore.settings.editor.fontSize"
-                    @change="saveSettings()" />
+                <TextInput
+                    id="editor-font-size"
+                    v-model="settingsStore.settings.editor.fontSize"
+                    @change="saveSettings()"
+                />
             </div>
             <Divider class="mt-3" />
             <div class="grid items-center grid-cols-2 mt-3">
                 <div>Editor word wrap</div>
-                <SelectInput id="editor-word-wrap" v-model="settingsStore.settings.editor.wordWrap"
-                    @change="saveSettings()">
+                <SelectInput
+                    id="editor-word-wrap"
+                    v-model="settingsStore.settings.editor.wordWrap"
+                    @change="saveSettings()"
+                >
                     <option value="on">Wrap</option>
                     <option value="off">No Wrap</option>
                 </SelectInput>

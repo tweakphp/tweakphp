@@ -43,7 +43,7 @@ app.whenReady().then(async () => {
     ipcMain.on('client.info', client.info)
     ipcMain.on('source.open', source.open)
     // ipcMain.on('ssh.connect', ssh.connect)
-    
+
     ipcMain.on('php.path', (event, args) => {
         php.path(event, args)
     })
