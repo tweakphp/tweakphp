@@ -1,4 +1,6 @@
 import { execSync } from 'child_process'
+import { homedir } from 'os'
+import { join } from 'path'
 
 let cachedPhpPath: string | null = null
 
@@ -14,13 +16,42 @@ export const getPHPPath = () => {
   }
 
   try {
-    cachedPhpPath = execSync('/usr/bin/which php').toString().trim()
-    return cachedPhpPath
+    const userHome = homedir()
+
+    const methods = [
+      () => {
+        const herdPath = join(userHome, 'Library/Application Support/Herd/bin/php')
+        return execSync(`[ -x "${herdPath}" ] && echo "${herdPath}"`, { encoding: 'utf8' })
+      },
+      () => execSync('which php', { encoding: 'utf8' }), 
+      () => execSync('/usr/bin/which php', { encoding: 'utf8' }),
+      () => execSync('command -v php', { encoding: 'utf8' }),
+
+      () => execSync('[ -x /usr/local/bin/php ] && echo /usr/local/bin/php', { encoding: 'utf8' }),
+      () => execSync('[ -x /opt/homebrew/bin/php ] && echo /opt/homebrew/bin/php', { encoding: 'utf8' })
+    ]
+
+    for (const method of methods) {
+      try {
+        const result = method().toString().trim()
+        if (result) {
+          
+          const version = getVersion(result)
+          if (version) {
+            cachedPhpPath = result
+            return result
+          }
+        }
+      } catch {
+        continue 
+      }
+    }
+
+    throw new Error('PHP not found in system')
   } catch (error) {
     console.error(`Error retrieving PHP path: ${error}`)
+    return ''
   }
-
-  return ''
 }
 
 export const getVersion = (path: string | undefined) => {
