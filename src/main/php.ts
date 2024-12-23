@@ -23,19 +23,18 @@ export const getPHPPath = () => {
         const herdPath = join(userHome, 'Library/Application Support/Herd/bin/php')
         return execSync(`[ -x "${herdPath}" ] && echo "${herdPath}"`, { encoding: 'utf8' })
       },
-      () => execSync('which php', { encoding: 'utf8' }), 
+      () => execSync('which php', { encoding: 'utf8' }),
       () => execSync('/usr/bin/which php', { encoding: 'utf8' }),
       () => execSync('command -v php', { encoding: 'utf8' }),
 
       () => execSync('[ -x /usr/local/bin/php ] && echo /usr/local/bin/php', { encoding: 'utf8' }),
-      () => execSync('[ -x /opt/homebrew/bin/php ] && echo /opt/homebrew/bin/php', { encoding: 'utf8' })
+      () => execSync('[ -x /opt/homebrew/bin/php ] && echo /opt/homebrew/bin/php', { encoding: 'utf8' }),
     ]
 
     for (const method of methods) {
       try {
         const result = method().toString().trim()
         if (result) {
-          
           const version = getVersion(result)
           if (version) {
             cachedPhpPath = result
@@ -43,7 +42,7 @@ export const getPHPPath = () => {
           }
         }
       } catch {
-        continue 
+        continue
       }
     }
 
