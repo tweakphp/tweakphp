@@ -268,7 +268,7 @@
     </div>
     <div
       v-if="tab.type === 'code'"
-      class="w-full h-full pt-[28px]"
+      class="w-full h-full pt-[28px] pb-6"
       :class="{
         'flex': settingsStore.settings.layout === 'vertical',
         'flex-col': settingsStore.settings.layout === 'horizontal',
