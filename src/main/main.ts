@@ -32,6 +32,7 @@ app.whenReady().then(async () => {
     maximizable: true,
     minimizable: true,
     resizable: true,
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: true,
