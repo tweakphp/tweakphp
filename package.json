@@ -46,7 +46,7 @@
     "linux": {
       "executableName": "tweakphp",
       "description": "Tweak your PHP code easily",
-      "icon": "./build/icon.icns",
+      "icon": "./public/icon.icns",
       "target": [
         {
           "target": "AppImage",
@@ -59,7 +59,7 @@
       ],
       "desktop": {
         "Name": "TweakPHP",
-        "icon": "./build/icon.icns",
+        "icon": "./public/icon.icns",
         "Comment": "Tweak your PHP code easily",
         "Categories": "Development"
       },
@@ -78,7 +78,7 @@
     },
     "dmg": {
       "title": "${productName} ${version}",
-      "icon": "./build/icon.icns"
+      "icon": "./public/icon.icns"
     }
   },
   "devDependencies": {

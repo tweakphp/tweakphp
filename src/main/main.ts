@@ -29,10 +29,9 @@ app.whenReady().then(async () => {
     minHeight: 700,
     width: 1100,
     height: 700,
-    maximizable: false,
-    minimizable: false,
+    maximizable: true,
+    minimizable: true,
     resizable: true,
-    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: true,
@@ -40,7 +39,7 @@ app.whenReady().then(async () => {
     },
     alwaysOnTop: false,
     center: true,
-    icon: path.join(app.getAppPath(), 'build/icon.png'),
+    icon: path.resolve(__dirname, 'icon.png'),
   })
   window.setMenuBarVisibility(false)
 
