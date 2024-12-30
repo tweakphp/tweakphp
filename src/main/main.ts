@@ -24,12 +24,13 @@ export let window: BrowserWindow
 
 app.whenReady().then(async () => {
   window = new BrowserWindow({
+    title: 'TweakPHP',
     minWidth: 1100,
     minHeight: 700,
     width: 1100,
     height: 700,
-    maximizable: false,
-    minimizable: false,
+    maximizable: true,
+    minimizable: true,
     resizable: true,
     titleBarStyle: 'hiddenInset',
     webPreferences: {

@@ -29,9 +29,11 @@
       "!node_modules${/*}"
     ],
     "extraResources": [
+      "build/*",
       "public/*"
     ],
     "extraFiles": [
+      "build/**/*",
       "public/**/*"
     ],
     "publish": {
@@ -55,7 +57,8 @@
             "armv7l",
             "arm64"
           ]
-        }
+        },
+        "deb"
       ],
       "desktop": {
         "Name": "TweakPHP",
