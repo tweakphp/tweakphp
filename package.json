@@ -12,11 +12,13 @@
   "scripts": {
     "dev": "vite",
     "update-clients": "node ./scripts/update-clients.js",
+    "resolve-icon-path": "node ./scripts/resolve-icon-path.js",
     "build": "vue-tsc && vite build",
-    "build-mac": "npm run build && electron-builder --mac --universal",
-    "build-linux": "npm run build && electron-builder --linux",
-    "publish-mac": "npm run build && electron-builder --publish always --mac --universal",
-    "publish-linux": "npm run build && electron-builder --publish always --linux",
+    "build-base": "npm run build && npm run resolve-icon-path",
+    "build-mac": "npm run build-base && electron-builder --mac --universal",
+    "build-linux": "npm run build-base && electron-builder --linux",
+    "publish-mac": "npm run build-base && electron-builder --publish always --mac --universal",
+    "publish-linux": "npm run build-base && electron-builder --publish always --linux",
     "preview": "vite preview",
     "lint": "prettier --check ./",
     "lint:fix": "prettier --write ./"
