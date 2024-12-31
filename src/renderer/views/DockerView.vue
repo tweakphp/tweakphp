@@ -12,6 +12,7 @@
   import router from '../router'
   import SwitchInput from '../components/SwitchInput.vue'
   import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../main/types/docker.type.ts'
+  import { DockerForm } from '../types/docker.type.ts'
 
   const tabsStore = useTabsStore()
 
@@ -25,7 +26,7 @@
 
   const shouldConnect = ref<boolean>(false)
 
-  const form = ref<{ working_directory: string; container_id: any; container_name: string }>({
+  const form = ref<DockerForm>({
     container_id: '',
     container_name: '',
     working_directory: '/var/www/html',
@@ -122,6 +123,7 @@
 
     form.value.container_id = tabsStore.current?.docker.container_id ?? ''
     form.value.container_name = tabsStore.current?.docker.container_name ?? ''
+    form.value.working_directory = tabsStore.current?.remote_path ?? ''
 
     selectDockerContainer()
 
@@ -174,7 +176,7 @@
 
       <div class="mt-3 max-w-2xl mx-auto space-y-3">
         <div class="grid grid-cols-2 items-center">
-          <div>Containers</div>
+          <div>Container</div>
 
           <div class="flex gap-3 items-center">
             <div class="w-full">
