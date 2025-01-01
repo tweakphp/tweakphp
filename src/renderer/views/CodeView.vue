@@ -80,7 +80,6 @@
   }
 
   const infoReplyListener = (e: any) => {
-    console.log(e.detail)
     tab.value.info = JSON.parse(e.detail)
     tabsStore.updateTab(tab.value)
   }
