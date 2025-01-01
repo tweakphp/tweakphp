@@ -94,7 +94,14 @@
       }
 
       if (!props.readonly && props.path && props.language === 'php') {
-        await createWebSocketClient(`ws://127.0.0.1:${import.meta.env.VITE_LSP_WEBSOCKET_PORT}`)
+        const interval = setInterval(async () => {
+          try {
+            await createWebSocketClient(`ws://127.0.0.1:${import.meta.env.VITE_LSP_WEBSOCKET_PORT}`)
+            clearInterval(interval)
+          } catch (error) {
+            console.error('WebSocket connection failed, retrying...', error)
+          }
+        }, 1000)
       }
     }
   })
