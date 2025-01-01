@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import log from 'electron-log/main'
@@ -22,13 +22,14 @@ dotenv.config()
 
 export let window: BrowserWindow
 
-app.whenReady().then(async () => {
+const createMainWindow = async () => {
   window = new BrowserWindow({
     title: 'TweakPHP',
     minWidth: 1100,
     minHeight: 700,
     width: 1100,
     height: 700,
+    show: false,
     maximizable: true,
     minimizable: true,
     resizable: true,
@@ -42,31 +43,55 @@ app.whenReady().then(async () => {
     center: true,
     icon: path.join(app.getAppPath(), 'build/icon.png'),
   })
+
   window.setMenuBarVisibility(false)
+
+  window.webContents.on('did-finish-load', async () => {
+    try {
+      window.webContents.send('init.reply', {
+        settings: settings.getSettings(),
+      })
+
+      window.once('show', async () => {
+        await laravel.init(window)
+        setTimeout(async () => {
+          await lsp.init()
+        }, 1000)
+        await updater.checkForUpdates()
+      })
+    } catch (error) {
+    } finally {
+      window.setProgressBar(-1)
+    }
+
+    window.show()
+  })
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await window.loadURL(process.env.VITE_DEV_SERVER_URL)
-    window.webContents.openDevTools()
+    if (!app.isPackaged) {
+      window.webContents.openDevTools()
+    }
   } else {
-    await window.loadFile(path.join(__dirname, `./index.html`))
+    await window.loadFile(path.join(__dirname, './index.html'))
   }
+}
 
-  ipcMain.on('init', async event => {
-    await laravel.init()
-    await updater.checkForUpdates()
-    event.reply('init.reply', {
-      settings: settings.getSettings(),
-    })
-  })
+const initializeModules = async () => {
+  await Promise.all([
+    settings.init(),
+    docker.init(),
+    tray.init(),
+    updater.init(),
+    link.init(),
+    client.init(),
+    source.init(),
+  ])
+}
 
-  await docker.init()
-  await tray.init()
-  await lsp.init()
-  await updater.init()
-  await link.init()
-  await settings.init()
-  await client.init()
-  await source.init()
+app.whenReady().then(async () => {
+  await createMainWindow()
+  await initializeModules()
 })
 
 app.on('window-all-closed', () => {
