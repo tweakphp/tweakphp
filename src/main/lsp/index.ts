@@ -1,12 +1,8 @@
 import * as runServer from './server-runner'
 import log from 'electron-log/main'
-import { fileURLToPath } from 'url'
 import path from 'path'
 import { app } from 'electron'
 import * as settings from '../settings'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 export const init = async () => {
   const lspPath = app.isPackaged

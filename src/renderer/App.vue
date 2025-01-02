@@ -2,7 +2,7 @@
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
   import { useExecuteStore } from './stores/execute'
-  import { ArrowPathIcon, BoltIcon, CogIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, BoltIcon, CogIcon, FolderOpenIcon, WifiIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import { onMounted, ref } from 'vue'
@@ -138,16 +138,11 @@
               <DockerIcon class="fill-transparent" />
             </span>
           </SidebarItem>
-
-          <!--                    <SidebarItem-->
-          <!--                        :active="-->
-          <!--                            router.currentRoute.value.path.includes('/ssh')-->
-          <!--                        "-->
-          <!--                    >-->
-          <!--                        <RouterLink to="/ssh">-->
-          <!--                            <WifiIcon class="w-6 h-6 hover:text-primary-500" />-->
-          <!--                        </RouterLink>-->
-          <!--                    </SidebarItem>-->
+          <SidebarItem :active="router.currentRoute.value.path.includes('/ssh')">
+            <RouterLink to="/ssh">
+              <WifiIcon class="w-6 h-6 hover:text-primary-500" />
+            </RouterLink>
+          </SidebarItem>
         </div>
         <div class="border-t" :style="{ borderColor: settingsStore.colors.border }">
           <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">

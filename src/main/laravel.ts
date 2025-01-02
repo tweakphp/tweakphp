@@ -4,10 +4,6 @@ import { getSettings } from './settings'
 import { app } from 'electron'
 import path from 'path'
 import AdmZip from 'adm-zip'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 export const init = async () => {
   const settings: Settings = getSettings()

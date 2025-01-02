@@ -3,22 +3,41 @@
   import Title from '../components/Title.vue'
   import Divider from '../components/Divider.vue'
   import TextInput from '../components/TextInput.vue'
-  import { ref } from 'vue'
+  import { onBeforeUnmount, onMounted, Ref, ref } from 'vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import SelectInput from '../components/SelectInput.vue'
-  const form = ref({
-    host: '',
-    port: '',
-    auth_type: 'password',
-    username: '',
+  import { useSSHStore } from '../stores/ssh'
+  import { ConnectionConfig } from '../../types/ssh.type'
+  import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
+  import events from '../events'
+
+  const sshStore = useSSHStore()
+
+  const form: Ref<ConnectionConfig> = ref({
+    host: '65.109.205.85',
+    port: 22,
+    username: 'vito',
+    auth_type: 'key',
     password: '',
-    key: '',
+    privateKey: '/Users/saeed/.ssh/id_rsa',
   })
+
+  onMounted(() => {
+    events.addEventListener('ssh.connect.reply', sshStore.connectReply)
+  })
+
+  onBeforeUnmount(() => {
+    events.removeEventListener('ssh.connect.reply', sshStore.connectReply)
+  })
+
+  const connect = () => {
+    sshStore.connect(form.value)
+  }
 </script>
 
 <template>
   <Container class="pt-[38px]">
-    <div class="max-w-xl mx-auto p-10 space-y-3">
+    <div class="max-w-2xl mx-auto p-10 space-y-3">
       <div class="flex items-center justify-between">
         <Title>Connect to SSH</Title>
       </div>
@@ -35,7 +54,7 @@
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Authentication Type</div>
-        <SelectInput id="auth-type" v-model="form.auth_type">
+        <SelectInput id="auth-type" v-model="form.auth_type" placeholder="Select an authentication type">
           <option value="password">Password</option>
           <option value="key">Private Key</option>
         </SelectInput>
@@ -52,11 +71,18 @@
       </div>
       <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Private Key Path</div>
-        <TextInput id="key" v-model="form.key" />
+        <TextInput id="key" v-model="form.privateKey" />
       </div>
       <Divider />
       <div class="flex items-center justify-end">
-        <PrimaryButton>Connect</PrimaryButton>
+        <PrimaryButton @click="connect" :disabled="sshStore.connecting">
+          <ArrowPathIcon
+            v-if="sshStore.connecting"
+            :spin="true"
+            class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
+          />
+          Connect
+        </PrimaryButton>
       </div>
     </div>
   </Container>

@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'url'
 import path from 'path'
 import * as fs from 'node:fs'
 import * as lsp from './lsp/index'
@@ -8,8 +7,6 @@ import * as php from './php'
 import os from 'os'
 
 const homeDir = os.homedir()
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 const laravelPath = app.isPackaged
   ? path.join(process.resourcesPath, 'public/laravel')

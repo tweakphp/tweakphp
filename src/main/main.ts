@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { fileURLToPath } from 'url'
 import path from 'path'
 import log from 'electron-log/main'
 import * as dotenv from 'dotenv'
@@ -12,11 +11,9 @@ import * as updater from './updater'
 import * as link from './link'
 import * as tray from './tray'
 import * as docker from './docker'
+import * as ssh from './ssh'
 
 Object.assign(console, log.functions)
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 dotenv.config()
 
@@ -67,6 +64,7 @@ app.whenReady().then(async () => {
   await settings.init()
   await client.init()
   await source.init()
+  await ssh.init()
 })
 
 app.on('window-all-closed', () => {
