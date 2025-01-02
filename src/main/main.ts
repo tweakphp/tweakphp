@@ -52,19 +52,19 @@ const createMainWindow = async () => {
         settings: settings.getSettings(),
       })
 
+      window.show()
+
       window.once('show', async () => {
-        await laravel.init(window)
         setTimeout(async () => {
+          await laravel.init(window)
           await lsp.init()
-        }, 1000)
-        await updater.checkForUpdates()
+          await updater.checkForUpdates()
+        }, 1500)
       })
     } catch (error) {
     } finally {
       window.setProgressBar(-1)
     }
-
-    window.show()
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {

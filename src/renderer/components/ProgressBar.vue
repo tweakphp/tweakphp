@@ -20,6 +20,6 @@
 </template>
 <style scoped>
   .progress-bar {
-    transition: width 0.2s ease-in-out;
+    transition: width 0.2ms ease-in-out;
   }
 </style>

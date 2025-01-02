@@ -43,12 +43,12 @@ export const init = async (window: BrowserWindow) => {
     }
 
     const progress = (i + 1) / totalFiles
-    window.setProgressBar(progress)
-
     const progressPercentage = Math.floor(progress * 100)
 
     if (progressPercentage >= lastProgressEvent + 10) {
       lastProgressEvent = progressPercentage
+
+      window.setProgressBar(progressPercentage / 100)
 
       window.webContents.send('progress', {
         progress: progressPercentage,
