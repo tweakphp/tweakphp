@@ -35,11 +35,19 @@
   const connect = () => {
     const index = containers.value.findIndex(c => c.id === form.value.container_id)
 
-    if (index !== -1) {
-      const selected = containers.value[index]
-
-      form.value.container_name = selected.name
+    if (index === -1) {
+      return
     }
+
+    if (form.value.working_directory === '') {
+      alert('Working directory is required.')
+      document.getElementById('work_directory')?.focus()
+      return
+    }
+
+    const selected = containers.value[index]
+
+    form.value.container_name = selected.name
 
     window.ipcRenderer.send('docker.copy-phar.execute', {
       php_version: phpVersion.value,
@@ -60,6 +68,7 @@
   }
 
   const listDockerContainer = () => {
+    containers.value = []
     loading.value = true
     window.ipcRenderer.send('docker.containers.info')
   }
@@ -217,7 +226,12 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Working directory</div>
-            <TextInput id="work_directory" :disabled="!shouldConnect" v-model="form.working_directory" />
+            <TextInput
+              placeholder="/var/www/html"
+              id="work_directory"
+              :disabled="!shouldConnect"
+              v-model="form.working_directory"
+            />
           </div>
 
           <Divider />
