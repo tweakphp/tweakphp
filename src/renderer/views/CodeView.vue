@@ -13,6 +13,7 @@
   import { Tab } from '../types/tab.type'
   import DockerTabConnection from '../components/DockerTabConnection.vue'
   import { PharPathResponse } from '../../main/types/docker.type.ts'
+  import ProgressBar from '../components/ProgressBar.vue'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -313,11 +314,16 @@
           backgroundColor: settingsStore.colors.background,
         }"
       >
-        <div class="flex gap-2">
-          <div class="px-2">PHP {{ tab.docker.enable ? tab.docker.php_version : tab.info.php_version }}</div>
-          <DockerTabConnection :tab="tab" />
+        <div class="px-2 flex gap-1 w-1/2 items-center">
+          <div class="whitespace-nowrap">
+            PHP {{ tab.docker.enable ? tab.docker.php_version : tab.info.php_version }}
+          </div>
+          <DockerTabConnection :tab="tab" class="whitespace-nowrap" />
         </div>
-        <div class="px-2">{{ tab.info.name }} {{ tab.info.version }}</div>
+        <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
+          <ProgressBar />
+          <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
+        </div>
       </div>
     </div>
     <div v-if="tab.type === 'home'" class="w-full h-full pt-[28px]">
