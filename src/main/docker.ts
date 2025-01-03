@@ -1,12 +1,8 @@
 import { execSync } from 'child_process'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { app, ipcMain } from 'electron'
 import { isLinux, isMacOS } from './platform.ts'
 import { DockerContainerResponse, PHPInfoResponse } from './types/docker.type.ts'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 export const DOCKER_PATH = (() => {
   if (isLinux()) return '/usr/bin/docker'

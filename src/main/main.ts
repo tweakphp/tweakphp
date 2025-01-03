@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { fileURLToPath } from 'url'
 import path from 'path'
 import log from 'electron-log/main'
 import * as dotenv from 'dotenv'
@@ -14,9 +13,6 @@ import * as tray from './tray'
 import * as docker from './docker'
 
 Object.assign(console, log.functions)
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 dotenv.config()
 

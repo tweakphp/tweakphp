@@ -3,11 +3,7 @@ import { exec } from 'child_process'
 import { app, ipcMain } from 'electron'
 import * as settings from './settings'
 import * as php from './php'
-import { fileURLToPath } from 'url'
 import { DOCKER_PATH } from './docker.ts'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 export const init = async () => {
   ipcMain.on('client.local.execute', localExec)

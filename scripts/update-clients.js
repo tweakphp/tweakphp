@@ -2,10 +2,6 @@ import path from 'path'
 import fs from 'fs'
 import fetch from 'node-fetch'
 import * as glob from 'glob'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 function cleanup() {
   const files = glob.sync(path.join(__dirname, '../public', 'client-*.phar'))
