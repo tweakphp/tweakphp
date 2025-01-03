@@ -50,7 +50,7 @@ export const init = async (window: BrowserWindow) => {
 
       window.setProgressBar(progressPercentage / 100)
 
-      window.webContents.send('progress', {
+      window.webContents.send('statusbar.progress', {
         progress: progressPercentage,
         title: 'Extracting Laravel.zip',
       })
