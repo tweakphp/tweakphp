@@ -14,12 +14,14 @@
   const sshStore = useSSHStore()
 
   const form: Ref<ConnectionConfig> = ref({
+    id: Date.now(),
     host: '65.109.205.85',
     port: 22,
     username: 'vito',
     auth_type: 'key',
     password: '',
     privateKey: '/Users/saeed/.ssh/id_rsa',
+    path: '',
   })
 
   onMounted(() => {
@@ -72,6 +74,11 @@
       <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Private Key Path</div>
         <TextInput id="key" v-model="form.privateKey" />
+      </div>
+      <Divider />
+      <div class="grid grid-cols-2 items-center">
+        <div>App Path</div>
+        <TextInput id="path" v-model="form.path" />
       </div>
       <Divider />
       <div class="flex items-center justify-end">
