@@ -1,8 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { useExecuteStore } from './stores/execute'
-  import { ArrowPathIcon, BoltIcon, CogIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
+  import { CogIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import { onMounted, ref } from 'vue'
@@ -14,7 +13,7 @@
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import DockerIcon from './components/icons/DockerIcon.vue'
+  import ProjectTile from './components/ProjectTile.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -25,7 +24,6 @@
     }
   }
 
-  const executeStore = useExecuteStore()
   const tabStore = useTabsStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
@@ -64,12 +62,12 @@
       isAppReady.value = true
     })
     window.ipcRenderer.on('source.open.reply', (e: any) => {
-      router.push({ name: 'home' })
-      tabStore.addTab({
+      let tab = tabStore.addTab({
         path: e,
         type: 'code',
       })
       historyStore.addHistory({ path: e })
+      router.push({ name: 'code', params: { id: tab.id } })
     })
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
@@ -83,8 +81,9 @@
     await initEditor()
   })
 
-  const openFolder = () => {
-    window.ipcRenderer.send('source.open')
+  const addTab = async () => {
+    let activeTab = tabStore.addTab()
+    await router.replace({ name: 'code', params: { id: activeTab.id } })
   }
 
   const initEditor = async () => {
@@ -110,46 +109,27 @@
         borderColor: settingsStore.colors.border,
       }"
     >
-      <div class="h-full flex flex-col justify-between">
-        <div>
-          <SidebarItem :active="router.currentRoute.value.name === 'code'">
-            <RouterLink :to="router.currentRoute.value.name === 'code' ? '' : '/'">
-              <ArrowPathIcon class="w-6 h-6 animate-spin" v-if="executeStore.executing" :spin="true" />
-              <BoltIcon v-else class="w-6 h-6 hover:text-primary-500" />
-            </RouterLink>
-          </SidebarItem>
-          <SidebarItem>
-            <RouterLink to="">
-              <FolderOpenIcon @click="openFolder" class="w-6 h-6 hover:text-primary-500" />
-            </RouterLink>
-          </SidebarItem>
-          <SidebarItem
-            :disabled="tabStore.current?.type === 'home'"
-            :active="router.currentRoute.value.path.includes('/docker')"
-          >
-            <RouterLink v-if="tabStore.current?.type !== 'home'" to="/docker">
-              <DockerIcon class="w-6 h-6 fill-transparent hover:text-primary-500" />
-            </RouterLink>
-            <span
-              v-else
-              class="w-6 h-6 opacity-70 cursor-not-allowed"
-              v-tippy="{ content: 'Open a project first!', placement: 'right' }"
-            >
-              <DockerIcon class="fill-transparent" />
-            </span>
-          </SidebarItem>
-
-          <!--                    <SidebarItem-->
-          <!--                        :active="-->
-          <!--                            router.currentRoute.value.path.includes('/ssh')-->
-          <!--                        "-->
-          <!--                    >-->
-          <!--                        <RouterLink to="/ssh">-->
-          <!--                            <WifiIcon class="w-6 h-6 hover:text-primary-500" />-->
-          <!--                        </RouterLink>-->
-          <!--                    </SidebarItem>-->
+      <div class="relative h-full flex flex-col justify-between pb-[70px]">
+        <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
+          <button @click="addTab">
+            <ProjectTile tooltip="Add" tooltip-placement="right">
+              <PlusIcon class="w-4 h-4" />
+            </ProjectTile>
+          </button>
+          <template v-for="tab in tabStore.tabs" :key="tab.id">
+            <button @click="router.replace({ name: 'code', params: { id: tab.id } })">
+              <ProjectTile
+                :active="router.currentRoute.value.name === 'code' && tabStore.current?.id === tab.id"
+                :name="tab.name"
+                :tooltip="tab.name"
+                tooltip-placement="right"
+              >
+                {{ tab.name[0] }}
+              </ProjectTile>
+            </button>
+          </template>
         </div>
-        <div class="border-t" :style="{ borderColor: settingsStore.colors.border }">
+        <div class="absolute bottom-0 left-0 border-t" :style="{ borderColor: settingsStore.colors.border }">
           <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
             <span
               v-if="

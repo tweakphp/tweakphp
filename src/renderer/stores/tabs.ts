@@ -10,6 +10,7 @@ export const useTabsStore = defineStore('tabs', () => {
       type: 'home',
       name: 'home',
       path: '',
+      execution: 'local',
       remote_path: '',
       remote_phar_client: '',
       code: '<?php\n\n',
@@ -32,11 +33,12 @@ export const useTabsStore = defineStore('tabs', () => {
   if (storedTabs) {
     defaultTabs = JSON.parse(storedTabs).map((tab: any) => ({
       ...tab,
+      execution: tab.execution as 'local' | 'ssh' | 'docker',
       docker: tab.docker || defaultTabs[0].docker,
     }))
   }
   const tabs: Ref<Tab[]> = ref(defaultTabs)
-  const current: Ref<Tab | null> = ref(null)
+  const current: Ref<Tab | undefined> = ref()
   const scrollPosition = ref(0)
 
   const setCurrent = (tab: Tab) => {
@@ -50,8 +52,9 @@ export const useTabsStore = defineStore('tabs', () => {
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.type === 'home' ? 'home' : data.path?.split('/').pop(),
+      name: data.type === 'home' ? 'home' : (data.path?.split('/').pop() as string),
       path: data.path,
+      execution: 'local',
       remote_phar_client: '',
       remote_path: '',
       code: '<?php\n\n',

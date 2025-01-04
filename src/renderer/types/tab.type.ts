@@ -1,9 +1,10 @@
 export interface Tab {
   id: number
-  name: string | undefined
+  name: string
   type: string
   code: string
   path: string | undefined
+  execution: string
   remote_phar_client: string | undefined
   remote_path: string | undefined
   result: string | undefined

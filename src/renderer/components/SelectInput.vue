@@ -34,7 +34,7 @@
     <select
       v-model="selectedValue"
       @change="emitChange"
-      class="!w-full h-[31px] border-r-8 border-transparent py-1 px-2 outline focus:!outline-primary-500 rounded-md"
+      class="!w-full h-7 text-sm border-r-8 border-transparent py-1 px-2 outline focus:!outline-primary-500 rounded-md"
       :style="{
         backgroundColor: settingsStore.colors.backgroundLight,
         color: settingsStore.colors.foreground,

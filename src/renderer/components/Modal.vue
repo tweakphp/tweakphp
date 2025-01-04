@@ -3,6 +3,7 @@
   import { TransitionRoot, TransitionChild, DialogPanel, DialogTitle, Dialog } from '@headlessui/vue'
   import { useSettingsStore } from '../stores/settings.ts'
   import { XMarkIcon } from '@heroicons/vue/24/outline'
+  import Divider from './Divider.vue'
 
   const settingsStore = useSettingsStore()
 
@@ -10,6 +11,10 @@
     title: {
       type: String,
       default: '',
+    },
+    size: {
+      type: String,
+      default: 'md',
     },
   })
 
@@ -22,7 +27,7 @@
     isModalOpen.value = true
   }
 
-  defineExpose({ openModal })
+  defineExpose({ openModal, closeModal })
 </script>
 
 <template>
@@ -53,7 +58,12 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full max-w-md transform overflow-hidden rounded-lg p-6 text-left align-middle shadow-xl transition-all"
+                class="w-full transform overflow-hidden rounded-lg p-6 text-left align-middle shadow-sm transition-all"
+                :class="{
+                  'max-w-md': props.size === 'md',
+                  'max-w-lg': props.size === 'lg',
+                  'max-w-xl': props.size === 'xl',
+                }"
                 :style="{
                   backgroundColor: settingsStore.colors.background,
                   color: settingsStore.colors.foreground,
@@ -63,7 +73,8 @@
                   {{ props.title }}
                   <XMarkIcon class="w-5 h-5 cursor-pointer hover:opacity-70" @click="closeModal()" />
                 </DialogTitle>
-                <slot />
+                <Divider />
+                <slot></slot>
               </DialogPanel>
             </TransitionChild>
           </div>

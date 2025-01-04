@@ -2,7 +2,6 @@
   import { nextTick, onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
-  import { XMarkIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import HomeView from '../views/HomeView.vue'
   import Container from '../components/Container.vue'
   import events from '../events'
@@ -11,7 +10,6 @@
   import { useRoute } from 'vue-router'
   import router from '../router/index'
   import { Tab } from '../types/tab.type'
-  import DockerTabConnection from '../components/DockerTabConnection.vue'
   import { PharPathResponse } from '../../main/types/docker.type.ts'
   import ProgressBar from '../components/ProgressBar.vue'
 
@@ -31,6 +29,7 @@
     name: '',
     code: '',
     path: '',
+    execution: 'local',
     remote_phar_client: '',
     remote_path: '',
     result: '',
@@ -94,7 +93,7 @@
 
     executeStore.setExecuting(true)
 
-    if (docker.enable) {
+    if (tab.value.execution === 'docker') {
       if (!dockerClients.value.includes(container_id)) {
         window.ipcRenderer.send('docker.copy-phar.execute', {
           php_version: php_version,
@@ -121,7 +120,7 @@
   }
 
   const infoHandler = () => {
-    if (tab.value.type === 'code' && tab.value.info.name === '') {
+    if (tab.value.type === 'code') {
       window.ipcRenderer.send('client.local.info', {
         php: settingsStore.settings.php,
         path: tab.value.path,
@@ -144,32 +143,32 @@
       return
     }
     let params: any = route.params
-    let currentTab: null | Tab
-    if (tabsStore.current) {
-      currentTab = tabsStore.current
-    } else {
-      currentTab = tabsStore.findTab(params.id)
+    if (params.id) {
+      tab.value = tabsStore.findTab(params.id)
+      tabsStore.setCurrent(tab.value)
     }
-    if (currentTab.id !== parseInt(params.id)) {
-      await router.replace({ name: 'code', params: { id: currentTab.id } })
-    } else {
-      tab.value = currentTab
-      tabsStore.setCurrent(currentTab)
-
-      infoHandler()
-
-      // add keyboard listener
-      window.addEventListener('keydown', keydownListener)
-
-      // add execute reply listener
-      events.addEventListener('execute', executeHandler)
-
-      // add execute listener
-      events.addEventListener('client.execute.reply', executeReplyListener)
-
-      // add info listener
-      events.addEventListener('client.info.reply', infoReplyListener)
+    if (!tab.value.id && tabsStore.current) {
+      tab.value = tabsStore.current
     }
+    if (!tab.value.id) {
+      let newTab = tabsStore.addTab()
+      await setCurrentTab(newTab)
+    }
+
+    infoHandler()
+
+    // add keyboard listener
+    window.addEventListener('keydown', keydownListener)
+
+    // add execute reply listener
+    events.addEventListener('execute', executeHandler)
+
+    // add execute listener
+    events.addEventListener('client.execute.reply', executeReplyListener)
+
+    // add info listener
+    events.addEventListener('client.info.reply', infoReplyListener)
+
     if (tabsContainer.value) {
       tabsContainer.value.scrollLeft = tabsStore.scrollPosition
       tabsContainer.value.addEventListener('wheel', tabsContainerWheelListener)
@@ -203,7 +202,7 @@
   )
 
   watch(
-    () => tabsStore.tabs.length,
+    () => tab.value.execution,
     async () => {
       await nextTick()
       infoHandler()
@@ -237,40 +236,8 @@
 <template>
   <Container v-if="tab && route.params.id" :class="platform === 'darwin' ? 'pt-[38px]' : 'pt-0'">
     <div
-      ref="tabsContainer"
-      class="min-w-full max-w-full absolute flex h-7 border-b pr-14 no-scrollbar overflow-x-auto whitespace-nowrap"
-      :class="{
-        'top-[38px]': platform === 'darwin',
-        'top-0 !pr-[150px]': platform !== 'darwin',
-      }"
-      :style="{
-        backgroundColor: settingsStore.colors.background,
-        borderColor: settingsStore.colors.border,
-      }"
-    >
-      <div
-        class="min-w-[120px] flex-none h-full border-r flex items-center justify-between"
-        :style="{
-          borderColor: settingsStore.colors.border,
-          backgroundColor: t.id === tab.id ? settingsStore.colors.backgroundLight : settingsStore.colors.background,
-        }"
-        v-for="t in tabsStore.tabs"
-        @mousedown.middle="removeTab(t)"
-      >
-        <button class="h-full w-full flex items-center px-2 text-xs cursor-pointer" @click="setCurrentTab(t)">
-          {{ t.name }}
-        </button>
-        <button class="h-full w-6 flex flex-none items-center justify-center" @click="removeTab(t)">
-          <XMarkIcon class="w-4 h-4" />
-        </button>
-      </div>
-      <button class="h-full w-6 flex items-center justify-center" @click="addTab()">
-        <PlusIcon class="w-4 h-4" />
-      </button>
-    </div>
-    <div
       v-if="tab.type === 'code'"
-      class="w-full h-full pt-[28px] pb-6"
+      class="w-full h-full pb-6"
       :class="{
         'flex': settingsStore.settings.layout === 'vertical',
         'flex-col': settingsStore.settings.layout === 'horizontal',
@@ -316,9 +283,8 @@
       >
         <div class="px-2 flex gap-1 w-1/2 items-center">
           <div class="whitespace-nowrap">
-            PHP {{ tab.docker.enable ? tab.docker.php_version : tab.info.php_version }}
+            PHP {{ tab.execution === 'docker' ? tab.docker.php_version : tab.info.php_version }}
           </div>
-          <DockerTabConnection :tab="tab" class="whitespace-nowrap" />
         </div>
         <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
           <ProgressBar />
@@ -326,7 +292,7 @@
         </div>
       </div>
     </div>
-    <div v-if="tab.type === 'home'" class="w-full h-full pt-[28px]">
+    <div v-if="tab.type === 'home'" class="w-full h-full">
       <HomeView :key="`home-${tab.id}`" :tab="tab" />
     </div>
   </Container>

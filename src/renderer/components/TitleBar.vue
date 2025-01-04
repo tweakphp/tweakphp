@@ -7,9 +7,12 @@
   import VerticalSplitIcon from './icons/VerticalSplitIcon.vue'
   import { useSettingsStore } from '../stores/settings'
   import { useExecuteStore } from '../stores/execute'
+  import Toolbar from './Toolbar.vue'
+  import { useTabsStore } from '../stores/tabs'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
+  const tabStore = useTabsStore()
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
 
@@ -41,51 +44,41 @@
     }"
   >
     <div
-      class="absolute right-0 flex items-center justify-between"
-      :class="{
-        'w-full left-0 h-full px-2': platform === 'darwin',
-        'h-[27px] pr-2': platform !== 'darwin',
-      }"
+      class="absolute right-0 w-full left-0 h-full px-2 flex items-center justify-between"
       :style="{
         backgroundColor: settingsStore.colors.background,
       }"
     >
-      <div class="flex-grow-0 w-[120px]" v-if="platform === 'darwin'"></div>
-      <div class="flex-grow w-full drag flex items-center justify-center" v-if="platform === 'darwin'">TweakPHP</div>
-      <div class="flex-grow-0 flex items-center">
-        <div v-tippy="'Change layout'">
-          <template v-if="$router.currentRoute.value.name === 'code'">
+      <div class="flex-grow-0 pl-[70px]" v-if="platform === 'darwin'">
+        <Toolbar v-if="route.name === 'code' && tabStore.current?.name !== 'home'" />
+      </div>
+      <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
+      <div class="flex-grow-0 flex items-center space-x-1">
+        <template v-if="tabStore.current && tabStore.current.type === 'code'">
+          <button v-tippy="{ content: 'Change layout', placement: 'bottom' }" class="-mr-[4px]">
             <VerticalSplitIcon
               @click="updateLayout('vertical')"
               v-if="settingsStore.settings.layout === 'horizontal'"
-              class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
+              class="cursor-pointer size-8 hover:!stroke-primary-500"
             />
             <HorizontalSplitIcon
               @click="updateLayout('horizontal')"
               v-if="settingsStore.settings.layout === 'vertical'"
-              class="cursor-pointer w-8 h-8 hover:!stroke-primary-500"
+              class="cursor-pointer size-8 hover:!stroke-primary-500"
             />
-          </template>
-        </div>
-
-        <div class="w-5 h-5" v-tippy="route.name === 'code' ? 'Cmd + R' : 'Run'">
-          <ArrowPathIcon
-            v-if="executeStore.executing"
-            :spin="true"
-            class="text-primary-500 animate-spin w-[18px] h-[18px]"
-          />
-          <PlayIcon
-            v-if="!executeStore.executing"
-            @click="execute"
-            class="w-5 h-5 cursor-pointer hover:text-primary-500"
-          />
-        </div>
-        <div v-tippy="'Settings'">
-          <CogIcon
-            @click="$router.push({ name: 'settings' })"
-            class="w-5 h-5 cursor-pointer ml-1 hover:text-primary-500"
-          />
-        </div>
+          </button>
+          <button v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }">
+            <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-5" />
+            <PlayIcon
+              v-if="!executeStore.executing"
+              @click="execute"
+              class="size-5 cursor-pointer hover:text-primary-500"
+            />
+          </button>
+        </template>
+        <button @click="$router.push({ name: 'settings' })" v-tippy="{ content: 'Settings', placement: 'bottom' }">
+          <CogIcon class="size-5 cursor-pointer hover:text-primary-500" />
+        </button>
       </div>
     </div>
   </div>
