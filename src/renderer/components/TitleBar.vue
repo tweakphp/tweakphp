@@ -33,11 +33,7 @@
 <template>
   <div
     id="title-bar"
-    class="fixed top-0 right-0 h-[38px]"
-    :class="{
-      'z-40 left-0 w-full border-b': platform === 'darwin',
-      'z-50': platform !== 'darwin',
-    }"
+    class="fixed top-0 right-0 h-[38px] z-40 left-0 w-full border-b"
     :style="{
       backgroundColor: settingsStore.colors.background,
       borderColor: settingsStore.colors.border,
@@ -49,7 +45,7 @@
         backgroundColor: settingsStore.colors.background,
       }"
     >
-      <div class="flex-grow-0 pl-[70px]" v-if="platform === 'darwin'">
+      <div class="flex-grow-0" :class="{ 'pl-[70px]': platform === 'darwin', 'pl-[50px]': platform !== 'darwin' }">
         <Toolbar v-if="route.name === 'code' && tabStore.current?.name !== 'home'" />
       </div>
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>

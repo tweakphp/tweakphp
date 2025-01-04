@@ -20,7 +20,6 @@
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
   const dockerClients: Ref<string[]> = ref([])
 
-  const platform = window.platformInfo.getPlatform()
   const tabsContainer = ref<HTMLDivElement | null>(null)
 
   const tab = ref<Tab>({
@@ -234,7 +233,7 @@
 </script>
 
 <template>
-  <Container v-if="tab && route.params.id" :class="platform === 'darwin' ? 'pt-[38px]' : 'pt-0'">
+  <Container v-if="tab && route.params.id" class="pt-[38px]">
     <div
       v-if="tab.type === 'code'"
       class="w-full h-full pb-6"
