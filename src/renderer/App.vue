@@ -4,7 +4,7 @@
   import { CogIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
-  import { onMounted, ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
   import router from './router/index'
@@ -82,7 +82,14 @@
     window.ipcRenderer.on('ssh.connect.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('ssh.connect.reply', { detail: e }))
     })
+
+    window.addEventListener('keydown', keydownListener)
+
     await initEditor()
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', keydownListener)
   })
 
   const initEditor = async () => {
@@ -91,6 +98,15 @@
         debugLogging: true,
       },
     })
+  }
+
+  const keydownListener = (event: any) => {
+    if ((event.metaKey || event.ctrlKey) && !event.shiftKey) {
+      if (event.key === 'n') {
+        event.preventDefault()
+        newProjectModal.value.openModal()
+      }
+    }
   }
 </script>
 
