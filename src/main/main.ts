@@ -32,7 +32,7 @@ const createMainWindow = async () => {
     resizable: true,
     titleBarStyle: 'hiddenInset',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
       devTools: !app.isPackaged,
     },

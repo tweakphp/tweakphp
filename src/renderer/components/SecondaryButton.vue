@@ -1,27 +1,20 @@
 <script setup lang="ts">
-  import { computed } from 'vue'
   import { useSettingsStore } from '../stores/settings'
 
   const props = defineProps({
-    class: {
-      type: String,
-      default: '',
-    },
+    class: {},
   })
 
   const settingsStore = useSettingsStore()
-
-  const classes = computed(() => {
-    let defaultClasses =
-      'inline-flex h-6 text-sm w-max min-w-max items-center justify-center rounded-md border bg-transparent px-4 py-1 text-white outline-0 transition hover:bg-opacity-50 focus:ring focus:ring-opacity-50 disabled:opacity-25'
-    return `${defaultClasses} ${props.class}`
-  })
 </script>
 
 <template>
   <button
-    :class="classes"
-    :style="{ borderColor: settingsStore.colors.borderColor, color: settingsStore.colors.foreground }"
+    :class="[
+      'inline-flex h-6 text-sm w-max min-w-max items-center justify-center rounded-md border bg-transparent px-4 py-1 text-white transition hover:bg-opacity-50 disabled:opacity-25',
+      props.class,
+    ]"
+    :style="{ borderColor: settingsStore.colors.border, color: settingsStore.colors.foreground }"
   >
     <slot></slot>
   </button>

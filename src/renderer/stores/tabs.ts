@@ -1,6 +1,7 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { Tab } from '../types/tab.type'
+import router from '../router'
 
 export const useTabsStore = defineStore('tabs', () => {
   // setup tabs
@@ -10,6 +11,7 @@ export const useTabsStore = defineStore('tabs', () => {
       type: 'home',
       name: 'home',
       path: '',
+      execution: 'local',
       remote_path: '',
       remote_phar_client: '',
       code: '<?php\n\n',
@@ -30,17 +32,33 @@ export const useTabsStore = defineStore('tabs', () => {
   ]
   let storedTabs = localStorage.getItem('tabs')
   if (storedTabs) {
-    defaultTabs = JSON.parse(storedTabs).map((tab: any) => ({
-      ...tab,
-      docker: tab.docker || defaultTabs[0].docker,
-    }))
+    defaultTabs = JSON.parse(storedTabs)
+      .filter((tab: Tab) => tab.type !== 'home')
+      .map((tab: Tab) => ({
+        ...tab,
+        execution: tab.execution as 'local' | 'ssh' | 'docker',
+        docker: tab.docker || defaultTabs[0].docker,
+      }))
   }
   const tabs: Ref<Tab[]> = ref(defaultTabs)
   const current: Ref<Tab | null> = ref(null)
   const scrollPosition = ref(0)
 
-  const setCurrent = (tab: Tab) => {
+  const setCurrent = (tab: Tab | null): void => {
     current.value = tab
+    if (tab) {
+      localStorage.setItem('currentTab', tab.id.toString())
+      return
+    }
+    localStorage.removeItem('currentTab')
+  }
+
+  const getCurrent = (): Tab | null => {
+    if (current.value) {
+      return current.value
+    }
+    let id = localStorage.getItem('currentTab')
+    return findTab(id ? parseInt(id) : null)
   }
 
   const addTab = (data: { id?: number | null; type: string; path?: string } = { type: 'home' }) => {
@@ -50,8 +68,9 @@ export const useTabsStore = defineStore('tabs', () => {
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.type === 'home' ? 'home' : data.path?.split('/').pop(),
+      name: data.type === 'home' ? 'home' : (data.path?.split('/').pop() as string),
       path: data.path,
+      execution: 'local',
       remote_phar_client: '',
       remote_path: '',
       code: '<?php\n\n',
@@ -79,19 +98,19 @@ export const useTabsStore = defineStore('tabs', () => {
     return tab
   }
 
-  const removeTab = (id: number) => {
+  const removeTab = async (id: number) => {
     let index = tabs.value.findIndex(tab => tab.id === id)
     tabs.value.splice(index, 1)
     localStorage.setItem('tabs', JSON.stringify(tabs.value))
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
-      return tabs.value[tabs.value.length - 1]
+      let activeTab = tabs.value[tabs.value.length - 1]
+      await router.replace({ name: 'code', params: { id: activeTab.id } })
+      return activeTab
     }
-    return addTab({
-      id: Date.now(),
-      type: 'home',
-      path: '',
-    })
+    setCurrent(null)
+    await router.replace({ name: 'home' })
+    return null
   }
 
   const updateTab = (tab: Tab) => {
@@ -109,14 +128,10 @@ export const useTabsStore = defineStore('tabs', () => {
     }
     let index = tabs.value.findIndex(t => t.id == id)
     let tab = tabs.value[index]
-    if (!tab) {
-      tab = addTab({
-        id: id,
-        type: 'home',
-        path: '',
-      })
+    if (tab) {
+      return tab
     }
-    return tab
+    return null
   }
 
   const setScrollPosition = (position: number) => {
@@ -131,6 +146,7 @@ export const useTabsStore = defineStore('tabs', () => {
     updateTab,
     findTab,
     setCurrent,
+    getCurrent,
     scrollPosition,
     setScrollPosition,
   }

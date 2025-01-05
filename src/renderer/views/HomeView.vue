@@ -1,58 +1,32 @@
-<script setup lang="ts">
-  import { onMounted, PropType } from 'vue'
-  import { useHistoryStore } from '../stores/history'
-  import { TrashIcon } from '@heroicons/vue/24/outline'
-  import { useTabsStore } from '../stores/tabs'
-  import Divider from '../components/Divider.vue'
+<script lang="ts" setup>
+  import { onMounted } from 'vue'
   import Container from '../components/Container.vue'
   import { useSettingsStore } from '../stores/settings'
-  import { Tab } from '../types/tab.type'
-  import { History } from '../types/history.type'
+  import { useTabsStore } from '../stores/tabs'
+  import router from '../router'
 
-  const tabsStore = useTabsStore()
-  const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
+  const tabsStore = useTabsStore()
 
-  const props = defineProps({
-    tab: {
-      type: Object as PropType<Tab>,
-      default: () => {
-        return {}
-      },
-    },
+  onMounted(() => {
+    let currentTab = tabsStore.getCurrent()
+    if (currentTab) {
+      router.replace({ name: 'code', params: { id: currentTab.id } })
+    }
   })
-
-  const updateTab = (history: History) => {
-    let tab: Tab = props.tab
-    tab.type = 'code'
-    tab.path = history.path
-    tab.name = history.path.split('/').pop()
-    tabsStore.updateTab(tab)
-  }
-
-  onMounted(() => {})
 </script>
 
 <template>
   <Container class="flex items-center justify-center">
-    <div class="w-full max-w-lg px-5">
-      <div class="text-2xl">Tweaks</div>
-      <Divider class="mt-3" />
-      <div class="space-y-2 mt-3">
-        <div class="flex items-center justify-between">
-          <button class="text-blue-500" @click="updateTab({ path: settingsStore.settings.laravelPath })">
-            laravel
-          </button>
-        </div>
-        <div class="flex items-center justify-between" v-for="history in historyStore.history">
-          <button class="text-blue-500" @click="updateTab(history)">
-            {{ history.path }}
-          </button>
-          <button>
-            <TrashIcon @click="historyStore.removeHistory(history)" class="w-4 h-4 hover:text-red-600" />
-          </button>
-        </div>
+    <div class="w-full max-w-sm px-5 space-y-3">
+      <div class="flex items-center">
+        <img src="../../../build/icon.png" alt="" class="size-7 mr-2" />
+        <h2 class="text-xl">
+          TweakPHP <span class="opacity-50">{{ settingsStore.settings.version }}</span>
+        </h2>
       </div>
+      <p>To get started, Add a new project.</p>
+      <p>Click on the + icon at top left corner!</p>
     </div>
   </Container>
 </template>

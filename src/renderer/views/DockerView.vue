@@ -1,31 +1,26 @@
 <script setup lang="ts">
   import Container from '../components/Container.vue'
-  import Title from '../components/Title.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onMounted, onUnmounted, ref, watch } from 'vue'
+  import { onMounted, onUnmounted, ref, defineEmits } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../stores/tabs.ts'
   import SelectInput from '../components/SelectInput.vue'
   import TextInput from '../components/TextInput.vue'
   import { Tab } from '../types/tab.type.ts'
-  import router from '../router'
-  import SwitchInput from '../components/SwitchInput.vue'
   import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../main/types/docker.type.ts'
   import { DockerForm } from '../types/docker.type.ts'
 
   const tabsStore = useTabsStore()
+  const emit = defineEmits(['connected'])
 
   const created = ref<boolean>(false)
-  const dockerEnabled = ref<boolean>(false)
   const loading = ref<boolean>(false)
   const containers = ref<{ id: string; name: string; image: string }[]>([])
   const errorResponse = ref<string | null>(null)
   const phpVersion = ref<string | null>(null)
   const phpPath = ref<string | null>(null)
-
   const shouldConnect = ref<boolean>(false)
-
   const form = ref<DockerForm>({
     container_id: '',
     container_name: '',
@@ -79,10 +74,6 @@
     phpVersion.value = e.php_version
     phpPath.value = e.php_path
     shouldConnect.value = true
-
-    if (!created.value) {
-      dockerEnabled.value = true
-    }
   }
 
   const handleDockerPHPVersionReplyError = () => {
@@ -97,11 +88,14 @@
 
   const handleDockerCopyPharReply = (e: PharPathResponse) => {
     errorResponse.value = ''
-    let currentTab: Tab = tabsStore.findTab(tabsStore.current?.id)
+    let currentTab: Tab | null = tabsStore.getCurrent()
+    if (currentTab === null) {
+      return
+    }
 
+    currentTab.execution = 'docker'
     currentTab.remote_phar_client = e.phar_path
     currentTab.remote_path = form.value.working_directory
-    currentTab.docker.enable = true
     currentTab.docker.php = phpPath.value ?? 'Not Found'
     currentTab.docker.php_version = phpVersion.value ?? 'Not Found'
     currentTab.docker.container_id = form.value.container_id
@@ -109,7 +103,7 @@
 
     tabsStore.updateTab(currentTab)
 
-    router.push({ name: 'code', params: { id: currentTab.id } })
+    emit('connected')
   }
 
   const handleDockerContainersReply = (e: DockerContainerResponse[]) => {
@@ -126,13 +120,9 @@
   onMounted(() => {
     listDockerContainer()
 
-    if (tabsStore.current && tabsStore.current.docker) {
-      dockerEnabled.value = tabsStore.current.docker.enable
-    }
-
-    form.value.container_id = tabsStore.current?.docker.container_id ?? ''
-    form.value.container_name = tabsStore.current?.docker.container_name ?? ''
-    form.value.working_directory = tabsStore.current?.remote_path ?? ''
+    form.value.container_id = tabsStore.getCurrent()?.docker.container_id ?? ''
+    form.value.container_name = tabsStore.getCurrent()?.docker.container_name ?? ''
+    form.value.working_directory = tabsStore.getCurrent()?.remote_path ?? ''
 
     selectDockerContainer()
 
@@ -158,32 +148,12 @@
     window.ipcRenderer.removeListener('docker.copy-phar.reply', handleDockerCopyPharReply)
     window.ipcRenderer.removeListener('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
   })
-
-  watch(dockerEnabled, (value: boolean) => {
-    if (!tabsStore.current) {
-      return
-    }
-
-    tabsStore.current.docker.enable = value
-    tabsStore.updateTab(tabsStore.current)
-  })
 </script>
 
 <template>
-  <Container class="pt-[38px]">
-    <div class="max-w-2xl mx-auto p-10">
-      <Title>Docker Settings</Title>
-    </div>
-
-    <div class="max-w-2xl mx-auto p-10">
-      <div class="flex justify-between">
-        Enabled
-        <SwitchInput :disabled="!shouldConnect" v-model="dockerEnabled" />
-      </div>
-
-      <Divider class="mt-6" />
-
-      <div class="mt-3 max-w-2xl mx-auto space-y-3">
+  <Container>
+    <div class="mt-3 w-full mx-auto">
+      <div class="mx-auto space-y-3">
         <div class="grid grid-cols-2 items-center">
           <div>Container</div>
 
@@ -237,7 +207,7 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Status</div>
-            {{ tabsStore.current?.remote_phar_client ? 'Connected' : 'Disconnected' }}
+            {{ tabsStore.getCurrent()?.remote_phar_client ? 'Connected' : 'Disconnected' }}
           </div>
 
           <Divider />

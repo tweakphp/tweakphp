@@ -7,16 +7,14 @@ on:
   pull_request:
 
 jobs:
-  code-style:
-    runs-on: ubuntu-latest
-
+  test-build:
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
       matrix:
-        node-version: ['22.x']
-
+        os: [macos-latest, ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v2
@@ -26,5 +24,15 @@ jobs:
       - name: Install NPM Dependencies
         run: npm install
 
-      - name: Build
-        run: npm run build
+      - name: Build Mac
+        if: matrix.os == 'macos-latest'
+        run: npm run build-mac
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+
+      - name: Build Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run build-linux
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+
