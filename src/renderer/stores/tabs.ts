@@ -32,11 +32,13 @@ export const useTabsStore = defineStore('tabs', () => {
   ]
   let storedTabs = localStorage.getItem('tabs')
   if (storedTabs) {
-    defaultTabs = JSON.parse(storedTabs).map((tab: any) => ({
-      ...tab,
-      execution: tab.execution as 'local' | 'ssh' | 'docker',
-      docker: tab.docker || defaultTabs[0].docker,
-    }))
+    defaultTabs = JSON.parse(storedTabs)
+      .filter((tab: Tab) => tab.type !== 'home')
+      .map((tab: Tab) => ({
+        ...tab,
+        execution: tab.execution as 'local' | 'ssh' | 'docker',
+        docker: tab.docker || defaultTabs[0].docker,
+      }))
   }
   const tabs: Ref<Tab[]> = ref(defaultTabs)
   const current: Ref<Tab | null> = ref(null)
