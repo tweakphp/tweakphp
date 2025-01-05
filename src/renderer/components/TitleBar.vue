@@ -46,7 +46,7 @@
       }"
     >
       <div class="flex-grow-0" :class="{ 'pl-[70px]': platform === 'darwin', 'pl-[50px]': platform !== 'darwin' }">
-        <Toolbar v-if="route.name === 'code' && tabStore.current?.name !== 'home'" />
+        <Toolbar v-if="tabStore.getCurrent()" />
       </div>
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
       <div class="flex-grow-0 flex items-center space-x-1">

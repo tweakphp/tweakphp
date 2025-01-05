@@ -2,7 +2,6 @@
   import { nextTick, onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
-  import HomeView from '../views/HomeView.vue'
   import Container from '../components/Container.vue'
   import events from '../events'
   import { useSettingsStore } from '../stores/settings'
@@ -143,15 +142,21 @@
     }
     let params: any = route.params
     if (params.id) {
-      tab.value = tabsStore.findTab(params.id)
-      tabsStore.setCurrent(tab.value)
-    }
-    if (!tab.value.id && tabsStore.current) {
-      tab.value = tabsStore.current
+      let t = tabsStore.findTab(params.id)
+      if (t) {
+        tab.value = t
+        tabsStore.setCurrent(tab.value)
+      }
     }
     if (!tab.value.id) {
-      let newTab = tabsStore.addTab()
-      await setCurrentTab(newTab)
+      let t = tabsStore.getCurrent()
+      if (t) {
+        tab.value = t
+        setCurrentTab(tab.value)
+      }
+    }
+    if (!tab.value.id) {
+      return
     }
 
     infoHandler()
@@ -218,7 +223,11 @@
 
   const removeTab = async (t: Tab) => {
     let activeTab = tabsStore.removeTab(t.id)
-    await router.replace({ name: 'code', params: { id: activeTab.id } })
+    if (activeTab) {
+      await router.replace({ name: 'code', params: { id: activeTab.id } })
+      return
+    }
+    await router.replace({ name: 'home' })
   }
 
   const addTab = async () => {
@@ -290,9 +299,6 @@
           <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
         </div>
       </div>
-    </div>
-    <div v-if="tab.type === 'home'" class="w-full h-full">
-      <HomeView :key="`home-${tab.id}`" :tab="tab" />
     </div>
   </Container>
 </template>

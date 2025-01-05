@@ -77,7 +77,6 @@
   }
 
   const handleDockerPHPVersionReplyError = () => {
-    console.log('Error')
     phpVersion.value = 'Not Found'
     errorResponse.value = ''
     shouldConnect.value = false
@@ -89,7 +88,10 @@
 
   const handleDockerCopyPharReply = (e: PharPathResponse) => {
     errorResponse.value = ''
-    let currentTab: Tab = tabsStore.findTab(tabsStore.current?.id)
+    let currentTab: Tab | null = tabsStore.getCurrent()
+    if (currentTab === null) {
+      return
+    }
 
     currentTab.execution = 'docker'
     currentTab.remote_phar_client = e.phar_path
@@ -118,9 +120,9 @@
   onMounted(() => {
     listDockerContainer()
 
-    form.value.container_id = tabsStore.current?.docker.container_id ?? ''
-    form.value.container_name = tabsStore.current?.docker.container_name ?? ''
-    form.value.working_directory = tabsStore.current?.remote_path ?? ''
+    form.value.container_id = tabsStore.getCurrent()?.docker.container_id ?? ''
+    form.value.container_name = tabsStore.getCurrent()?.docker.container_name ?? ''
+    form.value.working_directory = tabsStore.getCurrent()?.remote_path ?? ''
 
     selectDockerContainer()
 
@@ -150,8 +152,8 @@
 
 <template>
   <Container>
-    <div class="w-full mx-auto">
-      <div class="mt-3 mx-auto space-y-3">
+    <div class="mt-3 w-full mx-auto">
+      <div class="mx-auto space-y-3">
         <div class="grid grid-cols-2 items-center">
           <div>Container</div>
 
@@ -205,7 +207,7 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Status</div>
-            {{ tabsStore.current?.remote_phar_client ? 'Connected' : 'Disconnected' }}
+            {{ tabsStore.getCurrent()?.remote_phar_client ? 'Connected' : 'Disconnected' }}
           </div>
 
           <Divider />

@@ -14,6 +14,8 @@
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
   import ProjectTile from './components/ProjectTile.vue'
+  import Modal from './components/Modal.vue'
+  import NewProjectView from './views/NewProjectView.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -30,6 +32,7 @@
   const updateStore = useUpdateStore()
 
   const platform = window.platformInfo.getPlatform()
+  const newProjectModal = ref()
 
   const isAppReady = ref(false)
   const initAppInterval = setInterval(() => {
@@ -68,6 +71,7 @@
       })
       historyStore.addHistory({ path: e })
       router.push({ name: 'code', params: { id: tab.id } })
+      newProjectModal.value.closeModal()
     })
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
@@ -80,11 +84,6 @@
     })
     await initEditor()
   })
-
-  const addTab = async () => {
-    let activeTab = tabStore.addTab()
-    await router.replace({ name: 'code', params: { id: activeTab.id } })
-  }
 
   const initEditor = async () => {
     await initServices({
@@ -111,15 +110,15 @@
     >
       <div class="relative h-full flex flex-col justify-between pb-[70px]">
         <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
-          <button @click="addTab">
-            <ProjectTile tooltip="Add" tooltip-placement="right">
+          <button @click="newProjectModal.openModal()">
+            <ProjectTile tooltip="Add new project" tooltip-placement="right">
               <PlusIcon class="w-4 h-4" />
             </ProjectTile>
           </button>
           <template v-for="tab in tabStore.tabs" :key="tab.id">
             <button @click="router.replace({ name: 'code', params: { id: tab.id } })">
               <ProjectTile
-                :active="router.currentRoute.value.name === 'code' && tabStore.current?.id === tab.id"
+                :active="router.currentRoute.value.name === 'code' && tabStore.getCurrent()?.id === tab.id"
                 :name="tab.name"
                 :tooltip="tab.name"
                 tooltip-placement="right"
@@ -151,5 +150,8 @@
         <RouterView :key="$route.fullPath" />
       </main>
     </div>
+    <Modal title="Add new project" ref="newProjectModal" size="xl">
+      <NewProjectView @opened="newProjectModal.closeModal()" />
+    </Modal>
   </div>
 </template>

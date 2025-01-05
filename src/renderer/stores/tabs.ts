@@ -38,11 +38,24 @@ export const useTabsStore = defineStore('tabs', () => {
     }))
   }
   const tabs: Ref<Tab[]> = ref(defaultTabs)
-  const current: Ref<Tab | undefined> = ref()
+  const current: Ref<Tab | null> = ref(null)
   const scrollPosition = ref(0)
 
-  const setCurrent = (tab: Tab) => {
+  const setCurrent = (tab: Tab | null): void => {
     current.value = tab
+    if (tab) {
+      localStorage.setItem('currentTab', tab.id.toString())
+      return
+    }
+    localStorage.removeItem('currentTab')
+  }
+
+  const getCurrent = (): Tab | null => {
+    if (current.value) {
+      return current.value
+    }
+    let id = localStorage.getItem('currentTab')
+    return findTab(id ? parseInt(id) : null)
   }
 
   const addTab = (data: { id?: number | null; type: string; path?: string } = { type: 'home' }) => {
@@ -90,11 +103,8 @@ export const useTabsStore = defineStore('tabs', () => {
       setCurrent(tabs.value[tabs.value.length - 1])
       return tabs.value[tabs.value.length - 1]
     }
-    return addTab({
-      id: Date.now(),
-      type: 'home',
-      path: '',
-    })
+    setCurrent(null)
+    return null
   }
 
   const updateTab = (tab: Tab) => {
@@ -112,14 +122,10 @@ export const useTabsStore = defineStore('tabs', () => {
     }
     let index = tabs.value.findIndex(t => t.id == id)
     let tab = tabs.value[index]
-    if (!tab) {
-      tab = addTab({
-        id: id,
-        type: 'home',
-        path: '',
-      })
+    if (tab) {
+      return tab
     }
-    return tab
+    return null
   }
 
   const setScrollPosition = (position: number) => {
@@ -134,6 +140,7 @@ export const useTabsStore = defineStore('tabs', () => {
     updateTab,
     findTab,
     setCurrent,
+    getCurrent,
     scrollPosition,
     setScrollPosition,
   }
