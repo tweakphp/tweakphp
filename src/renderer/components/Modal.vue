@@ -46,7 +46,7 @@
           <div class="fixed inset-0 bg-black/25" />
         </TransitionChild>
 
-        <div class="fixed inset-0 overflow-y-auto">
+        <div class="fixed inset-0 overflow-y-auto no-scrollbar">
           <div class="flex min-h-full items-start justify-center p-4 text-center mt-20">
             <TransitionChild
               as="template"
