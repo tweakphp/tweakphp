@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { PlayIcon, CogIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { PlayIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
   import router from '../router'
@@ -46,12 +46,12 @@
       }"
     >
       <div class="flex-grow-0" :class="{ 'pl-[70px]': platform === 'darwin', 'pl-[50px]': platform !== 'darwin' }">
-        <Toolbar v-if="tabStore.getCurrent()" />
+        <Toolbar v-if="router.currentRoute.value.name === 'code' && tabStore.getCurrent()" />
       </div>
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
       <div class="flex-grow-0 flex items-center space-x-1">
         <template v-if="tabStore.current && tabStore.current.type === 'code'">
-          <button v-tippy="{ content: 'Change layout', placement: 'bottom' }" class="-mr-[4px]">
+          <button v-tippy="{ content: 'Change layout', placement: 'left' }" class="-mr-[4px]">
             <VerticalSplitIcon
               @click="updateLayout('vertical')"
               v-if="settingsStore.settings.layout === 'horizontal'"
@@ -72,9 +72,6 @@
             />
           </button>
         </template>
-        <button @click="$router.push({ name: 'settings' })" v-tippy="{ content: 'Settings', placement: 'bottom' }">
-          <CogIcon class="size-5 cursor-pointer hover:text-primary-500" />
-        </button>
       </div>
     </div>
   </div>

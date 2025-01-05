@@ -1,6 +1,7 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { Tab } from '../types/tab.type'
+import router from '../router'
 
 export const useTabsStore = defineStore('tabs', () => {
   // setup tabs
@@ -95,15 +96,18 @@ export const useTabsStore = defineStore('tabs', () => {
     return tab
   }
 
-  const removeTab = (id: number) => {
+  const removeTab = async (id: number) => {
     let index = tabs.value.findIndex(tab => tab.id === id)
     tabs.value.splice(index, 1)
     localStorage.setItem('tabs', JSON.stringify(tabs.value))
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
-      return tabs.value[tabs.value.length - 1]
+      let activeTab = tabs.value[tabs.value.length - 1]
+      await router.replace({ name: 'code', params: { id: activeTab.id } })
+      return activeTab
     }
     setCurrent(null)
+    await router.replace({ name: 'home' })
     return null
   }
 

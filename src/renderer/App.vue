@@ -116,7 +116,10 @@
             </ProjectTile>
           </button>
           <template v-for="tab in tabStore.tabs" :key="tab.id">
-            <button @click="router.replace({ name: 'code', params: { id: tab.id } })">
+            <button
+              @click="router.replace({ name: 'code', params: { id: tab.id } })"
+              @mousedown.middle="tabStore.removeTab(tab.id)"
+            >
               <ProjectTile
                 :active="router.currentRoute.value.name === 'code' && tabStore.getCurrent()?.id === tab.id"
                 :name="tab.name"

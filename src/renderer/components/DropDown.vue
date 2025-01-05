@@ -6,7 +6,7 @@
 
 <template>
   <Menu as="div" class="relative inline-block">
-    <MenuButton>
+    <MenuButton class="flex items-center">
       <slot name="trigger"></slot>
     </MenuButton>
     <transition

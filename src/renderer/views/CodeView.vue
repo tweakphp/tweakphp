@@ -62,7 +62,7 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        removeTab(tab.value)
+        tabsStore.removeTab(tab.value.id)
       }
     }
   }
@@ -220,15 +220,6 @@
       infoHandler()
     }
   )
-
-  const removeTab = async (t: Tab) => {
-    let activeTab = tabsStore.removeTab(t.id)
-    if (activeTab) {
-      await router.replace({ name: 'code', params: { id: activeTab.id } })
-      return
-    }
-    await router.replace({ name: 'home' })
-  }
 
   const addTab = async () => {
     let activeTab = tabsStore.addTab()
