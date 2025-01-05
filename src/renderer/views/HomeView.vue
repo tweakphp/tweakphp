@@ -1,7 +1,19 @@
 <script lang="ts" setup>
+  import { onMounted } from 'vue'
   import Container from '../components/Container.vue'
   import { useSettingsStore } from '../stores/settings'
+  import { useTabsStore } from '../stores/tabs'
+  import router from '../router'
+
   const settingsStore = useSettingsStore()
+  const tabsStore = useTabsStore()
+
+  onMounted(() => {
+    let currentTab = tabsStore.getCurrent()
+    if (currentTab) {
+      router.replace({ name: 'code', params: { id: currentTab.id } })
+    }
+  })
 </script>
 
 <template>
