@@ -75,7 +75,7 @@
     </template>
     <SecondaryButton
       class="!px-2"
-      v-tippy="{ content: 'Close Project', placement: 'right' }"
+      v-tippy="{ content: 'Close', placement: 'right' }"
       @click="tabStore.removeTab(tab.id)"
     >
       <XMarkIcon class="size-4" />
