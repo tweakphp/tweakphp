@@ -18,7 +18,7 @@
 
 <template>
   <Container class="flex items-center justify-center">
-    <div class="w-full max-w-lg px-5 space-y-3">
+    <div class="w-full max-w-sm px-5 space-y-3">
       <div class="flex items-center">
         <img src="../../../build/icon.png" alt="" class="size-7 mr-2" />
         <h2 class="text-xl">
