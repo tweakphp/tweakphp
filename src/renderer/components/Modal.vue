@@ -58,7 +58,7 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full transform overflow-hidden rounded-lg p-6 text-left align-middle shadow-sm transition-all"
+                class="w-full transform overflow-hidden rounded-lg p-6 text-left align-middle transition-all border"
                 :class="{
                   'max-w-md': props.size === 'md',
                   'max-w-lg': props.size === 'lg',
@@ -67,6 +67,7 @@
                 :style="{
                   backgroundColor: settingsStore.colors.background,
                   color: settingsStore.colors.foreground,
+                  borderColor: settingsStore.colors.border,
                 }"
               >
                 <DialogTitle as="h3" class="text-lg font-medium leading-6 mb-5 flex items-center justify-between">
