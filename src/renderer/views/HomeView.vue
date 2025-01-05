@@ -26,7 +26,7 @@
         </h2>
       </div>
       <p>To get started, Add a new project.</p>
-      <p>Click on the + icon at top left cornet!</p>
+      <p>Click on the + icon at top left corner!</p>
     </div>
   </Container>
 </template>
