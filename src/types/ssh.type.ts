@@ -7,6 +7,8 @@ export interface ConnectionConfig {
   password: string | undefined
   privateKey: string | undefined
   path: string
+  php: string | undefined
+  phar_client: string | undefined
 }
 
 export interface ConnectionReply {

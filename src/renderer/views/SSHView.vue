@@ -1,40 +1,60 @@
 <script setup lang="ts">
-  import Container from '../components/Container.vue'
-  import Title from '../components/Title.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
-  import { EyeIcon, PlusIcon, TrashIcon, WifiIcon } from '@heroicons/vue/24/outline'
-  import { onMounted, onBeforeUnmount } from 'vue'
+  import { EyeIcon, PlusIcon, TrashIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { onBeforeUnmount, onMounted, ref, defineEmits } from 'vue'
   import { useSSHStore } from '../stores/ssh'
   import Divider from '../components/Divider.vue'
+  import Modal from '../components/Modal.vue'
+  import SSHConnectView from './SSHConnectView.vue'
   import events from '../events'
+  import { ConnectionConfig } from '../../types/ssh.type'
 
   const sshStore = useSSHStore()
+  const sshConnectModal = ref()
+  const connecting = ref()
+  const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
-    events.addEventListener('ssh.connect.reply', sshStore.connectReply)
+    events.addEventListener('ssh.connect.reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('ssh.connect.reply', sshStore.connectReply)
+    events.removeEventListener('ssh.connect.reply', connectReply)
   })
+
+  const connect = (connection: ConnectionConfig) => {
+    connecting.value = connection.id
+    window.ipcRenderer.send('ssh.connect', { ...connection }, { state: 'connect' })
+  }
+
+  const connectReply = (e: any) => {
+    if (e.detail.data.state === 'connect') {
+      connecting.value = null
+      if (e.detail.connected) {
+        emit('connected', e.detail.config)
+      }
+    }
+  }
+
+  const remove = (id: number) => {
+    sshStore.remove(id)
+    emit('removed', id)
+  }
 </script>
 
 <template>
-  <Container class="pt-[38px]">
-    <div class="max-w-2xl mx-auto space-y-3 p-10">
-      <div class="flex items-center justify-between">
-        <Title>SSH Connections</Title>
-        <PrimaryButton @click="$router.push('/ssh/connect')">
-          <PlusIcon class="w-4 h-4" />
-        </PrimaryButton>
-      </div>
-      <Divider />
-      <div v-if="Object.values(sshStore.connections).length > 0" class="space-y-3">
+  <div class="mt-3 w-full mx-auto">
+    <div class="mx-auto space-y-3">
+      <div class="space-y-3">
         <div class="grid grid-cols-4 items-center">
           <div>Host</div>
           <div>Port</div>
           <div>Path</div>
-          <div></div>
+          <div class="flex justify-end">
+            <PrimaryButton @click="sshConnectModal.openModal()">
+              <PlusIcon class="w-4 h-4" />
+            </PrimaryButton>
+          </div>
         </div>
         <Divider />
         <template v-for="connection in sshStore.connections">
@@ -42,25 +62,34 @@
             <div>{{ connection.host }}</div>
             <div>{{ connection.port }}</div>
             <div>
-              <EyeIcon v-tippy="connection.path" class="w-4 h-4 hover:text-blue-500" />
+              <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
             </div>
             <div class="flex justify-end">
               <TrashIcon
                 v-tippy="'Delete'"
-                class="w-4 h-4 hover:text-red-500 cursor-pointer"
-                @click="sshStore.remove(connection.id)"
+                class="size-4 hover:text-red-500 cursor-pointer"
+                @click="remove(connection.id)"
               />
-              <WifiIcon v-tippy="'Open Project'" class="w-4 h-4 ml-2 hover:text-green-500 cursor-pointer" />
+              <ArrowPathIcon v-if="connecting === connection.id" class="size-4 ml-2 text-green-500 animate-spin" />
+              <WifiIcon
+                v-else
+                @click="connect(connection)"
+                v-tippy="'Connect'"
+                class="size-4 ml-2 hover:text-green-500 cursor-pointer"
+              />
             </div>
           </div>
           <Divider />
         </template>
       </div>
-      <div v-else class="grid grid-cols-1 items-center">
+      <div v-if="Object.values(sshStore.connections).length === 0" class="grid grid-cols-1 items-center">
         <div>No connections yet!</div>
       </div>
     </div>
-  </Container>
+    <Modal ref="sshConnectModal" title="Add Connection" size="lg">
+      <SSHConnectView @connected="sshConnectModal.closeModal()" />
+    </Modal>
+  </div>
 </template>
 
 <style scoped></style>

@@ -1,9 +1,7 @@
 <script setup lang="ts">
-  import Container from '../components/Container.vue'
-  import Title from '../components/Title.vue'
   import Divider from '../components/Divider.vue'
   import TextInput from '../components/TextInput.vue'
-  import { onBeforeUnmount, onMounted, Ref, ref } from 'vue'
+  import { onBeforeUnmount, onMounted, Ref, ref, defineEmits } from 'vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import SelectInput from '../components/SelectInput.vue'
   import { useSSHStore } from '../stores/ssh'
@@ -12,38 +10,48 @@
   import events from '../events'
 
   const sshStore = useSSHStore()
+  const emit = defineEmits(['connected'])
 
   const form: Ref<ConnectionConfig> = ref({
     id: Date.now(),
-    host: '65.109.205.85',
+    host: '',
     port: 22,
-    username: 'vito',
+    username: '',
     auth_type: 'key',
     password: '',
-    privateKey: '/Users/saeed/.ssh/id_rsa',
+    privateKey: '',
     path: '',
+    php: undefined,
+    phar_client: undefined,
   })
 
   onMounted(() => {
-    events.addEventListener('ssh.connect.reply', sshStore.connectReply)
+    events.addEventListener('ssh.connect.reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('ssh.connect.reply', sshStore.connectReply)
+    events.removeEventListener('ssh.connect.reply', connectReply)
   })
 
   const connect = () => {
-    sshStore.connect(form.value)
+    sshStore.setConnecting(true)
+    window.ipcRenderer.send('ssh.connect', { ...form.value }, { state: 'create', notify: true })
+  }
+
+  const connectReply = (e: any) => {
+    if (e.detail.data.state === 'create') {
+      sshStore.setConnecting(false)
+      if (e.detail.connected) {
+        sshStore.addConnection(e.detail.config)
+        emit('connected')
+      }
+    }
   }
 </script>
 
 <template>
-  <Container class="pt-[38px]">
-    <div class="max-w-2xl mx-auto p-10 space-y-3">
-      <div class="flex items-center justify-between">
-        <Title>Connect to SSH</Title>
-      </div>
-      <Divider />
+  <div class="mt-3 w-full mx-auto">
+    <div class="mx-auto space-y-3">
       <div class="grid grid-cols-2 items-center">
         <div>Host</div>
         <TextInput id="host" v-model="form.host" />
@@ -92,7 +100,7 @@
         </PrimaryButton>
       </div>
     </div>
-  </Container>
+  </div>
 </template>
 
 <style scoped></style>
