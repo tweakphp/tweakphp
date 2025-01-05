@@ -1,6 +1,9 @@
 name: test-build
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -26,10 +29,12 @@ jobs:
         run: npm run build-mac
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
         run: npm run build-linux
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
