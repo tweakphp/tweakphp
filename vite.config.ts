@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import importMetaUrlPlugin from '@codingame/esbuild-import-meta-url-plugin'
 import vsixPlugin from '@codingame/monaco-vscode-rollup-vsix-plugin'
 import dotenv from 'dotenv'
+import renderer from 'vite-plugin-electron-renderer'
 
 dotenv.config()
 
@@ -28,10 +29,7 @@ export default defineConfig({
         entry: 'src/main/main.ts',
         vite: {
           build: {
-            outDir: 'dist',
-            rollupOptions: {
-              external: ['ssh2'],
-            },
+            outDir: 'dist'
           },
         },
       },
@@ -54,5 +52,12 @@ export default defineConfig({
             undefined
           : {},
     }),
+    renderer({
+      resolve: {
+        ssh2: {
+          type: 'cjs'
+        }
+      }
+    })
   ],
 })

@@ -131,7 +131,7 @@
     "utf-8-validate": "^5.0.10",
     "vite": "^6.0.5",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.5",
+    "vite-plugin-electron-renderer": "^0.14.6",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",
