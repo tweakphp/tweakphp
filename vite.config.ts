@@ -29,6 +29,9 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist',
+            rollupOptions: {
+              external: ['ssh2'],
+            },
           },
         },
       },
