@@ -46,7 +46,8 @@
   <div class="mt-3 w-full mx-auto">
     <div class="mx-auto space-y-3">
       <div class="space-y-3">
-        <div class="grid grid-cols-4 items-center">
+        <div class="grid grid-cols-5 gap-2 items-center">
+          <div>Name</div>
           <div>Host</div>
           <div>Port</div>
           <div>Path</div>
@@ -58,7 +59,11 @@
         </div>
         <Divider />
         <template v-for="connection in sshStore.connections">
-          <div class="grid grid-cols-4 items-center">
+          <div class="grid grid-cols-5 gap-2 items-center">
+            <div class="flex items-center">
+              <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
+              {{ connection.name }}
+            </div>
             <div>{{ connection.host }}</div>
             <div>{{ connection.port }}</div>
             <div>

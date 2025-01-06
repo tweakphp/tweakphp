@@ -123,19 +123,26 @@
       <DropDown>
         <template v-slot:trigger>
           <SecondaryButton class="!px-2">
+            <ArrowPathIcon
+              v-if="tab && tab.ssh && sshConnecting && sshStore.getConnection(tab.ssh.id)"
+              class="size-4 mr-1 animate-spin"
+            />
             <ServerIcon
+              v-else
               class="size-4 mr-1"
-              :class="{ '!text-green-500': tabStore.getCurrent()?.execution === 'ssh' }"
+              :class="[
+                tab.execution === 'ssh' && tab.ssh ? `text-${sshStore.getConnection(tab.ssh.id)?.color}-500` : '',
+              ]"
             />
             <div class="text-xs max-w-[150px] truncate">
               <div v-if="tab && tab.execution === 'ssh' && tab.ssh && sshStore.getConnection(tab.ssh.id)">
-                {{ sshStore.getConnection(tab.ssh.id)?.host }}
+                {{ sshStore.getConnection(tab.ssh.id)?.name }}
               </div>
               <div
                 v-else-if="tab && tab.ssh && sshConnecting && sshStore.getConnection(tab.ssh.id)"
                 class="flex items-center"
               >
-                {{ sshStore.getConnection(tab.ssh.id)?.host }} <ArrowPathIcon class="size-4 ml-1 animate-spin" />
+                {{ sshStore.getConnection(tab.ssh.id)?.name }}
               </div>
               <div v-else>SSH</div>
             </div>
@@ -144,11 +151,11 @@
         </template>
         <div>
           <DropDownItem
-            v-if="tab && tab.ssh && sshStore.getConnection(tab.ssh.id)"
+            v-if="tab && tab.ssh && sshStore.getConnection(tab.ssh.id) && tab.execution !== 'ssh'"
             @click="sshConnect(sshStore.getConnection(tab.ssh.id))"
             class="truncate"
           >
-            {{ sshStore.getConnection(tab.ssh.id)?.host }}
+            {{ sshStore.getConnection(tab.ssh.id)?.name }}
           </DropDownItem>
           <DropDownItem @click="sshModal.openModal()"> Connect </DropDownItem>
         </div>
@@ -164,7 +171,7 @@
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
       <DockerView @connected="dockerModal.closeModal()" />
     </Modal>
-    <Modal title="Connect to SSH" ref="sshModal" size="xl">
+    <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />
     </Modal>
   </div>

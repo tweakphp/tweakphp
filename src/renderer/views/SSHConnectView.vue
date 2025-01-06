@@ -8,12 +8,39 @@
   import { ConnectionConfig } from '../../types/ssh.type'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import events from '../events'
+  import DropDown from '../components/DropDown.vue'
+  import DropDownItem from '../components/DropDownItem.vue'
+  import { useSettingsStore } from '../stores/settings'
 
   const sshStore = useSSHStore()
+  const settingsStore = useSettingsStore()
   const emit = defineEmits(['connected'])
 
+  const colors = [
+    'slate',
+    'gray',
+    'red',
+    'orange',
+    'amber',
+    'yellow',
+    'lime',
+    'green',
+    'emerald',
+    'teal',
+    'cyan',
+    'sky',
+    'blue',
+    'indigo',
+    'violet',
+    'purple',
+    'fuchsia',
+    'pink',
+    'rose',
+  ]
   const form: Ref<ConnectionConfig> = ref({
     id: Date.now(),
+    name: '',
+    color: 'blue',
     host: '',
     port: 22,
     username: '',
@@ -52,6 +79,39 @@
 <template>
   <div class="mt-3 w-full mx-auto">
     <div class="mx-auto space-y-3">
+      <div class="grid grid-cols-2 items-center">
+        <div>Name</div>
+        <div class="flex items-center justify-between">
+          <TextInput class="flex-grow mr-3" id="name" v-model="form.name" />
+          <DropDown align="right" class="flex-grow-0">
+            <template #trigger>
+              <div
+                class="!w-full h-7 text-sm border-transparent py-1 px-2 outline focus:!outline-primary-500 rounded-md flex items-center"
+                :style="{
+                  backgroundColor: settingsStore.colors.backgroundLight,
+                  color: settingsStore.colors.foreground,
+                  outlineColor: settingsStore.colors.border,
+                }"
+              >
+                <div class="size-4 rounded-full" :class="[`bg-${form.color}-500`]"></div>
+              </div>
+            </template>
+            <div class="space-y-1">
+              <DropDownItem
+                v-for="color in colors"
+                :key="`color-${color}`"
+                :color="color"
+                @click="form.color = color"
+                class="flex items-center"
+              >
+                <span class="size-4 rounded-full mr-1" :class="[`bg-${color}-500`]"></span>
+                <span>{{ color }}</span>
+              </DropDownItem>
+            </div>
+          </DropDown>
+        </div>
+      </div>
+      <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Host</div>
         <TextInput id="host" v-model="form.host" />

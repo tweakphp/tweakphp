@@ -1,5 +1,7 @@
 export interface ConnectionConfig {
   id: number
+  name: string
+  color: string
   host: string
   port: number
   username: string
