@@ -48,11 +48,7 @@ export const sshExec = async (event: Electron.IpcMainEvent, data: { connection: 
   const code = btoa(data.code.replaceAll('<?php', ''))
   const pharClient = data.connection.phar_client
   const command = `${phpPath} ${pharClient} ${path} execute ${code}`
-  let result = await ssh.exec(data.connection, command)
-  result = result.trim()
-  if (result.startsWith('"') && result.endsWith('"')) {
-    result = result.slice(1, -1)
-  }
+  const result = await ssh.exec(data.connection, command)
   event.reply('client.execute.reply', result)
 }
 
