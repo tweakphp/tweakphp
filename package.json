@@ -103,6 +103,7 @@
     "@types/node": "^22.10.2",
     "@types/node-fetch": "^2.6.12",
     "@types/semver": "^7.5.8",
+    "@types/splitpanes": "^2.2.6",
     "@types/ssh2": "^1.15.1",
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-vue": "^5.0.4",
@@ -141,5 +142,8 @@
     "vue-tippy": "^6.4.4",
     "vue-tsc": "^2.0.26",
     "ws": "^8.17.0"
+  },
+  "dependencies": {
+    "splitpanes": "^3.1.5"
   }
 }

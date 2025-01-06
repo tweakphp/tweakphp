@@ -11,6 +11,8 @@
   import { Tab } from '../types/tab.type'
   import { PharPathResponse } from '../../main/types/docker.type.ts'
   import ProgressBar from '../components/ProgressBar.vue'
+  import { Splitpanes, Pane } from 'splitpanes'
+  import 'splitpanes/dist/splitpanes.css'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -230,66 +232,91 @@
     tabsStore.setCurrent(t)
     await router.replace({ name: 'code', params: { id: t.id } })
   }
+
+  watch(
+    () => settingsStore.colors.backgroundLight,
+    color => {
+      const rootStyle = document.documentElement.style
+      rootStyle.setProperty('--splitter-gutter-bg', color)
+    },
+    { immediate: true }
+  )
 </script>
 
 <template>
   <Container v-if="tab && route.params.id" class="pt-[38px]">
-    <div
+    <splitpanes
       v-if="tab.type === 'code'"
-      class="w-full h-full pb-6"
-      :class="{
-        'flex': settingsStore.settings.layout === 'vertical',
-        'flex-col': settingsStore.settings.layout === 'horizontal',
+      v-bind:horizontal="settingsStore.settings.layout === 'horizontal'"
+      class="pb-4 default-theme"
+    >
+      <pane>
+        <Editor
+          :key="`code-${tab.id}`"
+          ref="codeEditor"
+          :editor-id="`${tab.id}-${Date.now()}-code`"
+          v-model:value="tab.code"
+          language="php"
+          :wrap="true"
+          :style="{
+            borderColor: settingsStore.colors.border,
+          }"
+          :path="tab.path"
+          :auto-focus="true"
+        />
+      </pane>
+      <pane>
+        <Editor
+          :key="`result-${tab.id}`"
+          ref="resultEditor"
+          :editor-id="`${tab.id}-result`"
+          v-model:value="tab.result"
+          language="output"
+          :readonly="true"
+          :wrap="true"
+        />
+      </pane>
+    </splitpanes>
+
+    <div
+      v-if="tab.info"
+      class="pl-12 fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
+      :style="{
+        borderColor: settingsStore.colors.border,
+        backgroundColor: settingsStore.colors.background,
       }"
     >
-      <Editor
-        :key="`code-${tab.id}`"
-        ref="codeEditor"
-        :editor-id="`${tab.id}-${Date.now()}-code`"
-        v-model:value="tab.code"
-        language="php"
-        :wrap="true"
-        :style="{
-          height: settingsStore.settings.layout === 'horizontal' ? '50%' : '100%',
-          borderColor: settingsStore.colors.border,
-        }"
-        :class="{
-          'border-b': settingsStore.settings.layout === 'horizontal',
-          'border-r': settingsStore.settings.layout === 'vertical',
-        }"
-        :path="tab.path"
-        :auto-focus="true"
-      />
-      <Editor
-        :key="`result-${tab.id}`"
-        ref="resultEditor"
-        :editor-id="`${tab.id}-result`"
-        v-model:value="tab.result"
-        language="output"
-        :readonly="true"
-        :wrap="true"
-        :style="{
-          height: settingsStore.settings.layout === 'horizontal' ? '50%' : '100%',
-        }"
-      />
-      <div
-        v-if="tab.info"
-        class="pl-12 fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
-        :style="{
-          borderColor: settingsStore.colors.border,
-          backgroundColor: settingsStore.colors.background,
-        }"
-      >
-        <div class="px-2 flex gap-1 w-1/2 items-center">
-          <div class="whitespace-nowrap">
-            PHP {{ tab.execution === 'docker' ? tab.docker.php_version : tab.info.php_version }}
-          </div>
+      <div class="px-2 flex gap-1 w-1/2 items-center">
+        <div class="whitespace-nowrap">
+          PHP {{ tab.execution === 'docker' ? tab.docker.php_version : tab.info.php_version }}
         </div>
-        <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
-          <ProgressBar />
-          <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
-        </div>
+      </div>
+      <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
+        <ProgressBar />
+        <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
       </div>
     </div>
   </Container>
 </template>
+<style>
+  .default-theme.splitpanes--vertical > .splitpanes__splitter,
+  .default-theme .splitpanes--vertical > .splitpanes__splitter {
+    width: 4px;
+  }
+  .default-theme.splitpanes--vertical > .splitpanes__splitter,
+  .default-theme .splitpanes--vertical > .splitpanes__splitter {
+    border-left: 0 !important;
+    border-top: 0 !important;
+  }
+  .default-theme.splitpanes--horizontal > .splitpanes__splitter,
+  .default-theme .splitpanes--horizontal > .splitpanes__splitter {
+    border-left: 0 !important;
+    border-top: 0 !important;
+  }
+  .splitpanes.default-theme .splitpanes__splitter {
+    background: var(--splitter-gutter-bg) !important;
+  }
+  .splitpanes.default-theme .splitpanes__pane {
+    background: var(--splitter-gutter-bg) !important;
+  }
+</style>
