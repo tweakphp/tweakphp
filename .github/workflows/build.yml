@@ -24,6 +24,11 @@ jobs:
       - name: Install NPM Dependencies
         run: npm install
 
+      - name: Install Snapcraft
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+            sudo snap install snapcraft --classic
+
       - name: Build & Publish Mac
         if: matrix.os == 'macos-latest'
         run: npm run publish-mac
@@ -37,3 +42,4 @@ jobs:
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
