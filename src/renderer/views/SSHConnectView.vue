@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import Divider from '../components/Divider.vue'
   import TextInput from '../components/TextInput.vue'
-  import { onBeforeUnmount, onMounted, Ref, ref, defineEmits } from 'vue'
+  import { onBeforeUnmount, onMounted, Ref, ref, defineEmits, defineProps } from 'vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import SelectInput from '../components/SelectInput.vue'
   import { useSSHStore } from '../stores/ssh'
@@ -15,6 +15,12 @@
   const sshStore = useSSHStore()
   const settingsStore = useSettingsStore()
   const emit = defineEmits(['connected'])
+  const props = defineProps({
+    id: {
+      type: Number,
+      required: false,
+    },
+  })
 
   const colors = [
     'slate',
@@ -54,6 +60,12 @@
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', connectReply)
+    if (props.id) {
+      const connection = sshStore.getConnection(props.id)
+      if (connection) {
+        form.value = { ...connection }
+      }
+    }
   })
 
   onBeforeUnmount(() => {
@@ -62,6 +74,10 @@
 
   const connect = () => {
     sshStore.setConnecting(true)
+    if (props.id) {
+      window.ipcRenderer.send('ssh.connect', { ...form.value }, { state: 'edit', notify: true })
+      return
+    }
     window.ipcRenderer.send('ssh.connect', { ...form.value }, { state: 'create', notify: true })
   }
 
@@ -70,6 +86,14 @@
       sshStore.setConnecting(false)
       if (e.detail.connected) {
         sshStore.addConnection(e.detail.config)
+        emit('connected')
+      }
+    }
+
+    if (e.detail.data.state === 'edit') {
+      sshStore.setConnecting(false)
+      if (e.detail.connected) {
+        sshStore.updateConnection(e.detail.config.id, e.detail.config)
         emit('connected')
       }
     }
@@ -145,7 +169,7 @@
       </div>
       <Divider />
       <div class="grid grid-cols-2 items-center">
-        <div>App Path</div>
+        <div>Working Directory</div>
         <TextInput id="path" v-model="form.path" />
       </div>
       <Divider />

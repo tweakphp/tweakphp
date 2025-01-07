@@ -24,6 +24,14 @@ export const useSSHStore = defineStore('ssh', () => {
     localStorage.setItem('ssh-connections', JSON.stringify(connections.value))
   }
 
+  const updateConnection = (id: number, config: ConnectionConfig): void => {
+    const index = connections.value.findIndex(c => c.id === id)
+    if (index !== -1) {
+      connections.value[index] = config
+      localStorage.setItem('ssh-connections', JSON.stringify(connections.value))
+    }
+  }
+
   const remove = (id: number) => {
     const index = connections.value.findIndex(c => c.id === id)
     if (index !== -1) {
@@ -32,5 +40,5 @@ export const useSSHStore = defineStore('ssh', () => {
     }
   }
 
-  return { connections, setConnecting, connecting, remove, getConnection, addConnection }
+  return { connections, setConnecting, connecting, remove, getConnection, addConnection, updateConnection }
 })
