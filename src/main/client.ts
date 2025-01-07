@@ -3,12 +3,15 @@ import { exec } from 'child_process'
 import { app, ipcMain } from 'electron'
 import * as settings from './settings'
 import * as php from './php'
+import * as ssh from './ssh'
 import { DOCKER_PATH } from './docker.ts'
+import { ConnectionConfig } from '../types/ssh.type.ts'
 
 export const init = async () => {
   ipcMain.on('client.local.execute', localExec)
   ipcMain.on('client.local.info', info)
   ipcMain.on('client.docker.execute', dockerExec)
+  ipcMain.on('client.ssh.execute', sshExec)
 }
 
 export function getLocalPharClient() {
@@ -37,6 +40,16 @@ export const dockerExec = async (
   const command = `${DOCKER_PATH} exec ${data.container_id} ${phpPath} ${pharClient} ${path} execute ${code}`
 
   await execute(event, command)
+}
+
+export const sshExec = async (event: Electron.IpcMainEvent, data: { connection: ConnectionConfig; code: string }) => {
+  const phpPath = 'php'
+  const path = data.connection.path
+  const code = btoa(data.code.replaceAll('<?php', ''))
+  const pharClient = data.connection.phar_client
+  const command = `${phpPath} ${pharClient} ${path} execute ${code}`
+  const result = await ssh.exec(data.connection, command)
+  event.reply('client.execute.reply', result)
 }
 
 export const localExec = async (event: Electron.IpcMainEvent, data: { code: string; php: string; path: string }) => {

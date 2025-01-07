@@ -3,7 +3,6 @@
   import { TransitionRoot, TransitionChild, DialogPanel, DialogTitle, Dialog } from '@headlessui/vue'
   import { useSettingsStore } from '../stores/settings.ts'
   import { XMarkIcon } from '@heroicons/vue/24/outline'
-  import Divider from './Divider.vue'
 
   const settingsStore = useSettingsStore()
 
@@ -63,6 +62,7 @@
                   'max-w-md': props.size === 'md',
                   'max-w-lg': props.size === 'lg',
                   'max-w-xl': props.size === 'xl',
+                  'max-w-2xl': props.size === '2xl',
                 }"
                 :style="{
                   backgroundColor: settingsStore.colors.background,
@@ -74,7 +74,6 @@
                   {{ props.title }}
                   <XMarkIcon class="w-5 h-5 cursor-pointer hover:opacity-70" @click="closeModal()" />
                 </DialogTitle>
-                <Divider />
                 <slot></slot>
               </DialogPanel>
             </TransitionChild>

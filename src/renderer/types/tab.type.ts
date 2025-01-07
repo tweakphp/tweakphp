@@ -20,4 +20,7 @@ export interface Tab {
     container_id: string
     php_version: string
   }
+  ssh?: {
+    id: number
+  }
 }

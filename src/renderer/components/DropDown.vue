@@ -1,7 +1,14 @@
 <script lang="ts" setup>
+  import { defineProps } from 'vue'
   import { Menu, MenuButton, MenuItems } from '@headlessui/vue'
   import { useSettingsStore } from '../stores/settings'
   const settingsStore = useSettingsStore()
+  const props = defineProps({
+    align: {
+      type: String,
+      default: 'left',
+    },
+  })
 </script>
 
 <template>
@@ -18,7 +25,11 @@
       leave-to-class="transform scale-95 opacity-0"
     >
       <MenuItems
-        class="absolute left-0 mt-2 origin-top-left border divide-y rounded-md shadow-lg focus:outline-none"
+        class="absolute mt-2 border divide-y rounded-md shadow-lg focus:outline-none max-h-[200px] overflow-y-auto no-scrollbar"
+        :class="{
+          'right-0 origin-top-right': props.align === 'right',
+          'left-0 origin-top-left': props.align === 'left',
+        }"
         :style="{
           backgroundColor: settingsStore.colors.backgroundLight,
           borderColor: settingsStore.colors.border,

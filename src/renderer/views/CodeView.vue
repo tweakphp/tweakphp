@@ -13,10 +13,12 @@
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
+  import { useSSHStore } from '../stores/ssh'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabsStore = useTabsStore()
+  const sshStore = useSSHStore()
   const codeEditor = ref(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
   const dockerClients: Ref<string[]> = ref([])
@@ -107,6 +109,16 @@
         path: remote_path,
         phar_client: remote_phar_client,
         container_id,
+      })
+
+      return
+    }
+
+    if (tab.value.execution === 'ssh' && tab.value.ssh?.id) {
+      let connection = sshStore.getConnection(tab.value.ssh.id)
+      window.ipcRenderer.send('client.ssh.execute', {
+        connection: { ...connection },
+        code,
       })
 
       return

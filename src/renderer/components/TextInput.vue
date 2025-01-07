@@ -39,5 +39,6 @@
       color: settingsStore.colors.foreground,
       outlineColor: settingsStore.colors.border,
     }"
+    v-bind="$attrs"
   />
 </template>
