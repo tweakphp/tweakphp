@@ -9,15 +9,13 @@
   "version": "0.3.0",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite & node build.js --dev && electron .",
     "update-clients": "node ./scripts/update-clients.js",
-    "resolve-icon-path": "node ./scripts/resolve-icon-path.js",
-    "build": "vue-tsc && vite build",
-    "build-base": "npm run build && npm run resolve-icon-path",
-    "build-mac": "npm run build-base && electron-builder --mac --universal",
-    "build-linux": "npm run build-base && electron-builder --linux",
-    "publish-mac": "npm run build-base && electron-builder --publish always --mac --universal",
-    "publish-linux": "npm run build-base && electron-builder --publish always --linux",
+    "build": "vite build && node build.js --prod",
+    "build-mac": "npm run build && electron-builder --mac --universal",
+    "build-linux": "npm run build && electron-builder --linux",
+    "publish-mac": "npm run build && electron-builder --publish always --mac --universal",
+    "publish-linux": "npm run build && electron-builder --publish always --linux",
     "preview": "vite preview",
     "lint": "prettier --check ./",
     "lint:fix": "prettier --write ./"
@@ -27,7 +25,7 @@
     "productName": "TweakPHP",
     "files": [
       "**/*",
-      "!node_modules${/*}"
+      "node_modules/**/*"
     ],
     "extraResources": [
       "build/*",
@@ -105,7 +103,7 @@
     "@types/semver": "^7.5.8",
     "@types/ssh2": "^1.15.1",
     "@types/ws": "^8.5.13",
-    "@vitejs/plugin-vue": "^5.0.4",
+    "@vitejs/plugin-vue": "^5.2.1",
     "adm-zip": "^0.5.16",
     "autoprefixer": "^10.4.19",
     "bufferutil": "^4.0.8",
@@ -114,7 +112,9 @@
     "electron-builder": "^25.1.8",
     "electron-log": "^5.2.4",
     "electron-updater": "^6.3.9",
+    "esbuild": "^0.24.2",
     "express": "^4.21.0",
+    "fs-extra": "^11.2.0",
     "glob": "^11.0.0",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@~7.0.7",
     "monaco-editor-wrapper": "~5.4.0",
@@ -130,8 +130,6 @@
     "typescript": "^5.2.2",
     "utf-8-validate": "^5.0.10",
     "vite": "^6.0.5",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",

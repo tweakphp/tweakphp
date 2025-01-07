@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron'
-import path from 'path'
+import path, { join } from 'path'
 import log from 'electron-log/main'
 import * as dotenv from 'dotenv'
 import * as source from './source'
@@ -12,6 +12,7 @@ import * as link from './link'
 import * as tray from './tray'
 import * as docker from './docker'
 import * as ssh from './ssh'
+import url from 'url'
 
 Object.assign(console, log.functions)
 
@@ -64,14 +65,19 @@ const createMainWindow = async () => {
     }
   })
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    await window.loadURL(process.env.VITE_DEV_SERVER_URL)
-    if (!app.isPackaged) {
-      window.webContents.openDevTools()
-    }
-  } else {
-    await window.loadFile(path.join(__dirname, './index.html'))
-  }
+  const isDev: boolean = process.env.NODE_ENV === 'development'
+
+  const route = isDev
+    ? `http://localhost:${process.env.VITE_SERVER_PORT}`
+    : url.format({
+        pathname: join(__dirname, 'app', 'index.html'),
+        protocol: 'file:',
+        slashes: true,
+      })
+
+  await window.loadURL(route)
+
+  isDev && window.webContents.openDevTools()
 }
 
 const initializeModules = async () => {

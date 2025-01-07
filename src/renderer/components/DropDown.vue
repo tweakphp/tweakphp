@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { defineProps } from 'vue'
+  import { defineProps } from 'vue'
   import { Menu, MenuButton, MenuItems } from '@headlessui/vue'
   import { useSettingsStore } from '../stores/settings'
   const settingsStore = useSettingsStore()
