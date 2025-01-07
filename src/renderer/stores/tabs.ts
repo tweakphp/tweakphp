@@ -40,7 +40,7 @@ export const useTabsStore = defineStore('tabs', () => {
       .filter((tab: Tab) => tab.type !== 'home')
       .map((tab: Tab) => ({
         ...tab,
-        pane: tab.pane || { code: 50, result: 50 },
+        pane: tab.pane || defaultTabs[0].pane,
         execution: tab.execution as 'local' | 'ssh' | 'docker',
         docker: tab.docker || defaultTabs[0].docker,
       }))
