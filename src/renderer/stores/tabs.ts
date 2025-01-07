@@ -16,6 +16,10 @@ export const useTabsStore = defineStore('tabs', () => {
       remote_phar_client: '',
       code: '<?php\n\n',
       result: '',
+      pane: {
+        code: 50,
+        result: 50,
+      },
       info: {
         name: '',
         version: '',
@@ -36,6 +40,7 @@ export const useTabsStore = defineStore('tabs', () => {
       .filter((tab: Tab) => tab.type !== 'home')
       .map((tab: Tab) => ({
         ...tab,
+        pane: tab.pane || { code: 50, result: 50 },
         execution: tab.execution as 'local' | 'ssh' | 'docker',
         docker: tab.docker || defaultTabs[0].docker,
       }))
@@ -75,6 +80,10 @@ export const useTabsStore = defineStore('tabs', () => {
       remote_path: '',
       code: '<?php\n\n',
       result: '',
+      pane: {
+        code: 50,
+        result: 50,
+      },
       info: {
         name: '',
         version: '',

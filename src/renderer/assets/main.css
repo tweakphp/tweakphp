@@ -22,3 +22,11 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.splitpanes--horizontal .splitpanes__pane {
+  transition: none !important;
+}
+
+.splitpanes--vertical .splitpanes__pane {
+  transition: none !important;
+}

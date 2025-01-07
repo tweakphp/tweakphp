@@ -35,6 +35,10 @@
     remote_phar_client: '',
     remote_path: '',
     result: '',
+    pane: {
+      code: 50,
+      result: 50,
+    },
     info: {
       name: '',
       php_version: '',
@@ -145,6 +149,14 @@
       event.preventDefault()
       tabsContainer.value!.scrollLeft += event.deltaY as number
       tabsStore.setScrollPosition(tabsContainer.value!.scrollLeft)
+    }
+  }
+
+  const paneResized = (e: any) => {
+    if (tabsStore.current) {
+      tabsStore.current.pane.code = e[0].size
+      tabsStore.current.pane.result = e[1].size
+      tabsStore.updateTab(tabsStore.current)
     }
   }
 
@@ -261,8 +273,9 @@
       v-if="tab.type === 'code'"
       v-bind:horizontal="settingsStore.settings.layout === 'horizontal'"
       class="pb-4 default-theme"
+      @resized="paneResized"
     >
-      <pane>
+      <pane :size="tab.pane.code">
         <Editor
           :key="`code-${tab.id}`"
           ref="codeEditor"
@@ -277,7 +290,7 @@
           :auto-focus="true"
         />
       </pane>
-      <pane>
+      <pane :size="tab.pane.result">
         <Editor
           :key="`result-${tab.id}`"
           ref="resultEditor"

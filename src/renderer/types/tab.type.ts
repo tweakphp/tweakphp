@@ -8,6 +8,10 @@ export interface Tab {
   remote_phar_client: string | undefined
   remote_path: string | undefined
   result: string | undefined
+  pane: {
+    code: number
+    result: number
+  }
   info: {
     name: string
     php_version: string
