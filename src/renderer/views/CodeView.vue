@@ -257,7 +257,7 @@
 
 <template>
   <Container v-if="tab && route.params.id" class="pt-[38px]">
-    <splitpanes
+    <Splitpanes
       v-if="tab.type === 'code'"
       v-bind:horizontal="settingsStore.settings.layout === 'horizontal'"
       class="pb-4 default-theme"
@@ -288,7 +288,7 @@
           :wrap="true"
         />
       </pane>
-    </splitpanes>
+    </Splitpanes>
 
     <div
       v-if="tab.info"
