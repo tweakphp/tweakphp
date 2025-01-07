@@ -9,7 +9,7 @@
   "version": "0.3.0",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "vite & node build.js --dev && electron .",
+    "dev": "concurrently \"vite\" \"node build.js --dev && electron .\"",
     "update-clients": "node ./scripts/update-clients.js",
     "build": "vite build && node build.js --prod",
     "build-mac": "npm run build && electron-builder --mac --universal",
@@ -107,6 +107,7 @@
     "adm-zip": "^0.5.16",
     "autoprefixer": "^10.4.19",
     "bufferutil": "^4.0.8",
+    "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
