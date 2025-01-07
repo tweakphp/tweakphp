@@ -17,10 +17,14 @@
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', connectReply)
+
+    window.ipcRenderer.on('dialog.remove.confirmed', handleRemoveSSHConnection)
   })
 
   onBeforeUnmount(() => {
     events.removeEventListener('ssh.connect.reply', connectReply)
+
+    window.ipcRenderer.removeListener('dialog.remove.confirmed', handleRemoveSSHConnection)
   })
 
   const connect = (connection: ConnectionConfig) => {
@@ -48,8 +52,22 @@
   }
 
   const remove = (id: number) => {
-    sshStore.remove(id)
-    emit('removed', id)
+    window.ipcRenderer.send('dialog', {
+      buttons: ['No', 'Yes'],
+      title: 'Remove Connection',
+      message: 'Are you sure you want to remove it?',
+      listener: 'dialog.remove.confirmed',
+      params: { id },
+    })
+  }
+
+  const handleRemoveSSHConnection = (e: { result: number; params: any }) => {
+    if (e.result === 0) {
+      return
+    }
+
+    sshStore.remove(e.params.id)
+    emit('removed', e.params.id)
   }
 </script>
 
@@ -80,24 +98,19 @@
             <div>
               <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
             </div>
-            <div class="flex justify-end space-x-2">
-              <PencilIcon
-                v-tippy="'Edit'"
-                class="size-4 hover:text-blue-500 cursor-pointer"
-                @click="edit(connection.id)"
-              />
-              <TrashIcon
-                v-tippy="'Delete'"
-                class="size-4 hover:text-red-500 cursor-pointer"
-                @click="remove(connection.id)"
-              />
-              <ArrowPathIcon v-if="connecting === connection.id" class="size-4 text-green-500 animate-spin" />
-              <WifiIcon
-                v-else
-                @click="connect(connection)"
-                v-tippy="'Connect'"
-                class="size-4 ml-2 hover:text-green-500 cursor-pointer"
-              />
+            <div class="flex gap-1 justify-end space-x-2">
+              <button @click="edit(connection.id)" class="p-1 cursor-pointer">
+                <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
+              </button>
+              <button @click="remove(connection.id)" class="p-1 cursor-pointer">
+                <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
+              </button>
+              <button v-if="connecting === connection.id" class="p-1 cursor-pointer">
+                <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
+              </button>
+              <button v-else @click="connect(connection)" class="p-1 cursor-pointer">
+                <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
+              </button>
             </div>
           </div>
           <Divider />

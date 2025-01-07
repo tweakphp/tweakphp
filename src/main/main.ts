@@ -12,6 +12,8 @@ import * as link from './link'
 import * as tray from './tray'
 import * as docker from './docker'
 import * as ssh from './ssh'
+import * as dialog from './dialog'
+
 import url from 'url'
 
 Object.assign(console, log.functions)
@@ -90,6 +92,7 @@ const initializeModules = async () => {
     client.init(),
     source.init(),
     ssh.init(),
+    dialog.init(window),
   ])
 }
 
