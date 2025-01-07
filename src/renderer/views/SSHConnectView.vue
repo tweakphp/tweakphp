@@ -12,6 +12,7 @@
   import DropDownItem from '../components/DropDownItem.vue'
   import { useSettingsStore } from '../stores/settings'
 
+  const platform = window.platformInfo.getPlatform()
   const sshStore = useSSHStore()
   const settingsStore = useSettingsStore()
   const emit = defineEmits(['connected'])
@@ -46,7 +47,7 @@
   const form: Ref<ConnectionConfig> = ref({
     id: Date.now(),
     name: '',
-    color: 'blue',
+    color: 'rose',
     host: '',
     port: 22,
     username: '',
@@ -102,11 +103,11 @@
 
 <template>
   <div class="mt-3 w-full mx-auto">
-    <div class="mx-auto space-y-3">
+    <form class="mx-auto space-y-3">
       <div class="grid grid-cols-2 items-center">
         <div>Name</div>
         <div class="flex items-center justify-between">
-          <TextInput class="flex-grow mr-3" id="name" v-model="form.name" />
+          <TextInput class="flex-grow mr-3" id="name" v-model="form.name" placeholder="production-server" />
           <DropDown align="right" class="flex-grow-0">
             <template #trigger>
               <div
@@ -138,7 +139,7 @@
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Host</div>
-        <TextInput id="host" v-model="form.host" />
+        <TextInput id="host" v-model="form.host" placeholder="1.2.3.4" />
       </div>
       <Divider />
       <div class="grid grid-cols-2 items-center">
@@ -148,9 +149,9 @@
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Authentication Type</div>
-        <SelectInput id="auth-type" v-model="form.auth_type" placeholder="Select an authentication type">
+        <SelectInput id="auth-type" v-model="form.auth_type" placeholder="Authentication Type">
+          <option value="key">Private Key (Recommended)</option>
           <option value="password">Password</option>
-          <option value="key">Private Key</option>
         </SelectInput>
       </div>
       <Divider />
@@ -161,16 +162,20 @@
       <Divider />
       <div v-if="form.auth_type === 'password'" class="grid grid-cols-2 items-center">
         <div>Password</div>
-        <TextInput id="password" v-model="form.password" />
+        <TextInput id="password" type="password" v-model="form.password" />
       </div>
       <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Private Key Path</div>
-        <TextInput id="key" v-model="form.privateKey" />
+        <TextInput
+          id="key"
+          v-model="form.privateKey"
+          :placeholder="platform === 'darwin' ? '/Users/username/.ssh/id_rsa' : '/home/username/.ssh/id_rsa'"
+        />
       </div>
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Working Directory</div>
-        <TextInput id="path" v-model="form.path" />
+        <TextInput id="path" v-model="form.path" placeholder="/var/www" />
       </div>
       <Divider />
       <div class="flex items-center justify-end">
@@ -183,7 +188,7 @@
           Connect
         </PrimaryButton>
       </div>
-    </div>
+    </form>
   </div>
 </template>
 
