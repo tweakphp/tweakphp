@@ -23,8 +23,16 @@ export interface Tab {
     container_name: string
     container_id: string
     php_version: string
-  }
+  },
   ssh?: {
     id: number
+  },
+  docker_ssh?: {
+    ssh_id: number,
+    enable: boolean
+    php: string
+    container_name: string
+    container_id: string
+    php_version: string
   }
 }

@@ -128,11 +128,14 @@
       return
     }
 
-    window.ipcRenderer.send('client.local.execute', {
-      php: settingsStore.settings.php,
-      code,
-      path,
-    })
+    if (tab.value.execution === 'ssh-docker' && tab.value.ssh?.id) {
+
+      // window.ipcRenderer.send('client.local.execute', {
+      //   php: settingsStore.settings.php,
+      //   code,
+      //   path,
+      // })
+    }
   }
 
   const infoHandler = () => {

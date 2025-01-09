@@ -176,10 +176,12 @@ export const exec = async (config: ConnectionConfig, command: string): Promise<s
   const sshClient = new SSHClient(config)
   try {
     await sshClient.connect()
+    console.log('SSH COMMAND', command)
     const result = await sshClient.exec(command)
     sshClient.disconnect()
     return result
   } catch (error: any) {
+    console.log('SSH ERROR', error)
     sshClient.disconnect()
     throw error
   }

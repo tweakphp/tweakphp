@@ -7,7 +7,6 @@
   import DropDownItem from './DropDownItem.vue'
   import Modal from './Modal.vue'
   import { computed, ComputedRef, onBeforeUnmount, onMounted, ref } from 'vue'
-  import DockerView from '../views/DockerView.vue'
   import { useSettingsStore } from '../stores/settings'
   import { Tab } from '../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
@@ -18,10 +17,13 @@
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
   const dockerModal = ref()
+  const dockerOverSSHModal = ref()
   const sshModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
   const sshConnecting = ref(false)
   import events from '../events'
+  import DockerSSHView from "@/views/DockerSSHView.vue";
+  import DockerConnectView from "@/views/DockerConnectView.vue";
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', sshConnectReply)
@@ -117,7 +119,9 @@
           >
             {{ tabStore.getCurrent()?.docker.container_name }}
           </DropDownItem>
+          <div class="w-full border-t my-1"></div>
           <DropDownItem @click="dockerModal.openModal()"> Connect </DropDownItem>
+          <DropDownItem @click="dockerOverSSHModal.openModal()"> Connect over SSH </DropDownItem>
         </div>
       </DropDown>
       <DropDown>
@@ -169,7 +173,10 @@
       <XMarkIcon class="size-4" />
     </SecondaryButton>
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
-      <DockerView @connected="dockerModal.closeModal()" />
+      <DockerConnectView @connected="dockerModal.closeModal()" />
+    </Modal>
+    <Modal title="Connect to Docker over SSH" ref="dockerOverSSHModal" size="xl">
+      <DockerSSHView @connected="dockerOverSSHModal.closeModal()" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />
