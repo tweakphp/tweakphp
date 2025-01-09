@@ -46,12 +46,12 @@
   }
 
   onMounted(() => {
-    if (!props.tab.docker.container_id) {
+    if (!props.tab.docker.container_name) {
       return
     }
 
     window.ipcRenderer.send('docker.php-version.info', {
-      container_id: props.tab.docker.container_id,
+      container_name: props.tab.docker.container_name,
     })
 
     window.ipcRenderer.on('docker.php-version.reply', handleDockerPHPVersionReply)
@@ -66,7 +66,7 @@
 
 <template>
   <div>
-    <div v-if="tab.docker.container_id" class="px-2 flex items-center gap-2">
+    <div v-if="tab.docker.container_name" class="px-2 flex items-center gap-2">
       <DockerIcon
         :class="{ '!text-green-400': connected }"
         @click="toggleDockerConnection"

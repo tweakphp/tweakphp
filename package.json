@@ -143,5 +143,8 @@
     "vue-tippy": "^6.4.4",
     "vue-tsc": "^2.0.26",
     "ws": "^8.17.0"
+  },
+  "dependencies": {
+    "fix-path": "^4.0.0"
   }
 }

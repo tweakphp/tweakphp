@@ -2,7 +2,7 @@
   import Container from '../components/Container.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onMounted, onUnmounted, ref, defineEmits } from 'vue'
+  import { onMounted, onUnmounted, ref, defineEmits, onBeforeUnmount } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../stores/tabs.ts'
   import SelectInput from '../components/SelectInput.vue'
@@ -28,7 +28,7 @@
   })
 
   const connect = () => {
-    const index = containers.value.findIndex(c => c.id === form.value.container_id)
+    const index = containers.value.findIndex(c => c.name === form.value.container_name)
 
     if (index === -1) {
       return
@@ -46,19 +46,19 @@
 
     window.ipcRenderer.send('docker.copy-phar.execute', {
       php_version: phpVersion.value,
-      container_id: form.value.container_id,
+      container_name: form.value.container_name,
     })
   }
 
   const selectDockerContainer = () => {
-    if (!form.value.container_id) {
+    if (!form.value.container_name) {
       return
     }
 
     created.value = false
 
     window.ipcRenderer.send('docker.php-version.info', {
-      container_id: form.value.container_id,
+      container_name: form.value.container_name,
     })
   }
 
@@ -104,6 +104,11 @@
     tabsStore.updateTab(currentTab)
 
     emit('connected')
+
+    window.ipcRenderer.send('notification', {
+      title: 'Docker Connection',
+      message: 'Connected',
+    })
   }
 
   const handleDockerContainersReply = (e: DockerContainerResponse[]) => {
@@ -138,12 +143,12 @@
     window.ipcRenderer.on('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
   })
 
-  onUnmounted(() => {
+  onBeforeUnmount(() => {
     window.ipcRenderer.removeListener('docker.containers.reply', handleDockerContainersReply)
     window.ipcRenderer.removeListener('docker.containers.reply.error', handleDockerContainersReplyError)
 
-    window.ipcRenderer.removeListener('docker.php-version.reply', handleDockerPHPVersionReplyError)
-    window.ipcRenderer.removeListener('docker.php-version.reply.error', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply.error', handleDockerPHPVersionReplyError)
 
     window.ipcRenderer.removeListener('docker.copy-phar.reply', handleDockerCopyPharReply)
     window.ipcRenderer.removeListener('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
@@ -163,10 +168,10 @@
                 v-if="containers.length > 0"
                 placeholder="Select container"
                 id="docker-containers"
-                v-model="form.container_id"
+                v-model="form.container_name"
                 @change="selectDockerContainer"
               >
-                <option v-for="container in containers" :key="container.id" :value="container.id">
+                <option v-for="container in containers" :key="container.id" :value="container.name">
                   {{ container.name }}
                 </option>
               </SelectInput>

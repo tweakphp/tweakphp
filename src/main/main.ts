@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 import path, { join } from 'path'
 import log from 'electron-log/main'
+import fixPath from 'fix-path'
+
 import * as dotenv from 'dotenv'
 import * as source from './source'
 import * as client from './client'
@@ -13,8 +15,11 @@ import * as tray from './tray'
 import * as docker from './docker'
 import * as ssh from './ssh'
 import * as dialog from './dialog'
+import * as notification from './notification'
 
 import url from 'url'
+
+fixPath()
 
 Object.assign(console, log.functions)
 
@@ -93,6 +98,7 @@ const initializeModules = async () => {
     source.init(),
     ssh.init(),
     dialog.init(window),
+    notification.init(),
   ])
 }
 

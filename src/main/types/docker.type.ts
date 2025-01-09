@@ -10,6 +10,6 @@ export interface PHPInfoResponse {
 }
 
 export interface PharPathResponse {
-  container_id: string
+  container_name: string
   phar_path: string
 }

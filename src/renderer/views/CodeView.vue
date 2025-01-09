@@ -89,21 +89,22 @@
     tabsStore.updateTab(tab.value)
   }
 
-  window.ipcRenderer.on('docker.copy-phar.reply', (e: PharPathResponse) => {
-    e.container_id && dockerClients.value.push(e.container_id)
+  window.ipcRenderer.on('code-view::docker.copy-phar.reply', (e: PharPathResponse) => {
+    e.container_name && dockerClients.value.push(e.container_name)
   })
 
   const executeHandler = () => {
     const { docker, code, path, remote_path, remote_phar_client } = tab.value
-    const { php, container_id, php_version } = docker || {}
+    const { php, container_name, php_version } = docker || {}
 
     executeStore.setExecuting(true)
 
     if (tab.value.execution === 'docker') {
-      if (!dockerClients.value.includes(container_id)) {
+      if (!dockerClients.value.includes(container_name)) {
         window.ipcRenderer.send('docker.copy-phar.execute', {
-          php_version: php_version,
-          container_id: container_id,
+          php_version,
+          container_name,
+          reply: 'code-view::docker.copy-phar.reply',
         })
       }
 
@@ -112,7 +113,7 @@
         code,
         path: remote_path,
         phar_client: remote_phar_client,
-        container_id,
+        container_name,
       })
 
       return

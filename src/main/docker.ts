@@ -1,53 +1,58 @@
 import { execSync } from 'child_process'
 import path from 'path'
 import { app, ipcMain } from 'electron'
-import { isLinux, isMacOS } from './platform.ts'
 import { DockerContainerResponse, PHPInfoResponse } from './types/docker.type.ts'
 
-export const DOCKER_PATH = (() => {
-  if (isLinux()) return '/usr/bin/docker'
-  if (isMacOS()) return '/usr/local/bin/docker'
-  return ''
-})()
+export const getDockerPath = async () => {
+  try {
+    return execSync('which docker').toString().trim()
+  } catch (error) {
+    return 'docker'
+  }
+}
 
 export const init = async () => {
   ipcMain.on('docker.containers.info', async event => {
     try {
-      const containers = getDockerContainers()
+      const containers = await getDockerContainers()
+
       event.reply('docker.containers.reply', containers)
     } catch (error: unknown) {
       event.reply('docker.containers.reply.error', { error })
     }
   })
 
-  ipcMain.on('docker.php-version.info', (event, args) => {
+  ipcMain.on('docker.php-version.info', async (event, args) => {
     try {
-      const result = checkPHPVersion(args.container_id)
+      const result = await checkPHPVersion(args.container_name)
+
       event.reply('docker.php-version.reply', result)
     } catch (error: unknown) {
       event.reply('docker.php-version.reply.error', { error })
     }
   })
 
-  ipcMain.on('docker.copy-phar.execute', (event, args) => {
+  ipcMain.on('docker.copy-phar.execute', async (event, args) => {
     try {
       const versionMatch = args.php_version.match(/^(\d+\.\d+)/)
       const phpVersion = versionMatch ? versionMatch[1] : null
 
-      const result = copyPharClient(phpVersion, args.container_id)
+      const result = await copyPharClient(phpVersion, args.container_name)
 
-      event.reply('docker.copy-phar.reply', {
-        container_id: args.container_id,
+      event.reply(args.reply ?? 'docker.copy-phar.reply', {
+        container_name: args.container_name,
         phar_path: result,
       })
     } catch (error: unknown) {
-      event.reply('docker.copy-phar.reply.error', { error })
+      event.reply(args.reply_error ?? 'docker.copy-phar.reply.error', { error })
     }
   })
 }
 
-export const getDockerContainers = (): DockerContainerResponse[] | null => {
+export const getDockerContainers = async (): Promise<DockerContainerResponse[] | null> => {
   try {
+    const DOCKER_PATH = await getDockerPath()
+
     const result = execSync(`${DOCKER_PATH} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`, {
       encoding: 'utf-8',
     }).trim()
@@ -65,22 +70,27 @@ export const getDockerContainers = (): DockerContainerResponse[] | null => {
   }
 }
 
-export const getPhpPath = (containerId: string): string | null => {
+export const getPHPPath = async (containerId: string): Promise<string | null> => {
   try {
+    const DOCKER_PATH = await getDockerPath()
+
     return execSync(`${DOCKER_PATH} exec ${containerId} which php`).toString().trim()
   } catch (error: unknown) {
     throw new Error(parseDockerErrorMessage(error))
   }
 }
 
-export const copyPharClient = (phpVersion: string | null, containerId: string): string => {
+export const copyPharClient = async (phpVersion: string | null, containerName: string): Promise<string> => {
   let getClient: string = app.isPackaged
     ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
     : path.join(__dirname, `../public/client-${phpVersion}.phar`)
 
   try {
     const pharPath = `/tmp/client-${phpVersion}.phar`
-    execSync(`${DOCKER_PATH} cp ${getClient} ${containerId}:'${pharPath}'`).toString().trim()
+
+    const DOCKER_PATH = await getDockerPath()
+
+    execSync(`${DOCKER_PATH} cp ${getClient} ${containerName}:'${pharPath}'`).toString().trim()
 
     return pharPath
   } catch (error) {
@@ -88,15 +98,17 @@ export const copyPharClient = (phpVersion: string | null, containerId: string): 
   }
 }
 
-export const checkPHPVersion = (containerId: string): PHPInfoResponse => {
+export const checkPHPVersion = async (containerId: string): Promise<PHPInfoResponse> => {
   try {
+    const DOCKER_PATH = await getDockerPath()
+
     const result = execSync(`${DOCKER_PATH} exec ${containerId} php --version`).toString().trim()
 
     const versionMatch = result.match(/PHP\s(\d+\.\d+\.\d+)/)
     const phpVersion = versionMatch ? versionMatch[1] : null
 
     return {
-      php_path: getPhpPath(containerId) || '',
+      php_path: (await getPHPPath(containerId)) || '',
       php_version: phpVersion || '',
     }
   } catch (error) {
