@@ -37,9 +37,9 @@ export const dockerExec = async (
 
   const pharClient = `"${data.phar_client}"`
 
-  const DOCKER_PATH = await getDockerPath()
+  const dockerPath = await getDockerPath()
 
-  const command = `${DOCKER_PATH} exec ${data.container_name} ${phpPath} ${pharClient} ${path} execute ${code}`
+  const command = `${dockerPath} exec ${data.container_name} ${phpPath} ${pharClient} ${path} execute ${code}`
 
   await execute(event, command)
 }

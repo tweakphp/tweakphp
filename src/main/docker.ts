@@ -51,9 +51,9 @@ export const init = async () => {
 
 export const getDockerContainers = async (): Promise<DockerContainerResponse[] | null> => {
   try {
-    const DOCKER_PATH = await getDockerPath()
+    const dockerPath = await getDockerPath()
 
-    const result = execSync(`${DOCKER_PATH} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`, {
+    const result = execSync(`${dockerPath} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`, {
       encoding: 'utf-8',
     }).trim()
 
@@ -72,9 +72,9 @@ export const getDockerContainers = async (): Promise<DockerContainerResponse[] |
 
 export const getPHPPath = async (containerId: string): Promise<string | null> => {
   try {
-    const DOCKER_PATH = await getDockerPath()
+    const dockerPath = await getDockerPath()
 
-    return execSync(`${DOCKER_PATH} exec ${containerId} which php`).toString().trim()
+    return execSync(`${dockerPath} exec ${containerId} which php`).toString().trim()
   } catch (error: unknown) {
     throw new Error(parseDockerErrorMessage(error))
   }
@@ -88,9 +88,9 @@ export const copyPharClient = async (phpVersion: string | null, containerName: s
   try {
     const pharPath = `/tmp/client-${phpVersion}.phar`
 
-    const DOCKER_PATH = await getDockerPath()
+    const dockerPath = await getDockerPath()
 
-    execSync(`${DOCKER_PATH} cp ${getClient} ${containerName}:'${pharPath}'`).toString().trim()
+    execSync(`${dockerPath} cp ${getClient} ${containerName}:'${pharPath}'`).toString().trim()
 
     return pharPath
   } catch (error) {
@@ -100,9 +100,9 @@ export const copyPharClient = async (phpVersion: string | null, containerName: s
 
 export const checkPHPVersion = async (containerId: string): Promise<PHPInfoResponse> => {
   try {
-    const DOCKER_PATH = await getDockerPath()
+    const dockerPath = await getDockerPath()
 
-    const result = execSync(`${DOCKER_PATH} exec ${containerId} php --version`).toString().trim()
+    const result = execSync(`${dockerPath} exec ${containerId} php --version`).toString().trim()
 
     const versionMatch = result.match(/PHP\s(\d+\.\d+\.\d+)/)
     const phpVersion = versionMatch ? versionMatch[1] : null
