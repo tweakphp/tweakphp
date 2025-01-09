@@ -1,7 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import path, { join } from 'path'
 import log from 'electron-log/main'
-import fixPath from 'fix-path'
 
 import * as dotenv from 'dotenv'
 import * as source from './source'
@@ -18,6 +17,8 @@ import * as dialog from './dialog'
 import * as notification from './notification'
 
 import url from 'url'
+
+import { fixPath } from './fix-path.ts'
 
 fixPath()
 
