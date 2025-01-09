@@ -1,5 +1,10 @@
 import process from 'node:process'
-import { shellPathSync } from 'shell-path'
+import { shellEnvSync } from 'shell-env'
+
+export function shellPathSync() {
+  const { PATH } = shellEnvSync()
+  return PATH
+}
 
 export const fixPath = () => {
   if (process.platform === 'win32') {
