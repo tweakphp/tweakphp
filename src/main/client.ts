@@ -4,8 +4,8 @@ import { app, ipcMain } from 'electron'
 import * as settings from './settings'
 import * as php from './php'
 import * as ssh from './ssh'
-import { DOCKER_PATH } from './docker.ts'
 import { ConnectionConfig } from '../types/ssh.type.ts'
+import { getDockerPath } from './docker.ts'
 
 export const init = async () => {
   ipcMain.on('client.local.execute', localExec)
@@ -37,7 +37,9 @@ export const dockerExec = async (
 
   const pharClient = `"${data.phar_client}"`
 
-  const command = `${DOCKER_PATH} exec ${data.container_name} ${phpPath} ${pharClient} ${path} execute ${code}`
+  const dockerPath = await getDockerPath()
+
+  const command = `${dockerPath} exec ${data.container_name} ${phpPath} ${pharClient} ${path} execute ${code}`
 
   await execute(event, command)
 }

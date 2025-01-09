@@ -2,7 +2,7 @@
   import Container from '../components/Container.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onMounted, onUnmounted, ref, defineEmits } from 'vue'
+  import { onMounted, ref, defineEmits, onBeforeUnmount } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../stores/tabs.ts'
   import SelectInput from '../components/SelectInput.vue'
@@ -104,6 +104,11 @@
     tabsStore.updateTab(currentTab)
 
     emit('connected')
+
+    window.ipcRenderer.send('notification', {
+      title: 'Docker Connection',
+      message: 'Connected',
+    })
   }
 
   const handleDockerContainersReply = (e: DockerContainerResponse[]) => {
@@ -138,12 +143,12 @@
     window.ipcRenderer.on('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
   })
 
-  onUnmounted(() => {
+  onBeforeUnmount(() => {
     window.ipcRenderer.removeListener('docker.containers.reply', handleDockerContainersReply)
     window.ipcRenderer.removeListener('docker.containers.reply.error', handleDockerContainersReplyError)
 
-    window.ipcRenderer.removeListener('docker.php-version.reply', handleDockerPHPVersionReplyError)
-    window.ipcRenderer.removeListener('docker.php-version.reply.error', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply.error', handleDockerPHPVersionReplyError)
 
     window.ipcRenderer.removeListener('docker.copy-phar.reply', handleDockerCopyPharReply)
     window.ipcRenderer.removeListener('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
@@ -166,7 +171,7 @@
                 v-model="form.container_name"
                 @change="selectDockerContainer"
               >
-                <option v-for="container in containers" :key="container.name" :value="container.name">
+                <option v-for="container in containers" :key="container.id" :value="container.name">
                   {{ container.name }}
                 </option>
               </SelectInput>

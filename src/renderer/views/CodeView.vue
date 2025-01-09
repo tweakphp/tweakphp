@@ -89,7 +89,7 @@
     tabsStore.updateTab(tab.value)
   }
 
-  window.ipcRenderer.on('docker.copy-phar.reply', (e: PharPathResponse) => {
+  window.ipcRenderer.on('code-view::docker.copy-phar.reply', (e: PharPathResponse) => {
     e.container_name && dockerClients.value.push(e.container_name)
   })
 
@@ -104,6 +104,7 @@
         window.ipcRenderer.send('docker.copy-phar.execute', {
           php_version,
           container_name,
+          reply: 'code-view::docker.copy-phar.reply',
         })
       }
 

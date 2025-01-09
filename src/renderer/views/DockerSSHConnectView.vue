@@ -51,7 +51,7 @@
 
     form.value.container_name = selected.name
 
-    window.ipcRenderer.send('docker.copy-phar.execute', {
+    window.ipcRenderer.send('docker.ssh.copy-phar.execute', {
       php_version: phpVersion.value,
       container_name: form.value.container_name,
     })
@@ -64,7 +64,7 @@
 
     created.value = false
 
-    window.ipcRenderer.send('docker.php-version.info', {
+    window.ipcRenderer.send('docker.ssh.php-version.info', {
       container_name: form.value.container_name,
     })
   }
