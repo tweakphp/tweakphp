@@ -82,6 +82,21 @@
     window.ipcRenderer.on('ssh.connect.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('ssh.connect.reply', { detail: e }))
     })
+    window.ipcRenderer.on('kubectl.connect.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('kubectl.connect.reply', { detail: e }))
+    })
+    window.ipcRenderer.on('kubectl.contexts.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('kubectl.contexts.reply', { detail: e }))
+    })
+    window.ipcRenderer.on('kubectl.namespaces.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('kubectl.namespaces.reply', { detail: e }))
+    })
+    window.ipcRenderer.on('kubectl.pods.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('kubectl.pods.reply', { detail: e }))
+    })
+    window.ipcRenderer.on('dialog.remove.confirmed', (e: any) => {
+      events.dispatchEvent(new CustomEvent('dialog.remove.confirmed', { detail: e }))
+    })
 
     window.addEventListener('keydown', keydownListener)
 

@@ -1,0 +1,146 @@
+<script setup lang="ts">
+  import PrimaryButton from '../components/PrimaryButton.vue'
+  import { EyeIcon, PlusIcon, TrashIcon, WifiIcon, ArrowPathIcon, PencilIcon } from '@heroicons/vue/24/outline'
+  import { onBeforeUnmount, onMounted, ref, defineEmits } from 'vue'
+  import { useKubectlStore } from '../stores/kubectl'
+  import Divider from '../components/Divider.vue'
+  import Modal from '../components/Modal.vue'
+  import KubectlConnectView from './KubectlConnectView.vue'
+  import events from '../events'
+  import KubectlPodsView from './KubectlPodsView.vue'
+
+  const kubectlStore = useKubectlStore()
+  const kubectlConnectModal = ref()
+  const kubectlPod = ref()
+  const connecting = ref()
+  const editId = ref()
+  const emit = defineEmits(['connected', 'removed'])
+
+  onMounted(() => {
+    events.addEventListener('kubectl.connect.reply', connectReply)
+    events.addEventListener('kubectl.contexts.reply', contextsReply)
+    events.addEventListener('kubectl.namespaces.reply', namespaceReply)
+    events.addEventListener('kubectl.poods.reply', podsReply)
+    events.addEventListener('dialog.remove.confirmed', removeConfirmed)
+  })
+
+  onBeforeUnmount(() => {
+    events.removeEventListener('kubectl.connect.reply', connectReply)
+    events.removeEventListener('kubectl.contexts.reply', contextsReply)
+    events.removeEventListener('kubectl.namespaces.reply', namespaceReply)
+    events.removeEventListener('kubectl.poods.reply', podsReply)
+    events.removeEventListener('dialog.remove.confirmed', removeConfirmed)
+  })
+
+  const add = () => {
+    editId.value = null
+    kubectlConnectModal.value.openModal()
+  }
+
+  const edit = (id: number) => {
+    editId.value = id
+    kubectlConnectModal.value.openModal()
+  }
+
+  const connectReply = (e: any) => {
+    if (e.detail.data.state === 'connect') {
+      connecting.value = null
+      if (e.detail.connected) {
+        emit('connected', e.detail.config)
+      }
+    }
+  }
+
+  const contextsReply = (e: any) => {
+    console.log(e)
+  }
+
+  const namespaceReply = (e: any) => {
+    console.log(e)
+  }
+
+  const podsReply = (e: any) => {
+    console.log(e)
+  }
+
+  const remove = (id: number) => {
+    window.ipcRenderer.send('dialog', {
+      buttons: ['No', 'Yes'],
+      title: 'Remove Connection',
+      message: 'Are you sure you want to remove it?',
+      listener: 'dialog.remove.confirmed',
+      params: { id },
+    })
+  }
+
+  const removeConfirmed = (e: any) => {
+    if (e.detail.result === 0) {
+      return
+    }
+
+    kubectlStore.remove(e.detail.params.id)
+    emit('removed', e.detail.params.id)
+  }
+</script>
+
+<template>
+  <div class="mt-3 w-full mx-auto">
+    <div class="mx-auto space-y-3">
+      <div class="space-y-3">
+        <div class="grid grid-cols-5 gap-2 items-center">
+          <div>Name</div>
+          <div>Context</div>
+          <div>Namespace</div>
+          <div>Path</div>
+          <div class="flex justify-end">
+            <PrimaryButton @click="add">
+              <PlusIcon class="w-4 h-4" />
+            </PrimaryButton>
+          </div>
+        </div>
+        <Divider />
+        <template v-for="connection in kubectlStore.connections">
+          <div class="grid grid-cols-5 gap-2 items-center">
+            <div class="flex items-center">
+              <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
+              {{ connection.name }}
+            </div>
+            <div>
+              <EyeIcon v-tippy="connection.context" class="size-4 hover:text-blue-500" />
+            </div>
+            <div>
+              <EyeIcon v-tippy="connection.namespace" class="size-4 hover:text-blue-500" />
+            </div>
+            <div>
+              <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
+            </div>
+            <div class="flex gap-1 justify-end space-x-2">
+              <button @click="edit(connection.id)" class="p-1 cursor-pointer">
+                <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
+              </button>
+              <button @click="remove(connection.id)" class="p-1 cursor-pointer">
+                <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
+              </button>
+              <button v-if="connecting === connection.id" class="p-1 cursor-pointer">
+                <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
+              </button>
+              <button v-else @click="kubectlPod.open(connection)" class="p-1 cursor-pointer">
+                <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
+              </button>
+            </div>
+          </div>
+          <Divider />
+        </template>
+      </div>
+      <div v-if="Object.values(kubectlStore.connections).length === 0" class="grid grid-cols-1 items-center">
+        <div>No connections yet!</div>
+      </div>
+    </div>
+    <Modal ref="kubectlConnectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
+      <KubectlConnectView @done="kubectlConnectModal.closeModal()" :id="editId" />
+    </Modal>
+    <KubectlPodsView ref="kubectlPod" />
+  </div>
+</template>
+
+<style scoped></style>

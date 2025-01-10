@@ -15,6 +15,7 @@ import * as docker from './docker'
 import * as ssh from './ssh'
 import * as dialog from './dialog'
 import * as notification from './notification'
+import * as kubectl from './kubectl'
 
 import url from 'url'
 
@@ -100,6 +101,7 @@ const initializeModules = async () => {
     ssh.init(),
     dialog.init(window),
     notification.init(),
+    kubectl.init(),
   ])
 }
 
