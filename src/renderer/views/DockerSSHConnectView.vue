@@ -64,8 +64,11 @@
 
     created.value = false
 
+    const connection = sshStore.getConnection(props.sshId)
+
     window.ipcRenderer.send('docker.ssh.php-version.info', {
       container_name: form.value.container_name,
+      connection: { ...connection }
     })
   }
 
@@ -142,9 +145,9 @@
 
     window.ipcRenderer.on('docker.ssh.containers.reply', handleDockerContainersReply)
     window.ipcRenderer.on('docker.ssh.containers.reply.error', handleDockerContainersReplyError)
-    //
-    // window.ipcRenderer.on('docker.php-version.reply', handleDockerPHPVersionReply)
-    // window.ipcRenderer.on('docker.php-version.reply.error', handleDockerPHPVersionReplyError)
+
+    window.ipcRenderer.on('docker.ssh.php-version.reply', handleDockerPHPVersionReply)
+    window.ipcRenderer.on('docker.ssh.php-version.reply.error', handleDockerPHPVersionReplyError)
     //
     // window.ipcRenderer.on('docker.copy-phar.reply', handleDockerCopyPharReply)
     // window.ipcRenderer.on('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
@@ -178,7 +181,7 @@
                 v-model="form.container_name"
                 @change="selectDockerContainer"
               >
-                <option v-for="container in containers" :key="container.name" :value="container.name">
+                <option v-for="container in containers" :key="container.id" :value="container.name">
                   {{ container.name }}
                 </option>
               </SelectInput>
