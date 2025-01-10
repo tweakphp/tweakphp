@@ -2,7 +2,7 @@
   import Container from '../components/Container.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onMounted, ref, defineEmits, onBeforeUnmount } from 'vue'
+  import { onMounted, onUnmounted, ref, defineEmits, onBeforeUnmount } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../stores/tabs.ts'
   import SelectInput from '../components/SelectInput.vue'
