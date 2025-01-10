@@ -2,7 +2,7 @@ import { execSync } from 'child_process'
 import path from 'path'
 import { app, ipcMain } from 'electron'
 import { DockerContainerResponse, PHPInfoResponse } from './types/docker.type.ts'
-import {isWindows} from "./platform.ts";
+import { isWindows } from './platform.ts'
 
 export const getDockerPath = async () => {
   try {
@@ -82,27 +82,27 @@ export const getPHPPath = async (containerId: string): Promise<string | null> =>
 }
 
 export const copyPharClient = async (phpVersion: string | null, containerName: string): Promise<string> => {
-  let client;
+  let client
   if (!isWindows()) {
     client = app.isPackaged
       ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
-      : path.join(__dirname, `../public/client-${phpVersion}.phar`);
+      : path.join(__dirname, `../public/client-${phpVersion}.phar`)
   } else {
-    client = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/');
+    client = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
   }
 
   try {
-    const pharPath = `/tmp/client-${phpVersion}.phar`;
+    const pharPath = `/tmp/client-${phpVersion}.phar`
 
-    const dockerPath = await getDockerPath();
+    const dockerPath = await getDockerPath()
 
-    execSync(`${dockerPath} cp "${client}" ${containerName}:${pharPath}`, { stdio: 'inherit' });
+    execSync(`${dockerPath} cp "${client}" ${containerName}:${pharPath}`, { stdio: 'inherit' })
 
-    return pharPath;
+    return pharPath
   } catch (error) {
-    throw new Error(parseDockerErrorMessage(error));
+    throw new Error(parseDockerErrorMessage(error))
   }
-};
+}
 
 export const checkPHPVersion = async (containerId: string): Promise<PHPInfoResponse> => {
   try {

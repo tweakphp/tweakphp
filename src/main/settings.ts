@@ -4,7 +4,7 @@ import * as lsp from './lsp/index'
 import { app, ipcMain } from 'electron'
 import { Settings } from '../types/settings.type'
 import os from 'os'
-import {isWindows} from "./platform.ts";
+import { isWindows } from './platform.ts'
 
 const homeDir = os.homedir()
 
@@ -35,7 +35,7 @@ export const init = async () => {
 
 export const storeSettings = async (_event: any, data: Settings) => {
   fs.writeFileSync(settingsPath, JSON.stringify(data))
-  !isWindows() && await lsp.init()
+  !isWindows() && (await lsp.init())
 }
 
 export const getSettings = () => {

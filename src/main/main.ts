@@ -19,7 +19,7 @@ import * as notification from './notification'
 import url from 'url'
 
 import { fixPath } from './fix-path.ts'
-import {isWindows} from "./platform.ts";
+import { isWindows } from './platform.ts'
 
 fixPath()
 
@@ -64,7 +64,7 @@ const createMainWindow = async () => {
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
-          !isWindows() && await lsp.init()
+          !isWindows() && (await lsp.init())
           await updater.checkForUpdates()
         }, 1500)
       })
