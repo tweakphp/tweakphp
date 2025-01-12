@@ -31,6 +31,7 @@ jobs:
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          CSC_FOR_PULL_REQUEST: true
         run: |
           echo "$APPLE_CERTIFICATE" | base64 --decode > apple.p12
           security create-keychain -p temporary build.keychain
