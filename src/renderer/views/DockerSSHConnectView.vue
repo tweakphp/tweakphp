@@ -234,7 +234,7 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Status</div>
-            {{ tabsStore.getCurrent()?.remote_phar_client ? 'Connected' : 'Disconnected' }}
+            {{ tabsStore.getCurrent()?.docker_ssh.phar_client ? 'Connected' : 'Disconnected' }}
           </div>
 
           <Divider />
