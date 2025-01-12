@@ -1,14 +1,14 @@
-import { notarize } from 'electron-notarize';
+import { notarize } from 'electron-notarize'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
 export default async function notarizing(context) {
-  const { electronPlatformName, appOutDir } = context;  
+  const { electronPlatformName, appOutDir } = context
   if (electronPlatformName !== 'darwin') {
-    return;
+    return
   }
 
-  const appName = context.packager.appInfo.productFilename;
+  const appName = context.packager.appInfo.productFilename
 
   return await notarize({
     tool: 'notarytool',
@@ -17,5 +17,5 @@ export default async function notarizing(context) {
     appPath: `${appOutDir}/${appName}.app`,
     appleId: process.env.APPLE_ID,
     appleIdPassword: process.env.APPLE_ID_PASSWORD,
-  });
+  })
 }
