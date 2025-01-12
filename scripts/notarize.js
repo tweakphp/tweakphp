@@ -16,6 +16,6 @@ export default async function notarizing(context) {
     appBundleId: 'com.tweakphp.app',
     appPath: `${appOutDir}/${appName}.app`,
     appleId: process.env.APPLE_ID,
-    appleIdPassword: process.env.APPLE_ID_PASSWORD,
+    appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
   })
 }
