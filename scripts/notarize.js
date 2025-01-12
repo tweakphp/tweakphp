@@ -1,6 +1,4 @@
 import { notarize } from 'electron-notarize'
-import * as dotenv from 'dotenv'
-dotenv.config()
 
 export default async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context
