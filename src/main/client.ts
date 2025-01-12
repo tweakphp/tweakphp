@@ -6,12 +6,14 @@ import * as php from './php'
 import * as ssh from './ssh'
 import { ConnectionConfig } from '../types/ssh.type.ts'
 import { getDockerPath } from './docker.ts'
+import { DockerSSH } from '../renderer/types/tab.type.ts'
 
 export const init = async () => {
   ipcMain.on('client.local.execute', localExec)
   ipcMain.on('client.local.info', info)
   ipcMain.on('client.docker.execute', dockerExec)
   ipcMain.on('client.ssh.execute', sshExec)
+  ipcMain.on('client.docker-ssh.execute', dockerSSHExec)
 }
 
 export function getLocalPharClient() {
@@ -42,6 +44,24 @@ export const dockerExec = async (
   const command = `${dockerPath} exec ${data.container_name} ${phpPath} ${pharClient} ${path} execute ${code}`
 
   await execute(event, command)
+}
+
+export const dockerSSHExec = async (
+  event: Electron.IpcMainEvent,
+  data: { connection: ConnectionConfig; code: string; docker: DockerSSH }
+) => {
+  const phpPath = 'php'
+  const dockerPath = data.docker.docker_path ?? 'docker'
+  const workDir = data.docker.working_directory
+
+  const code = btoa(data.code.replaceAll('<?php', ''))
+  const pharClient = data.docker.phar_client
+
+  const command = `${dockerPath} exec ${data.docker.container_name} ${phpPath} ${pharClient} ${workDir} execute ${code}`
+
+  const result = await ssh.exec(data.connection, command)
+
+  event.reply('client.execute.reply', result)
 }
 
 export const sshExec = async (event: Electron.IpcMainEvent, data: { connection: ConnectionConfig; code: string }) => {

@@ -12,4 +12,5 @@ export interface PHPInfoResponse {
 export interface PharPathResponse {
   container_name: string
   phar_path: string
+  docker_path?: string
 }

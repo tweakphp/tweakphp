@@ -1,31 +1,40 @@
 <script setup lang="ts">
+  import { useSSHStore } from '../stores/ssh'
 
-import { useSSHStore } from '../stores/ssh'
+  import Container from '@/components/Container.vue'
+  import SelectInput from '@/components/SelectInput.vue'
+  import { onMounted, ref } from 'vue'
+  import Divider from '@/components/Divider.vue'
+  import DockerSSHConnectView from '@/views/DockerSSHConnectView.vue'
+  import { useTabsStore } from '../stores/tabs.ts'
+  import { Tab } from '@/types/tab.type.ts'
 
-import Container from "@/components/Container.vue";
-import SelectInput from "@/components/SelectInput.vue";
-import {ref} from "vue";
-import DockerView from "@/views/DockerView.vue";
-import Divider from "@/components/Divider.vue";
-import DockerSSHConnectView from "@/views/DockerSSHConnectView.vue";
+  const sshStore = useSSHStore()
+  const tabsStore = useTabsStore()
 
-const sshStore = useSSHStore()
+  const connecting = ref()
+  const form = ref({
+    connection_id: 0,
+    container_id: '',
+    container_name: '',
+    working_directory: '/var/www/html',
+  })
 
-const connecting = ref();
-const form = ref({
-  connection_id: 0,
-  container_id: '',
-  container_name: '',
-  working_directory: '/var/www/html',
-})
+  const selectConnection = () => {
+    const connection = sshStore.getConnection(form.value.connection_id)
+    connecting.value = form.value.connection_id
 
-const selectConnection = () => {
-  const connection = sshStore.getConnection(form.value.connection_id)
-  connecting.value = form.value.connection_id
-  window.ipcRenderer.send('ssh.connect', { ...connection }, { state: 'connect' })
-  // connect ssh id
-  // load containers from ssh
-}
+    window.ipcRenderer.send('ssh.connect', { ...connection }, { state: 'connect' })
+  }
+
+  onMounted(() => {
+    let currentTab: Tab | null = tabsStore.getCurrent()
+    if (currentTab === null) {
+      return
+    }
+
+    form.value.connection_id = currentTab.docker_ssh.ssh_id
+  })
 </script>
 
 <template>
@@ -60,6 +69,4 @@ const selectConnection = () => {
   </Container>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { nextTick, onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
   import Container from '../components/Container.vue'
@@ -121,7 +121,7 @@
 
     if (tab.value.execution === 'ssh' && tab.value.ssh?.id) {
       let connection = sshStore.getConnection(tab.value.ssh.id)
-      window.ipcRenderer.send('client.ssh.execute', {
+      window.ipcRenderer.send('client.docker-ssh.execute', {
         connection: { ...connection },
         code,
       })
@@ -129,13 +129,14 @@
       return
     }
 
-    if (tab.value.execution === 'ssh-docker' && tab.value.ssh?.id) {
+    if (tab.value.execution === 'docker-ssh' && tab.value.docker_ssh.ssh_id) {
+      let connection = sshStore.getConnection(tab.value.docker_ssh.ssh_id)
 
-      // window.ipcRenderer.send('client.local.execute', {
-      //   php: settingsStore.settings.php,
-      //   code,
-      //   path,
-      // })
+      window.ipcRenderer.send('client.docker-ssh.execute', {
+        connection: { ...connection },
+        docker: { ...tab.value.docker_ssh },
+        code,
+      })
     }
   }
 
@@ -261,6 +262,21 @@
     await router.replace({ name: 'code', params: { id: t.id } })
   }
 
+  const getPHPVersion = computed(() => {
+    if (tab.value.execution === 'docker') {
+      return tab.value.docker.php_version
+    }
+
+    if (tab.value.execution === 'docker-ssh') {
+      return tab.value.docker_ssh.php_version
+    }
+
+    if (tab.value.execution === 'ssh' && tab.value.ssh) {
+      return sshStore.getConnection(tab.value.ssh.id)?.php
+    }
+
+    return tab.value.info.php_version
+  })
   watch(
     () => settingsStore.colors.backgroundLight,
     color => {
@@ -316,9 +332,7 @@
       }"
     >
       <div class="px-2 flex gap-1 w-1/2 items-center">
-        <div class="whitespace-nowrap">
-          PHP {{ tab.execution === 'docker' ? tab.docker.php_version : tab.info.php_version }}
-        </div>
+        <div class="whitespace-nowrap">PHP {{ getPHPVersion }}</div>
       </div>
       <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
         <ProgressBar />

@@ -22,8 +22,8 @@
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
   const sshConnecting = ref(false)
   import events from '../events'
-  import DockerSSHView from "@/views/DockerSSHView.vue";
-  import DockerConnectView from "@/views/DockerConnectView.vue";
+  import DockerSSHView from '@/views/DockerSSHView.vue'
+  import DockerConnectView from '@/views/DockerConnectView.vue'
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', sshConnectReply)
@@ -33,7 +33,7 @@
     events.removeEventListener('ssh.connect.reply', sshConnectReply)
   })
 
-  const changeExecution = (execution: string) => {
+  const changeExecution = (execution: 'local' | 'ssh' | 'docker-ssh' | 'docker') => {
     if (!tabStore.current) {
       return
     }
@@ -98,13 +98,20 @@
           <SecondaryButton class="!px-2">
             <DockerIcon
               class="size-4 mr-1"
-              :class="{ '!text-green-500': tabStore.getCurrent()?.execution === 'docker' }"
+              :class="{ '!text-green-500': ['docker', 'docker-ssh'].includes(tabStore.getCurrent()?.execution) }"
             />
             <span class="text-xs max-w-[150px] truncate">
               <template
                 v-if="tabStore.getCurrent().execution === 'docker' && tabStore.getCurrent()?.docker.container_name"
               >
                 {{ tabStore.getCurrent()?.docker.container_name }}
+              </template>
+              <template
+                v-if="
+                  tabStore.getCurrent().execution === 'docker-ssh' && tabStore.getCurrent()?.docker_ssh.container_name
+                "
+              >
+                SSH: {{ tabStore.getCurrent()?.docker_ssh.container_name }}
               </template>
               <template v-else> Docker </template>
             </span>
@@ -115,12 +122,21 @@
           <DropDownItem
             v-if="tabStore.getCurrent()?.docker.container_name"
             @click="changeExecution('docker')"
-            class="truncate"
+            class="truncate flex gap-2"
           >
-            {{ tabStore.getCurrent()?.docker.container_name }}
+            <span class="opacity-60 w-[35px] text-left">Local</span>
+            <span>{{ tabStore.getCurrent()?.docker.container_name }}</span>
           </DropDownItem>
-          <div class="w-full border-t my-1"></div>
-          <DropDownItem @click="dockerModal.openModal()"> Connect </DropDownItem>
+          <DropDownItem
+            v-if="tabStore.getCurrent()?.docker_ssh.container_name"
+            @click="changeExecution('docker-ssh')"
+            class="truncate flex gap-2"
+          >
+            <span class="opacity-60 w-[35px] text-left">SSH</span>
+            <span>{{ tabStore.getCurrent()?.docker_ssh.container_name }}</span>
+          </DropDownItem>
+          <div class="w-full border-t my-1 opacity-10"></div>
+          <DropDownItem @click="dockerModal.openModal()"> Connect Local </DropDownItem>
           <DropDownItem @click="dockerOverSSHModal.openModal()"> Connect over SSH </DropDownItem>
         </div>
       </DropDown>
