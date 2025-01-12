@@ -25,21 +25,6 @@ jobs:
       - name: Install NPM Dependencies
         run: npm install
 
-      # To be removed after testing
-      - name: Import signing certificate
-        if: matrix.os == 'macos-latest'
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          echo "$APPLE_CERTIFICATE" | base64 --decode > apple.p12
-          security create-keychain -p temporary build.keychain
-          security set-keychain-settings build.keychain
-          security unlock-keychain -p temporary build.keychain
-          security import apple.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A
-          security set-key-partition-list -S apple-tool:,apple: -s -k temporary build.keychain
-          security list-keychains -d user -s build.keychain
-
       - name: Install Snapcraft
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -51,15 +36,6 @@ jobs:
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_FOR_PULL_REQUEST: true
-
-      - name: Clean up
-        if: matrix.os == 'macos-latest'
-        run: |
-          security delete-keychain build.keychain
 
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
