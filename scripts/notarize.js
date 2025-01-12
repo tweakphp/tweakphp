@@ -6,6 +6,11 @@ export default async function notarizing(context) {
     return
   }
 
+  if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
+    console.log('Skipping notarization because this is a pull request build.')
+    return
+  }
+
   const appName = context.packager.appInfo.productFilename
 
   return await notarize({
