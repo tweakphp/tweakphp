@@ -6,7 +6,7 @@
     "name": "Saeed Vaziry",
     "email": "mr.saeedvaziry@gmail.com"
   },
-  "version": "0.4.0",
+  "version": "0.5.0",
   "main": "dist/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"node build.js --dev && electron .\"",
@@ -78,11 +78,16 @@
       ]
     },
     "mac": {
-      "darkModeSupport": true
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
       "title": "${productName} ${version}",
-      "icon": "./build/icon.icns"
+      "icon": "./build/icon.icns",
+      "sign": false
     },
     "win": {
       "icon": "icon.ico",
@@ -95,7 +100,8 @@
           ]
         }
       ]
-    }
+    },
+    "afterSign": "scripts/notarize.js"
   },
   "devDependencies": {
     "@codingame/esbuild-import-meta-url-plugin": "~1.0.2",
@@ -128,6 +134,7 @@
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",
     "electron-log": "^5.2.4",
+    "electron-notarize": "^1.2.2",
     "electron-updater": "^6.3.9",
     "esbuild": "^0.24.2",
     "express": "^4.21.0",

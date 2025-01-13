@@ -22,28 +22,8 @@ export const init = async () => {
     checkForUpdates()
   })
   ipcMain.on('update.download', async (): Promise<void> => {
-    if (process.platform === 'darwin') {
-      console.log('Downloading macOS update')
-
-      const downloadPath: string = app.getPath('downloads')
-
-      const files: UpdateFileInfo[] = update.files
-      const filteredFiles: UpdateFileInfo = files.filter((file: UpdateFileInfo) => file.url.includes('dmg'))[0]
-      const fileName: string = filteredFiles.url
-
-      const downloadedFile = `${downloadPath}/${fileName}`
-
-      if (fs.existsSync(downloadedFile)) {
-        await shell.openPath(downloadedFile)
-
-        app.quit()
-      } else {
-        window.webContents.send('update.info', update)
-      }
-    } else {
-      window.webContents.send('update.available', update)
-      await autoUpdater.downloadUpdate()
-    }
+    window.webContents.send('update.available', update)
+    await autoUpdater.downloadUpdate()
   })
 }
 
