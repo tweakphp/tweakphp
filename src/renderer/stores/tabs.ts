@@ -34,8 +34,8 @@ export const useTabsStore = defineStore('tabs', () => {
       },
       docker_ssh: {
         ssh_id: 0,
-        enable: false,
         php: '',
+        docker_path: '',
         container_name: '',
         container_id: '',
         php_version: '',

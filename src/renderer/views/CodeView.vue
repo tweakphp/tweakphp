@@ -129,7 +129,7 @@
       return
     }
 
-    if (tab.value.execution === 'docker-ssh' && tab.value.docker_ssh.ssh_id) {
+    if (tab.value.execution === 'docker-ssh' && tab.value.docker_ssh?.ssh_id) {
       let connection = sshStore.getConnection(tab.value.docker_ssh.ssh_id)
 
       window.ipcRenderer.send('client.docker-ssh.execute', {
@@ -268,7 +268,7 @@
     }
 
     if (tab.value.execution === 'docker-ssh') {
-      return tab.value.docker_ssh.php_version
+      return tab.value.docker_ssh?.php_version
     }
 
     if (tab.value.execution === 'ssh' && tab.value.ssh) {

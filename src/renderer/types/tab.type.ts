@@ -38,5 +38,5 @@ export interface Tab {
   ssh?: {
     id: number
   }
-  docker_ssh: DockerSSH
+  docker_ssh?: DockerSSH
 }

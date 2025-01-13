@@ -7,7 +7,7 @@
   import Divider from '@/components/Divider.vue'
   import DockerSSHConnectView from '@/views/DockerSSHConnectView.vue'
   import { useTabsStore } from '../stores/tabs.ts'
-  import { Tab } from '@/types/tab.type.ts'
+  import { Tab } from '../types/tab.type.ts'
 
   const sshStore = useSSHStore()
   const tabsStore = useTabsStore()
@@ -33,7 +33,7 @@
       return
     }
 
-    form.value.connection_id = currentTab.docker_ssh.ssh_id
+    form.value.connection_id = currentTab.docker_ssh?.ssh_id
   })
 </script>
 

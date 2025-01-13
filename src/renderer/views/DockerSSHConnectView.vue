@@ -119,14 +119,16 @@
 
     currentTab.execution = 'docker-ssh'
 
-    currentTab.docker_ssh.phar_client = e.phar_path
-    currentTab.docker_ssh.working_directory = form.value.working_directory
-    currentTab.docker_ssh.ssh_id = props.sshId || ''
-    currentTab.docker_ssh.php = phpPath.value ?? 'Not Found'
-    currentTab.docker_ssh.php_version = phpVersion.value ?? 'Not Found'
-    currentTab.docker_ssh.docker_path = e.docker_path as string
-    currentTab.docker_ssh.container_id = form.value.container_id
-    currentTab.docker_ssh.container_name = form.value.container_name
+    currentTab.docker_ssh = {
+      ssh_id: props.sshId || '',
+      php: phpPath.value ?? 'Not Found',
+      docker_path: e.docker_path,
+      container_name: form.value.container_name,
+      container_id: form.value.container_id,
+      php_version: phpVersion.value ?? 'Not Found',
+      phar_client: e.phar_path,
+      working_directory: form.value.working_directory,
+    }
 
     tabsStore.updateTab(currentTab)
 
@@ -234,7 +236,7 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Status</div>
-            {{ tabsStore.getCurrent()?.docker_ssh.phar_client ? 'Connected' : 'Disconnected' }}
+            {{ tabsStore.getCurrent()?.docker_ssh?.phar_client ? 'Connected' : 'Disconnected' }}
           </div>
 
           <Divider />

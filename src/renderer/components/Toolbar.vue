@@ -108,10 +108,10 @@
               </template>
               <template
                 v-if="
-                  tabStore.getCurrent().execution === 'docker-ssh' && tabStore.getCurrent()?.docker_ssh.container_name
+                  tabStore.getCurrent().execution === 'docker-ssh' && tabStore.getCurrent()?.docker_ssh?.container_name
                 "
               >
-                SSH: {{ tabStore.getCurrent()?.docker_ssh.container_name }}
+                SSH: {{ tabStore.getCurrent()?.docker_ssh?.container_name }}
               </template>
               <template v-else> Docker </template>
             </span>
@@ -128,12 +128,12 @@
             <span>{{ tabStore.getCurrent()?.docker.container_name }}</span>
           </DropDownItem>
           <DropDownItem
-            v-if="tabStore.getCurrent()?.docker_ssh.container_name"
+            v-if="tabStore.getCurrent()?.docker_ssh?.container_name"
             @click="changeExecution('docker-ssh')"
             class="truncate flex gap-2"
           >
             <span class="opacity-60 w-[35px] text-left">SSH</span>
-            <span>{{ tabStore.getCurrent()?.docker_ssh.container_name }}</span>
+            <span>{{ tabStore.getCurrent()?.docker_ssh?.container_name }}</span>
           </DropDownItem>
           <div class="w-full border-t my-1 opacity-10"></div>
           <DropDownItem @click="dockerModal.openModal()"> Connect Local </DropDownItem>
