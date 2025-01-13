@@ -7,28 +7,27 @@
   import Modal from '../components/Modal.vue'
   import KubectlConnectView from './KubectlConnectView.vue'
   import events from '../events'
-  import KubectlPodsView from './KubectlPodsView.vue'
+  import DropDown from '../components/DropDown.vue'
+  import { ConnectionConfig } from '../../types/kubectl.type'
+  import DropDownItem from '../components/DropDownItem.vue'
 
   const kubectlStore = useKubectlStore()
   const kubectlConnectModal = ref()
-  const kubectlPod = ref()
   const connecting = ref()
   const editId = ref()
+  const loadingPods = ref(false)
+  const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
     events.addEventListener('kubectl.connect.reply', connectReply)
-    events.addEventListener('kubectl.contexts.reply', contextsReply)
-    events.addEventListener('kubectl.namespaces.reply', namespaceReply)
-    events.addEventListener('kubectl.poods.reply', podsReply)
+    events.addEventListener('kubectl.pods.reply', podsReply)
     events.addEventListener('dialog.remove.confirmed', removeConfirmed)
   })
 
   onBeforeUnmount(() => {
     events.removeEventListener('kubectl.connect.reply', connectReply)
-    events.removeEventListener('kubectl.contexts.reply', contextsReply)
-    events.removeEventListener('kubectl.namespaces.reply', namespaceReply)
-    events.removeEventListener('kubectl.poods.reply', podsReply)
+    events.removeEventListener('kubectl.pods.reply', podsReply)
     events.removeEventListener('dialog.remove.confirmed', removeConfirmed)
   })
 
@@ -42,25 +41,9 @@
     kubectlConnectModal.value.openModal()
   }
 
-  const connectReply = (e: any) => {
-    if (e.detail.data.state === 'connect') {
-      connecting.value = null
-      if (e.detail.connected) {
-        emit('connected', e.detail.config)
-      }
-    }
-  }
-
-  const contextsReply = (e: any) => {
-    console.log(e)
-  }
-
-  const namespaceReply = (e: any) => {
-    console.log(e)
-  }
-
   const podsReply = (e: any) => {
-    console.log(e)
+    loadingPods.value = false
+    pods.value = e.detail.pods
   }
 
   const remove = (id: number) => {
@@ -80,6 +63,30 @@
 
     kubectlStore.remove(e.detail.params.id)
     emit('removed', e.detail.params.id)
+  }
+
+  const getPods = (con: ConnectionConfig) => {
+    loadingPods.value = true
+    window.ipcRenderer.send('kubectl.pods', {
+      context: con.context,
+      namespace: con.namespace,
+    })
+  }
+
+  const connect = (con: ConnectionConfig, pod: string) => {
+    connecting.value = con.id
+    con.pod = pod
+    window.ipcRenderer.send('kubectl.connect', { ...con }, { state: 'connect' })
+  }
+
+  const connectReply = (e: any) => {
+    if (e.detail.data.state === 'connect') {
+      connecting.value = null
+      if (e.detail.connected) {
+        kubectlStore.updateConnection(e.detail.connection.id, e.detail.connection)
+        emit('connected', e.detail.connection)
+      }
+    }
   }
 </script>
 
@@ -124,9 +131,26 @@
               <button v-if="connecting === connection.id" class="p-1 cursor-pointer">
                 <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
               </button>
-              <button v-else @click="kubectlPod.open(connection)" class="p-1 cursor-pointer">
-                <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
-              </button>
+              <DropDown align="right" v-else>
+                <template #trigger>
+                  <button class="p-1 cursor-pointer" @click="getPods(connection)">
+                    <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
+                  </button>
+                </template>
+                <div class="p-1">
+                  <DropDownItem v-if="loadingPods">Loading Pods...</DropDownItem>
+                  <div v-else class="space-y-1">
+                    <DropDownItem
+                      v-for="pod in pods"
+                      :key="`pod-${pod}`"
+                      @click="connect(connection, pod)"
+                      class="cursor-pointer"
+                    >
+                      {{ pod }}
+                    </DropDownItem>
+                  </div>
+                </div>
+              </DropDown>
             </div>
           </div>
           <Divider />
@@ -139,7 +163,6 @@
     <Modal ref="kubectlConnectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
       <KubectlConnectView @done="kubectlConnectModal.closeModal()" :id="editId" />
     </Modal>
-    <KubectlPodsView ref="kubectlPod" />
   </div>
 </template>
 

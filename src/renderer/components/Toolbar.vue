@@ -89,20 +89,22 @@
   }
 
   const kubectlConnect = (config: KubectlConnectionConfig | undefined) => {
-    sshConnecting.value = true
-    window.ipcRenderer.send('ssh.connect', { ...config }, { state: 'reconnect' })
+    kubectlConnecting.value = true
+    window.ipcRenderer.send('kubectl.connect', { ...config }, { state: 'reconnect' })
   }
 
   const kubectlConnectReply = (e: any) => {
     if (e.detail.data.state === 'reconnect') {
-      sshConnecting.value = false
+      kubectlConnecting.value = false
       if (e.detail.connected) {
-        sshConnected(e.detail.config)
+        kubectlConnected(e.detail.config)
       }
     }
   }
 
   const kubectlConnected = (config: KubectlConnectionConfig) => {
+    kubectlModal.value.closeModal()
+
     if (!tabStore.current) {
       return
     }

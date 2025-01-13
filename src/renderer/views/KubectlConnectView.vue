@@ -59,13 +59,14 @@
   onMounted(() => {
     events.addEventListener('kubectl.contexts.reply', contextsReply)
     events.addEventListener('kubectl.namespaces.reply', namespacesReply)
+    window.ipcRenderer.send('kubectl.contexts')
     if (props.id) {
       const connection = kubectlStore.getConnection(props.id)
       if (connection) {
         form.value = { ...connection }
+        window.ipcRenderer.send('kubectl.namespaces', { context: connection.context })
       }
     }
-    window.ipcRenderer.send('kubectl.contexts')
   })
 
   onBeforeUnmount(() => {
@@ -73,7 +74,7 @@
     events.removeEventListener('kubectl.namespaces.reply', namespacesReply)
   })
 
-  const add = () => {
+  const save = () => {
     if (props.id) {
       kubectlStore.updateConnection(props.id, form.value)
       emit('done')
@@ -86,7 +87,7 @@
   const contextsReply = (e: any) => {
     contexts.value = e.detail.contexts
   }
-  
+
   const getNamespaces = (context: string) => {
     window.ipcRenderer.send('kubectl.namespaces', { context })
   }
@@ -134,7 +135,12 @@
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Context</div>
-        <SelectInput id="context" v-model="form.context" placeholder="Select context" @change="getNamespaces(form.context)">
+        <SelectInput
+          id="context"
+          v-model="form.context"
+          placeholder="Select context"
+          @change="getNamespaces(form.context)"
+        >
           <option v-for="context in contexts" :value="context" :key="`context-${context}`">{{ context }}</option>
         </SelectInput>
       </div>
@@ -142,7 +148,9 @@
       <div class="grid grid-cols-2 items-center">
         <div>Namespace</div>
         <SelectInput id="namespace" v-model="form.namespace" placeholder="Select namespace">
-          <option v-for="namespace in namespaces" :value="namespace" :key="`namespace-${namespace}`">{{ namespace }}</option>
+          <option v-for="namespace in namespaces" :value="namespace" :key="`namespace-${namespace}`">
+            {{ namespace }}
+          </option>
         </SelectInput>
       </div>
       <Divider />
@@ -152,9 +160,7 @@
       </div>
       <Divider />
       <div class="flex items-center justify-end">
-        <PrimaryButton @click="add">
-          Add
-        </PrimaryButton>
+        <PrimaryButton @click="save"> Save </PrimaryButton>
       </div>
     </form>
   </div>
