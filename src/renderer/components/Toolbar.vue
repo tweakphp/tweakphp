@@ -2,6 +2,7 @@
   import { ArrowPathIcon, ChevronDownIcon, FolderIcon, ServerIcon, XMarkIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from './SecondaryButton.vue'
   import DockerIcon from './icons/DockerIcon.vue'
+  import KubectlIcon from './icons/KubectlIcon.vue'
   import { useTabsStore } from '../stores/tabs'
   import DropDown from './DropDown.vue'
   import DropDownItem from './DropDownItem.vue'
@@ -12,23 +13,31 @@
   import { Tab } from '../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
   import SSHView from '../views/SSHView.vue'
-  import { ConnectionConfig } from '../../types/ssh.type'
+  import { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'
+  import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
+  import events from '../events'
+  import { useKubectlStore } from '../stores/kubectl'
+  import KubectlView from '../views/KubectlView.vue'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
+  const kubectlStore = useKubectlStore()
   const dockerModal = ref()
   const sshModal = ref()
+  const kubectlModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
   const sshConnecting = ref(false)
-  import events from '../events'
+  const kubectlConnecting = ref(false)
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', sshConnectReply)
+    events.addEventListener('kubectl.connect.reply', kubectlConnectReply)
   })
 
   onBeforeUnmount(() => {
     events.removeEventListener('ssh.connect.reply', sshConnectReply)
+    events.removeEventListener('kubectl.connect.reply', kubectlConnectReply)
   })
 
   const changeExecution = (execution: string) => {
@@ -41,7 +50,7 @@
     tabStore.updateTab(tabStore.current)
   }
 
-  const sshConnect = (config: ConnectionConfig | undefined) => {
+  const sshConnect = (config: SSHConnectionConfig | undefined) => {
     sshConnecting.value = true
     window.ipcRenderer.send('ssh.connect', { ...config }, { state: 'reconnect' })
   }
@@ -55,7 +64,7 @@
     }
   }
 
-  const sshConnected = (config: ConnectionConfig) => {
+  const sshConnected = (config: SSHConnectionConfig) => {
     if (!tabStore.current) {
       return
     }
@@ -78,10 +87,51 @@
       tabStore.updateTab(tabStore.current)
     }
   }
+
+  const kubectlConnect = (config: KubectlConnectionConfig | undefined) => {
+    kubectlConnecting.value = true
+    window.ipcRenderer.send('kubectl.connect', { ...config }, { state: 'reconnect' })
+  }
+
+  const kubectlConnectReply = (e: any) => {
+    if (e.detail.data.state === 'reconnect') {
+      kubectlConnecting.value = false
+      if (e.detail.connected) {
+        kubectlConnected(e.detail.config)
+      }
+    }
+  }
+
+  const kubectlConnected = (config: KubectlConnectionConfig) => {
+    kubectlModal.value.closeModal()
+
+    if (!tabStore.current) {
+      return
+    }
+
+    tabStore.current.execution = 'kubectl'
+    tabStore.current.kubectl = { id: config.id }
+
+    tabStore.updateTab(tabStore.current)
+    sshModal.value.closeModal()
+  }
+
+  const kubectlRemoved = (id: number) => {
+    if (!tabStore.current) {
+      return
+    }
+
+    if (tabStore.current.kubectl && tabStore.current.kubectl.id === id) {
+      tabStore.current.execution = 'local'
+      tabStore.current.kubectl = undefined
+      tabStore.updateTab(tabStore.current)
+    }
+  }
 </script>
 
 <template>
   <div class="flex items-center space-x-2" v-if="tab">
+    <!-- local -->
     <SecondaryButton
       class="!px-2"
       @click="changeExecution('local')"
@@ -90,7 +140,9 @@
       <FolderIcon class="size-4 mr-1" :class="{ '!text-green-500': tabStore.getCurrent()?.execution === 'local' }" />
       <span class="text-xs">Local</span>
     </SecondaryButton>
+
     <template v-if="tabStore.getCurrent().path !== settingsStore.settings.laravelPath">
+      <!-- docker -->
       <DropDown>
         <template v-slot:trigger>
           <SecondaryButton class="!px-2">
@@ -120,6 +172,8 @@
           <DropDownItem @click="dockerModal.openModal()"> Connect </DropDownItem>
         </div>
       </DropDown>
+
+      <!-- ssh -->
       <DropDown>
         <template v-slot:trigger>
           <SecondaryButton class="!px-2">
@@ -160,7 +214,55 @@
           <DropDownItem @click="sshModal.openModal()"> Connect </DropDownItem>
         </div>
       </DropDown>
+
+      <!-- kubectl -->
+      <DropDown>
+        <template v-slot:trigger>
+          <SecondaryButton class="!px-2">
+            <ArrowPathIcon
+              v-if="tab && tab.kubectl && kubectlConnecting && kubectlStore.getConnection(tab.kubectl.id)"
+              class="size-4 mr-1 animate-spin"
+            />
+            <KubectlIcon
+              v-else
+              class="size-4 mr-1"
+              :class="[
+                tab.execution === 'kubectl' && tab.kubectl
+                  ? `text-${kubectlStore.getConnection(tab.kubectl.id)?.color}-500`
+                  : '',
+              ]"
+            />
+            <div class="text-xs max-w-[150px] truncate">
+              <div
+                v-if="tab && tab.execution === 'kubectl' && tab.kubectl && kubectlStore.getConnection(tab.kubectl.id)"
+              >
+                {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
+              </div>
+              <div
+                v-else-if="tab && tab.kubectl && kubectlConnecting && kubectlStore.getConnection(tab.kubectl.id)"
+                class="flex items-center"
+              >
+                {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
+              </div>
+              <div v-else>Kubernetes</div>
+            </div>
+            <ChevronDownIcon class="size-4 ml-1" />
+          </SecondaryButton>
+        </template>
+        <div>
+          <DropDownItem
+            v-if="tab && tab.kubectl && kubectlStore.getConnection(tab.kubectl.id) && tab.execution !== 'kubectl'"
+            @click="kubectlConnect(kubectlStore.getConnection(tab.kubectl.id))"
+            class="truncate"
+          >
+            {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
+          </DropDownItem>
+          <DropDownItem @click="kubectlModal.openModal()"> Connect </DropDownItem>
+        </div>
+      </DropDown>
     </template>
+
+    <!-- other tools -->
     <SecondaryButton
       class="!px-2"
       v-tippy="{ content: 'Close', placement: 'right' }"
@@ -168,11 +270,16 @@
     >
       <XMarkIcon class="size-4" />
     </SecondaryButton>
+
+    <!-- modals -->
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
       <DockerView @connected="dockerModal.closeModal()" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />
+    </Modal>
+    <Modal title="Connect to Kubernetes" ref="kubectlModal" size="2xl">
+      <KubectlView @connected="kubectlConnected($event)" @removed="kubectlRemoved($event)" />
     </Modal>
   </div>
 </template>

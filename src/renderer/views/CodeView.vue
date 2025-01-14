@@ -14,11 +14,13 @@
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
   import { useSSHStore } from '../stores/ssh'
+  import { useKubectlStore } from '../stores/kubectl'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
+  const kubectlStore = useKubectlStore()
   const codeEditor = ref(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
   const dockerClients: Ref<string[]> = ref([])
@@ -122,6 +124,16 @@
     if (tab.value.execution === 'ssh' && tab.value.ssh?.id) {
       let connection = sshStore.getConnection(tab.value.ssh.id)
       window.ipcRenderer.send('client.ssh.execute', {
+        connection: { ...connection },
+        code,
+      })
+
+      return
+    }
+
+    if (tab.value.execution === 'kubectl' && tab.value.kubectl?.id) {
+      let connection = kubectlStore.getConnection(tab.value.kubectl.id)
+      window.ipcRenderer.send('client.kubectl.execute', {
         connection: { ...connection },
         code,
       })

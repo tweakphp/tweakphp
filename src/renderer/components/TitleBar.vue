@@ -51,7 +51,7 @@
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
       <div class="flex-grow-0 flex items-center space-x-1">
         <template v-if="tabStore.current && tabStore.current.type === 'code'">
-          <button v-tippy="{ content: 'Change layout', placement: 'left' }" class="-mr-[4px]">
+          <button type="button" v-tippy="{ content: 'Change layout', placement: 'left' }" class="-mr-[4px]">
             <VerticalSplitIcon
               @click="updateLayout('vertical')"
               v-if="settingsStore.settings.layout === 'horizontal'"
@@ -63,7 +63,10 @@
               class="cursor-pointer size-8 hover:!stroke-primary-500"
             />
           </button>
-          <button v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }">
+          <button
+            type="button"
+            v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }"
+          >
             <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-5" />
             <PlayIcon
               v-if="!executeStore.executing"

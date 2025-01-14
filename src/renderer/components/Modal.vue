@@ -57,7 +57,7 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full transform overflow-hidden rounded-lg p-6 text-left align-middle transition-all border"
+                class="w-full transform rounded-lg p-6 text-left align-middle transition-all border"
                 :class="{
                   'max-w-md': props.size === 'md',
                   'max-w-lg': props.size === 'lg',

@@ -9,6 +9,7 @@
 <template>
   <MenuItem>
     <button
+      type="button"
       @mouseover="hover = true"
       @mouseleave="hover = false"
       :class="['group flex w-full items-center rounded-md py-1 px-2 text-xs min-w-[100px] truncate']"
