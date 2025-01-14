@@ -7,6 +7,7 @@
   import DropDownItem from './DropDownItem.vue'
   import Modal from './Modal.vue'
   import { computed, ComputedRef, onBeforeUnmount, onMounted, ref } from 'vue'
+  import DockerView from '../views/DockerView.vue'
   import { useSettingsStore } from '../stores/settings'
   import { Tab } from '../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
@@ -17,13 +18,10 @@
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
   const dockerModal = ref()
-  const dockerOverSSHModal = ref()
   const sshModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
   const sshConnecting = ref(false)
   import events from '../events'
-  import DockerSSHView from '@/views/DockerSSHView.vue'
-  import DockerConnectView from '@/views/DockerConnectView.vue'
 
   onMounted(() => {
     events.addEventListener('ssh.connect.reply', sshConnectReply)
@@ -33,7 +31,7 @@
     events.removeEventListener('ssh.connect.reply', sshConnectReply)
   })
 
-  const changeExecution = (execution: 'local' | 'ssh' | 'docker-ssh' | 'docker') => {
+  const changeExecution = (execution: string) => {
     if (!tabStore.current) {
       return
     }
@@ -98,20 +96,13 @@
           <SecondaryButton class="!px-2">
             <DockerIcon
               class="size-4 mr-1"
-              :class="{ '!text-green-500': ['docker', 'docker-ssh'].includes(tabStore.getCurrent()?.execution) }"
+              :class="{ '!text-green-500': tabStore.getCurrent()?.execution === 'docker' }"
             />
             <span class="text-xs max-w-[150px] truncate">
               <template
                 v-if="tabStore.getCurrent().execution === 'docker' && tabStore.getCurrent()?.docker.container_name"
               >
                 {{ tabStore.getCurrent()?.docker.container_name }}
-              </template>
-              <template
-                v-if="
-                  tabStore.getCurrent().execution === 'docker-ssh' && tabStore.getCurrent()?.docker_ssh?.container_name
-                "
-              >
-                SSH: {{ tabStore.getCurrent()?.docker_ssh?.container_name }}
               </template>
               <template v-else> Docker </template>
             </span>
@@ -122,22 +113,11 @@
           <DropDownItem
             v-if="tabStore.getCurrent()?.docker.container_name"
             @click="changeExecution('docker')"
-            class="truncate flex gap-2"
+            class="truncate"
           >
-            <span class="opacity-60 w-[35px] text-left">Local</span>
-            <span>{{ tabStore.getCurrent()?.docker.container_name }}</span>
+            {{ tabStore.getCurrent()?.docker.container_name }}
           </DropDownItem>
-          <DropDownItem
-            v-if="tabStore.getCurrent()?.docker_ssh?.container_name"
-            @click="changeExecution('docker-ssh')"
-            class="truncate flex gap-2"
-          >
-            <span class="opacity-60 w-[35px] text-left">SSH</span>
-            <span>{{ tabStore.getCurrent()?.docker_ssh?.container_name }}</span>
-          </DropDownItem>
-          <div class="w-full border-t my-1 opacity-10"></div>
-          <DropDownItem @click="dockerModal.openModal()"> Connect Local </DropDownItem>
-          <DropDownItem @click="dockerOverSSHModal.openModal()"> Connect over SSH </DropDownItem>
+          <DropDownItem @click="dockerModal.openModal()"> Connect </DropDownItem>
         </div>
       </DropDown>
       <DropDown>
@@ -189,10 +169,7 @@
       <XMarkIcon class="size-4" />
     </SecondaryButton>
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
-      <DockerConnectView @connected="dockerModal.closeModal()" />
-    </Modal>
-    <Modal title="Connect to Docker over SSH" ref="dockerOverSSHModal" size="xl">
-      <DockerSSHView @connected="dockerOverSSHModal.closeModal()" />
+      <DockerView @connected="dockerModal.closeModal()" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />

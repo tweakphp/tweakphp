@@ -15,7 +15,6 @@ import * as docker from './docker'
 import * as ssh from './ssh'
 import * as dialog from './dialog'
 import * as notification from './notification'
-import * as dockerSSH from './docker-ssh'
 
 import url from 'url'
 
@@ -93,7 +92,6 @@ const initializeModules = async () => {
   await Promise.all([
     settings.init(),
     docker.init(),
-    dockerSSH.init(),
     tray.init(),
     updater.init(),
     link.init(),

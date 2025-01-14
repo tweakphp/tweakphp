@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 
 class SSHClient {
-  private config: ConnectConfig
+  private readonly config: ConnectConfig
   private conn: Client
   private isConnected: boolean
 
@@ -125,7 +125,7 @@ export const connect = async (event: any, config: ConnectionConfig, data: any = 
     // check php exists
     const checkPHP = await sshClient.exec('which php')
     if (!checkPHP.trim()) {
-      handleConnectionFailed(event, config, { message: 'PHP not found on the remote server' }, data)
+      handleConnected(event, config, data)
       sshClient.disconnect()
       return
     }
@@ -154,17 +154,7 @@ export const connect = async (event: any, config: ConnectionConfig, data: any = 
     }
     config.phar_client = pharClientRemotePath
 
-    if (data.notify) {
-      new Notification({
-        title: 'Connected',
-        body: config.host,
-      }).show()
-    }
-    event.reply('ssh.connect.reply', {
-      connected: true,
-      data: data,
-      config: config,
-    })
+    handleConnected(event, config, data)
   } catch (error: any) {
     handleConnectionFailed(event, config, error, data)
   } finally {
@@ -198,13 +188,27 @@ export const uploadFile = async (config: ConnectionConfig, from: string, to: str
   }
 }
 
-const handleConnectionFailed = (event: any, config: ConnectionConfig, error: any, data: object = {}) => {
+const handleConnectionFailed = (event: any, config: ConnectionConfig, error: any, data: any = {}) => {
   new Notification({
     title: 'Error',
     body: error.message,
   }).show()
   event.reply('ssh.connect.reply', {
     connected: false,
+    data: data,
+    config: config,
+  })
+}
+
+const handleConnected = (event: any, config: ConnectionConfig, data: any = {}) => {
+  if (data.notify) {
+    new Notification({
+      title: 'Connected',
+      body: config.host,
+    }).show()
+  }
+  event.reply('ssh.connect.reply', {
+    connected: true,
     data: data,
     config: config,
   })

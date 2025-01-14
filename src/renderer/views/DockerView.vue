@@ -8,18 +8,13 @@
   import SelectInput from '../components/SelectInput.vue'
   import TextInput from '../components/TextInput.vue'
   import { Tab } from '../types/tab.type.ts'
-  import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../main/types/docker.type.ts'
-  import { DockerForm } from '../types/docker.type.ts'
-  import { useSSHStore } from '../stores/ssh.ts'
+  import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../types/docker.type.ts'
+  import { DockerForm } from '../../types/docker.type.ts'
+  import { useSSHStore } from '../stores/ssh'
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
-
   const emit = defineEmits(['connected'])
-
-  const props = defineProps({
-    sshId: [Number],
-  })
 
   const created = ref<boolean>(false)
   const loading = ref<boolean>(false)
@@ -32,6 +27,7 @@
     container_id: '',
     container_name: '',
     working_directory: '/var/www/html',
+    ssh_id: 0,
   })
 
   const connect = () => {
@@ -51,45 +47,53 @@
 
     form.value.container_name = selected.name
 
-    if (props.sshId) {
-      const connection = sshStore.getConnection(props.sshId)
-
-      window.ipcRenderer.send('docker.ssh.copy-phar.execute', {
-        connection: { ...connection },
-        php_version: phpVersion.value,
-        container_name: form.value.container_name,
-      })
+    const args = {
+      php_version: phpVersion.value,
+      container_name: form.value.container_name,
     }
+
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.copy-phar.execute', { ...args }, { ...connection })
+      return
+    }
+
+    window.ipcRenderer.send('docker.copy-phar.execute', { ...args })
   }
 
   const selectDockerContainer = () => {
-    if (!form.value.container_name || !props.sshId) {
+    if (!form.value.container_name) {
       return
     }
 
     created.value = false
 
-    const connection = sshStore.getConnection(props.sshId)
-
-    window.ipcRenderer.send('docker.ssh.php-version.info', {
-      connection: { ...connection },
+    const args = {
       container_name: form.value.container_name,
-    })
-  }
+    }
 
-  const listDockerContainer = () => {
-    if (!props.sshId) {
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.php-version.info', { ...args }, { ...connection })
       return
     }
 
+    window.ipcRenderer.send('docker.php-version.info', { ...args })
+  }
+
+  const listDockerContainer = () => {
     containers.value = []
     loading.value = true
 
-    const connection = sshStore.getConnection(props.sshId)
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.containers.info', {
+        ...connection,
+      })
+      return
+    }
 
-    window.ipcRenderer.send('docker.ssh.containers.info', {
-      ...connection,
-    })
+    window.ipcRenderer.send('docker.containers.info')
   }
 
   const handleDockerPHPVersionReply = (e: PHPInfoResponse) => {
@@ -117,22 +121,25 @@
       return
     }
 
-    currentTab.execution = 'docker-ssh'
-
-    currentTab.docker_ssh = {
-      ssh_id: props.sshId || '',
-      php: phpPath.value ?? 'Not Found',
-      docker_path: e.docker_path,
-      container_name: form.value.container_name,
-      container_id: form.value.container_id,
-      php_version: phpVersion.value ?? 'Not Found',
-      phar_client: e.phar_path,
-      working_directory: form.value.working_directory,
+    currentTab.execution = 'docker'
+    currentTab.remote_phar_client = e.phar_path
+    currentTab.remote_path = form.value.working_directory
+    currentTab.docker.php = phpPath.value ?? 'Not Found'
+    currentTab.docker.php_version = phpVersion.value ?? 'Not Found'
+    currentTab.docker.container_id = form.value.container_id
+    currentTab.docker.container_name = form.value.container_name
+    if (form.value.ssh_id) {
+      currentTab.docker.ssh_id = form.value.ssh_id
     }
 
     tabsStore.updateTab(currentTab)
 
     emit('connected')
+
+    window.ipcRenderer.send('notification', {
+      title: 'Docker Connection',
+      message: 'Connected',
+    })
   }
 
   const handleDockerContainersReply = (e: DockerContainerResponse[]) => {
@@ -149,33 +156,33 @@
   onMounted(() => {
     listDockerContainer()
 
-    form.value.container_id = tabsStore.getCurrent()?.docker_ssh.container_id ?? ''
-    form.value.container_name = tabsStore.getCurrent()?.docker_ssh.container_name ?? ''
-    form.value.working_directory = tabsStore.getCurrent()?.docker_ssh.working_directory ?? ''
+    form.value.container_id = tabsStore.getCurrent()?.docker.container_id ?? ''
+    form.value.container_name = tabsStore.getCurrent()?.docker.container_name ?? ''
+    form.value.working_directory = tabsStore.getCurrent()?.remote_path ?? ''
 
     selectDockerContainer()
 
     created.value = true
 
-    window.ipcRenderer.on('docker.ssh.containers.reply', handleDockerContainersReply)
-    window.ipcRenderer.on('docker.ssh.containers.reply.error', handleDockerContainersReplyError)
+    window.ipcRenderer.on('docker.containers.reply', handleDockerContainersReply)
+    window.ipcRenderer.on('docker.containers.reply.error', handleDockerContainersReplyError)
 
-    window.ipcRenderer.on('docker.ssh.php-version.reply', handleDockerPHPVersionReply)
-    window.ipcRenderer.on('docker.ssh.php-version.reply.error', handleDockerPHPVersionReplyError)
+    window.ipcRenderer.on('docker.php-version.reply', handleDockerPHPVersionReply)
+    window.ipcRenderer.on('docker.php-version.reply.error', handleDockerPHPVersionReplyError)
 
-    window.ipcRenderer.on('docker.ssh.copy-phar.reply', handleDockerCopyPharReply)
-    window.ipcRenderer.on('docker.ssh.copy-phar.reply.error', handleDockerCopyPharReplyError)
+    window.ipcRenderer.on('docker.copy-phar.reply', handleDockerCopyPharReply)
+    window.ipcRenderer.on('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
   })
 
   onBeforeUnmount(() => {
-    window.ipcRenderer.removeListener('docker.ssh.containers.reply', handleDockerContainersReply)
-    window.ipcRenderer.removeListener('docker.ssh.containers.reply.error', handleDockerContainersReplyError)
+    window.ipcRenderer.removeListener('docker.containers.reply', handleDockerContainersReply)
+    window.ipcRenderer.removeListener('docker.containers.reply.error', handleDockerContainersReplyError)
 
-    window.ipcRenderer.removeListener('docker.ssh.php-version.reply', handleDockerPHPVersionReplyError)
-    window.ipcRenderer.removeListener('docker.ssh.php-version.reply.error', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply', handleDockerPHPVersionReply)
+    window.ipcRenderer.removeListener('docker.php-version.reply.error', handleDockerPHPVersionReplyError)
 
-    window.ipcRenderer.removeListener('docker.ssh.copy-phar.reply', handleDockerCopyPharReply)
-    window.ipcRenderer.removeListener('docker.ssh.copy-phar.reply.error', handleDockerCopyPharReplyError)
+    window.ipcRenderer.removeListener('docker.copy-phar.reply', handleDockerCopyPharReply)
+    window.ipcRenderer.removeListener('docker.copy-phar.reply.error', handleDockerCopyPharReplyError)
   })
 </script>
 
@@ -183,6 +190,29 @@
   <Container>
     <div class="mt-3 w-full mx-auto">
       <div class="mx-auto space-y-3">
+        <div class="grid grid-cols-2 items-center">
+          <div>Host</div>
+
+          <div class="flex gap-3 items-center">
+            <div class="w-full">
+              <SelectInput
+                placeholder="Select docker host"
+                id="docker-containers"
+                v-model="form.ssh_id"
+                @change="listDockerContainer"
+              >
+                <option value="0">Local</option>
+                <option v-for="conn in sshStore.connections" :key="`ssh-${conn.id}`" :value="conn.id">
+                  {{ conn.name }}
+                </option>
+              </SelectInput>
+            </div>
+            <div class="w-10 flex justify-center">x</div>
+          </div>
+        </div>
+
+        <Divider />
+
         <div class="grid grid-cols-2 items-center">
           <div>Container</div>
 
@@ -195,7 +225,7 @@
                 v-model="form.container_name"
                 @change="selectDockerContainer"
               >
-                <option v-for="container in containers" :key="container.name" :value="container.name">
+                <option v-for="container in containers" :key="container.id" :value="container.name">
                   {{ container.name }}
                 </option>
               </SelectInput>
@@ -236,7 +266,7 @@
           <Divider />
           <div class="grid grid-cols-2 items-center">
             <div>Status</div>
-            {{ tabsStore.getCurrent()?.docker_ssh?.phar_client ? 'Connected' : 'Disconnected' }}
+            {{ tabsStore.getCurrent()?.remote_phar_client ? 'Connected' : 'Disconnected' }}
           </div>
 
           <Divider />
