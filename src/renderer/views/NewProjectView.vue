@@ -12,6 +12,7 @@
   import ProjectTile from '../components/ProjectTile.vue'
   import router from '../router'
 
+  const pathSplitter = window.platformInfo.getPlatform() === 'win32' ? '\\' : '/'
   const tabsStore = useTabsStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
@@ -26,7 +27,8 @@
       type: 'code',
       path: history.path,
     })
-    tab.name = history.path.split('/').pop() as string
+
+    tab.name = history.path.split(pathSplitter).pop() as string
     tabsStore.updateTab(tab)
     router.push({ name: 'code', params: { id: tab.id } })
     emit('opened')
@@ -39,7 +41,7 @@
   }
 
   const getHistoryName = (path: string) => {
-    return path.split('/').pop() as string
+    return path.split(pathSplitter).pop() as string
   }
 
   const removeHistory = (h: History) => {
