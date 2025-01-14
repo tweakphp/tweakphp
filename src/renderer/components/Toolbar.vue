@@ -244,7 +244,7 @@
               >
                 {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
               </div>
-              <div v-else>Kubernates</div>
+              <div v-else>Kubernetes</div>
             </div>
             <ChevronDownIcon class="size-4 ml-1" />
           </SecondaryButton>
@@ -278,7 +278,7 @@
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />
     </Modal>
-    <Modal title="Connect to Kubernates" ref="kubectlModal" size="2xl">
+    <Modal title="Connect to Kubernetes" ref="kubectlModal" size="2xl">
       <KubectlView @connected="kubectlConnected($event)" @removed="kubectlRemoved($event)" />
     </Modal>
   </div>
