@@ -36,6 +36,8 @@ jobs:
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          SKIP_NOTARIZE: true
 
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
