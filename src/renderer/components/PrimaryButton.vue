@@ -16,7 +16,7 @@
 </script>
 
 <template>
-  <button :class="classes">
+  <button type="button" :class="classes">
     <slot></slot>
   </button>
 </template>

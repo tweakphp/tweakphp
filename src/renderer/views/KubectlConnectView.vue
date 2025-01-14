@@ -121,7 +121,6 @@
               <DropDownItem
                 v-for="color in colors"
                 :key="`color-${color}`"
-                :color="color"
                 @click="form.color = color"
                 class="flex items-center"
               >

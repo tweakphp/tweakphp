@@ -122,18 +122,18 @@
               <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
             </div>
             <div class="flex gap-1 justify-end space-x-2">
-              <button @click="edit(connection.id)" class="p-1 cursor-pointer">
+              <button type="button" @click="edit(connection.id)" class="p-1 cursor-pointer">
                 <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
               </button>
-              <button @click="remove(connection.id)" class="p-1 cursor-pointer">
+              <button type="button" @click="remove(connection.id)" class="p-1 cursor-pointer">
                 <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
               </button>
-              <button v-if="connecting === connection.id" class="p-1 cursor-pointer">
+              <button type="button" v-if="connecting === connection.id" class="p-1 cursor-pointer">
                 <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
               </button>
               <DropDown align="right" v-else>
                 <template #trigger>
-                  <button class="p-1 cursor-pointer" @click="getPods(connection)">
+                  <button type="button" class="p-1 cursor-pointer" @click="getPods(connection)">
                     <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
                   </button>
                 </template>
