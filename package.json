@@ -14,8 +14,10 @@
     "build": "vite build && node build.js --prod",
     "build-mac": "npm run build && electron-builder --mac --universal",
     "build-linux": "npm run build && electron-builder --linux",
+    "build-win": "npm run build && electron-builder --win",
     "publish-mac": "npm run build && electron-builder --publish always --mac --universal",
     "publish-linux": "npm run build && electron-builder --publish always --linux",
+    "publish-win": "npm run build && electron-builder --publish always --win",
     "preview": "vite preview",
     "lint": "prettier --check ./",
     "lint:fix": "prettier --write ./"
@@ -86,6 +88,18 @@
       "title": "${productName} ${version}",
       "icon": "./build/icon.icns",
       "sign": false
+    },
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "ia32",
+            "x64"
+          ]
+        }
+      ]
     },
     "afterSign": "scripts/notarize.js"
   },

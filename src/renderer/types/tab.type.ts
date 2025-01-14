@@ -28,4 +28,7 @@ export interface Tab {
   ssh?: {
     id: number
   }
+  kubectl?: {
+    id: number
+  }
 }

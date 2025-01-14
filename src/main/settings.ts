@@ -3,8 +3,8 @@ import * as fs from 'node:fs'
 import * as lsp from './lsp/index'
 import { app, ipcMain } from 'electron'
 import { Settings } from '../types/settings.type'
-import * as php from './php'
 import os from 'os'
+import { isWindows } from './platform.ts'
 
 const homeDir = os.homedir()
 
@@ -22,7 +22,7 @@ const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : 
 const defaultSettings: Settings = {
   version: app.getVersion(),
   laravelPath: laravelPath,
-  php: app.isPackaged ? '' : php.getPHPPath(),
+  php: '',
   theme: 'dracula',
   editorFontSize: 15,
   editorWordWrap: 'on',
@@ -35,7 +35,7 @@ export const init = async () => {
 
 export const storeSettings = async (_event: any, data: Settings) => {
   fs.writeFileSync(settingsPath, JSON.stringify(data))
-  await lsp.init()
+  !isWindows() && (await lsp.init())
 }
 
 export const getSettings = () => {

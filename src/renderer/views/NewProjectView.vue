@@ -12,6 +12,7 @@
   import ProjectTile from '../components/ProjectTile.vue'
   import router from '../router'
 
+  const pathSplitter = window.platformInfo.getPlatform() === 'win32' ? '\\' : '/'
   const tabsStore = useTabsStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
@@ -26,7 +27,8 @@
       type: 'code',
       path: history.path,
     })
-    tab.name = history.path.split('/').pop() as string
+
+    tab.name = history.path.split(pathSplitter).pop() as string
     tabsStore.updateTab(tab)
     router.push({ name: 'code', params: { id: tab.id } })
     emit('opened')
@@ -39,7 +41,7 @@
   }
 
   const getHistoryName = (path: string) => {
-    return path.split('/').pop() as string
+    return path.split(pathSplitter).pop() as string
   }
 
   const removeHistory = (h: History) => {
@@ -65,14 +67,14 @@
     <Divider class="mt-3" />
     <div class="space-y-3 mt-3">
       <div class="flex items-center justify-between" v-for="h in history" :key="`history-${h.path}`">
-        <button @click="addTab(h)" class="w-full flex items-start">
+        <button type="button" @click="addTab(h)" class="w-full flex items-start">
           <ProjectTile :name="h.path"> {{ getHistoryName(h.path)[0] }} </ProjectTile>
           <div class="flex flex-col ml-2 items-start">
             <p class="text-xs capitalize">{{ getHistoryName(h.path) }}</p>
             <p class="text-[10px] opacity-40 mt-[1px] truncate w-[300px] text-left">{{ h.path }}</p>
           </div>
         </button>
-        <button v-if="h.path !== settingsStore.settings.laravelPath">
+        <button type="button" v-if="h.path !== settingsStore.settings.laravelPath">
           <TrashIcon @click="removeHistory(h)" class="w-4 h-4 hover:text-red-600" />
         </button>
       </div>

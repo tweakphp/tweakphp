@@ -4,6 +4,7 @@ import { app, ipcMain } from 'electron'
 import { DockerContainerResponse, PHPInfoResponse } from '../types/docker.type.ts'
 import { ConnectionConfig } from '../types/ssh.type.ts'
 import * as ssh from './ssh.ts'
+import { isWindows } from './platform.ts'
 
 const dockerPathCache: Record<string, string> = {}
 
@@ -119,9 +120,14 @@ export const copyPharClient = async (
   containerName: string,
   connection?: ConnectionConfig
 ): Promise<string> => {
-  let getClient: string = app.isPackaged
-    ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
-    : path.join(__dirname, `../public/client-${phpVersion}.phar`)
+  let getClient
+  if (!isWindows()) {
+    getClient = app.isPackaged
+      ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
+      : path.join(__dirname, `../public/client-${phpVersion}.phar`)
+  } else {
+    getClient = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
+  }
 
   if (connection) {
     const tmpClientPath = `/tmp/client-${phpVersion}.phar`

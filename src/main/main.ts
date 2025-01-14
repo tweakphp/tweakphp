@@ -15,10 +15,12 @@ import * as docker from './docker'
 import * as ssh from './ssh'
 import * as dialog from './dialog'
 import * as notification from './notification'
+import * as kubectl from './kubectl'
 
 import url from 'url'
 
 import { fixPath } from './fix-path.ts'
+import { isWindows } from './platform.ts'
 
 fixPath()
 
@@ -63,7 +65,7 @@ const createMainWindow = async () => {
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
-          await lsp.init()
+          !isWindows() && (await lsp.init())
           await updater.checkForUpdates()
         }, 1500)
       })
@@ -100,6 +102,7 @@ const initializeModules = async () => {
     ssh.init(),
     dialog.init(window),
     notification.init(),
+    kubectl.init(),
   ])
 }
 
