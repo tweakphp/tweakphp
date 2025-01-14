@@ -43,6 +43,7 @@
       "
     >
       <button
+        type="button"
         class="mr-2 text-sm underline"
         v-tippy="`Version ${updateStore.update.version} changelog`"
         @click="openChangelogModal"
@@ -55,7 +56,7 @@
     </div>
     <div v-else class="mr-2 text-sm">
       <span v-if="updateStore.checking">Checking...</span>
-      <button v-else class="underline" @click="checkForUpdates">Check for updates</button>
+      <button v-else type="button" class="underline" @click="checkForUpdates">Check for updates</button>
     </div>
     <Modal :title="`Version ${updateStore.update?.version} Changelog`" ref="changelogModal">
       <div class="prose max-w-none" v-html="updateStore.update?.releaseNotes"></div>

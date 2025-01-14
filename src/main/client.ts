@@ -4,7 +4,9 @@ import { app, ipcMain } from 'electron'
 import * as settings from './settings'
 import * as php from './php'
 import * as ssh from './ssh'
-import { ConnectionConfig } from '../types/ssh.type.ts'
+import * as kubectl from './kubectl'
+import { ConnectionConfig as SSHConnectionConfig } from '../types/ssh.type.ts'
+import { ConnectionConfig as KubectlConnectionConfig } from '../types/kubectl.type.ts'
 import { getDockerPath } from './docker.ts'
 
 export const init = async () => {
@@ -12,6 +14,7 @@ export const init = async () => {
   ipcMain.on('client.local.info', info)
   ipcMain.on('client.docker.execute', dockerExec)
   ipcMain.on('client.ssh.execute', sshExec)
+  ipcMain.on('client.kubectl.execute', kubectlExec)
 }
 
 export function getLocalPharClient() {
@@ -44,13 +47,29 @@ export const dockerExec = async (
   await execute(event, command)
 }
 
-export const sshExec = async (event: Electron.IpcMainEvent, data: { connection: ConnectionConfig; code: string }) => {
+export const sshExec = async (
+  event: Electron.IpcMainEvent,
+  data: { connection: SSHConnectionConfig; code: string }
+) => {
   const phpPath = 'php'
   const path = data.connection.path
   const code = btoa(data.code.replaceAll('<?php', ''))
   const pharClient = data.connection.phar_client
   const command = `${phpPath} ${pharClient} ${path} execute ${code}`
   const result = await ssh.exec(data.connection, command)
+  event.reply('client.execute.reply', result)
+}
+
+export const kubectlExec = async (
+  event: Electron.IpcMainEvent,
+  data: { connection: KubectlConnectionConfig; code: string }
+) => {
+  const phpPath = 'php'
+  const path = data.connection.path
+  const code = btoa(data.code.replaceAll('<?php', ''))
+  const pharClient = data.connection.phar_client
+  const command = `${phpPath} ${pharClient} ${path} execute ${code}`
+  const result = await kubectl.exec(data.connection, command)
   event.reply('client.execute.reply', result)
 }
 
