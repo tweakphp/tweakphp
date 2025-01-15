@@ -98,7 +98,6 @@ class SSHClient {
   }
 
   disconnect() {
-    console.log('disconnect')
     if (this.isConnected) {
       this.conn.end()
       this.isConnected = false
