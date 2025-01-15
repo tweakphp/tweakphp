@@ -75,6 +75,14 @@ const createMainWindow = async () => {
     }
   })
 
+  window.on('close', (): void => {
+    window.webContents.send('ssh.disconnect')
+  })
+
+  window.on('closed', (): void => {
+    app.exit(0)
+  })
+
   const isDev: boolean = process.env.NODE_ENV === 'development'
 
   const route = isDev

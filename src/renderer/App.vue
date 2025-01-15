@@ -97,7 +97,9 @@
     window.ipcRenderer.on('dialog.remove.confirmed', (e: any) => {
       events.dispatchEvent(new CustomEvent('dialog.remove.confirmed', { detail: e }))
     })
-
+    window.ipcRenderer.on('ssh.disconnect', (e: any) => {
+      window.ipcRenderer.send('ssh.disconnect', { detail: e })
+    })
     window.addEventListener('keydown', keydownListener)
 
     await initEditor()
