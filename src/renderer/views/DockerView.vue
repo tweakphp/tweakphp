@@ -8,9 +8,17 @@
   import SelectInput from '../components/SelectInput.vue'
   import TextInput from '../components/TextInput.vue'
   import { Tab } from '../types/tab.type.ts'
-  import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../types/docker.type.ts'
-  import { DockerForm } from '../../types/docker.type.ts'
+  import {
+    DockerContainerResponse,
+    PharPathResponse,
+    PHPInfoResponse,
+    DockerConnectionConfig,
+  } from '../../types/docker.type.ts'
   import { useSSHStore } from '../stores/ssh'
+  import SecondaryButton from '@/components/SecondaryButton.vue'
+  import { PlusIcon } from '@heroicons/vue/24/outline'
+  import Modal from '../components/Modal.vue'
+  import SSHConnectView from './SSHConnectView.vue'
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
@@ -23,12 +31,13 @@
   const phpVersion = ref<string | null>(null)
   const phpPath = ref<string | null>(null)
   const shouldConnect = ref<boolean>(false)
-  const form = ref<DockerForm>({
+  const form = ref<DockerConnectionConfig>({
     container_id: '',
     container_name: '',
     working_directory: '/var/www/html',
     ssh_id: 0,
   })
+  const sshConnectModal = ref()
 
   const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
@@ -207,7 +216,11 @@
                 </option>
               </SelectInput>
             </div>
-            <div class="w-10 flex justify-center">x</div>
+            <div class="w-10 flex justify-center">
+              <SecondaryButton class="!h-7" v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
+                <PlusIcon class="size-4" />
+              </SecondaryButton>
+            </div>
           </div>
         </div>
 
@@ -280,6 +293,9 @@
         </div>
       </div>
     </div>
+    <Modal ref="sshConnectModal" title="Add SSH Host" size="lg">
+      <SSHConnectView @connected="sshConnectModal.closeModal()" />
+    </Modal>
   </Container>
 </template>
 

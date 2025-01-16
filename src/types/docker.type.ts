@@ -15,7 +15,7 @@ export interface PharPathResponse {
   docker_path?: string
 }
 
-export interface DockerForm {
+export interface DockerConnectionConfig {
   working_directory: string
   container_id: string
   container_name: string

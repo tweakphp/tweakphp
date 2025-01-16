@@ -33,7 +33,7 @@ export function getLocalPharClient() {
 export const dockerExec = async (
   event: Electron.IpcMainEvent,
   data: { code: string; php: string; path: string; phar_client: string; container_name: string },
-  connection?: ConnectionConfig
+  connection?: SSHConnectionConfig
 ) => {
   const phpPath = `"${data.php}"`
   const path = `"${data.path}"`
