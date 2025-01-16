@@ -78,7 +78,7 @@ const createMainWindow = async () => {
   const isDev: boolean = process.env.NODE_ENV === 'development'
 
   const route = isDev
-    ? `http://localhost:${process.env.VITE_SERVER_PORT}`
+    ? `http://localhost:${process.env.VITE_SERVER_PORT || 4999}`
     : url.format({
         pathname: join(__dirname, 'app', 'index.html'),
         protocol: 'file:',
