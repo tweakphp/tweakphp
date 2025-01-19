@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { PlayIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { PlayIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
   import router from '../router'
@@ -9,12 +9,16 @@
   import { useExecuteStore } from '../stores/execute'
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
+  import SecondaryButton from './SecondaryButton.vue'
+  import { computed, ComputedRef } from 'vue'
+  import { Tab } from '../../types/tab.type'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabStore = useTabsStore()
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
+  const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
 
   const execute = () => {
     if (route.name !== 'code') {
@@ -49,31 +53,39 @@
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tabStore.getCurrent()" />
       </div>
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
-      <div class="flex-grow-0 flex items-center space-x-1">
+      <div class="flex-grow-0 flex items-center space-x-2">
         <template v-if="tabStore.current && tabStore.current.type === 'code'">
-          <button type="button" v-tippy="{ content: 'Change layout', placement: 'left' }" class="-mr-[4px]">
+          <SecondaryButton v-tippy="{ content: 'Change layout', placement: 'left' }" class="!px-1">
             <VerticalSplitIcon
               @click="updateLayout('vertical')"
               v-if="settingsStore.settings.layout === 'horizontal'"
-              class="cursor-pointer size-8 hover:!stroke-primary-500"
+              class="cursor-pointer size-7 hover:!stroke-primary-500"
             />
             <HorizontalSplitIcon
               @click="updateLayout('horizontal')"
               v-if="settingsStore.settings.layout === 'vertical'"
-              class="cursor-pointer size-8 hover:!stroke-primary-500"
+              class="cursor-pointer size-7 hover:!stroke-primary-500"
             />
-          </button>
-          <button
-            type="button"
+          </SecondaryButton>
+          <SecondaryButton
+            class="!px-2 !w-5"
             v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }"
           >
-            <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-5" />
+            <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />
             <PlayIcon
               v-if="!executeStore.executing"
               @click="execute"
-              class="size-5 cursor-pointer hover:text-primary-500"
+              class="size-4 cursor-pointer hover:text-primary-500"
             />
-          </button>
+          </SecondaryButton>
+          <SecondaryButton
+            v-if="tab"
+            class="!px-2"
+            v-tippy="{ content: 'Close', placement: 'bottom' }"
+            @click="tabStore.removeTab(tab.id)"
+          >
+            <XMarkIcon class="size-4" />
+          </SecondaryButton>
         </template>
       </div>
     </div>

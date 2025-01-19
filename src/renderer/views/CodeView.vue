@@ -8,7 +8,7 @@
   import Editor from '../components/Editor.vue'
   import { useRoute } from 'vue-router'
   import router from '../router/index'
-  import { Tab } from '../../types/tab.typeype'
+  import { Tab } from '../../types/tab.type'
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
@@ -48,11 +48,6 @@
         if (tab.value.type === 'code') {
           executeHandler()
         }
-      }
-
-      if (event.key === 't') {
-        event.preventDefault()
-        addTab()
       }
 
       if (event.key === 'w') {
@@ -183,11 +178,6 @@
       getInfo()
     }
   )
-
-  const addTab = async () => {
-    let activeTab = tabsStore.addTab()
-    await router.replace({ name: 'code', params: { id: activeTab.id } })
-  }
 
   const setCurrentTab = async (t: Tab) => {
     tabsStore.setCurrent(t)

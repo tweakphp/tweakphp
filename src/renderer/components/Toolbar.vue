@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-  import { ArrowPathIcon, ChevronDownIcon, FolderIcon, ServerIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, ChevronDownIcon, FolderIcon, ServerIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from './SecondaryButton.vue'
   import DockerIcon from './icons/DockerIcon.vue'
   import KubectlIcon from './icons/KubectlIcon.vue'
@@ -259,13 +259,6 @@
     </template>
 
     <!-- other tools -->
-    <SecondaryButton
-      class="!px-2"
-      v-tippy="{ content: 'Close', placement: 'right' }"
-      @click="tabStore.removeTab(tab.id)"
-    >
-      <XMarkIcon class="size-4" />
-    </SecondaryButton>
 
     <!-- modals -->
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
