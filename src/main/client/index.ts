@@ -6,27 +6,29 @@ import DockerClient from './docker'
 import KubectlClient from './kubectl'
 
 export const init = async () => {
-  ipcMain.on('client.setup', setup)
+  ipcMain.on('client.connect', connect)
   ipcMain.on('client.execute', execute)
   ipcMain.on('client.action', action)
   ipcMain.on('client.info', info)
 }
 
-const setup = async (event: Electron.IpcMainEvent, data: any) => {
-  const client = getClient(data)
+const connect = async (event: Electron.IpcMainEvent, payload: any) => {
+  const client = getClient(payload)
   try {
     await client.connect()
-    await client.setup()
-    event.reply('client.setup.reply', {
+    if (payload.data?.setup) {
+      await client.setup()
+    }
+    event.reply('client.connect.reply', {
       connected: true,
       connection: client.getConnection(),
-      data: data.data,
+      data: payload.data,
     })
   } catch (error: any) {
-    event.reply('client.setup.reply', {
+    event.reply('client.connect.reply', {
       connected: false,
       connection: client.getConnection(),
-      data: data.data,
+      data: payload.data,
       error,
     })
     new Notification({
@@ -38,11 +40,11 @@ const setup = async (event: Electron.IpcMainEvent, data: any) => {
   }
 }
 
-const execute = async (event: Electron.IpcMainEvent, data: any) => {
-  const client = getClient(data)
+const execute = async (event: Electron.IpcMainEvent, payload: any) => {
+  const client = getClient(payload)
   try {
     await client.connect()
-    let result = await client.execute(data.code)
+    let result = await client.execute(payload.code)
     result = result.trim()
     if (result.startsWith('"') && result.endsWith('"')) {
       result = result.slice(1, -1)
@@ -55,18 +57,18 @@ const execute = async (event: Electron.IpcMainEvent, data: any) => {
   }
 }
 
-const action = async (event: Electron.IpcMainEvent, data: any) => {
-  const client = getClient(data)
+const action = async (event: Electron.IpcMainEvent, payload: any) => {
+  const client = getClient(payload)
   try {
     await client.connect()
-    const result = await client.action(data.type, data.data)
+    const result = await client.action(payload.type, payload.data)
     event.reply('client.action.reply', {
-      type: data.type,
+      type: payload.type,
       result,
     })
   } catch (error: any) {
     event.reply('client.action.reply', {
-      type: data.type,
+      type: payload.type,
       error,
     })
   } finally {

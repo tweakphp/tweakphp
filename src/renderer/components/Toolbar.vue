@@ -18,7 +18,7 @@
   import events from '../events'
   import { useKubectlStore } from '../stores/kubectl'
   import KubectlView from '../views/KubectlView.vue'
-  import { SetupReply } from '../../types/client.type'
+  import { ConnectReply } from '../../types/client.type'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -33,11 +33,11 @@
   const connecting = ref('')
 
   onMounted(() => {
-    events.addEventListener('client.setup.reply', connectReply)
+    events.addEventListener('client.connect.reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.setup.reply', connectReply)
+    events.removeEventListener('client.connect.reply', connectReply)
   })
 
   const connect = (execution: string) => {
@@ -46,16 +46,17 @@
     }
     connecting.value = execution
     let connection = tabStore.getConnectionConfig(tabStore.current, execution)
-    window.ipcRenderer.send('client.setup', {
+    window.ipcRenderer.send('client.connect', {
       connection: { ...connection },
       data: {
         state: 'reconnect',
+        setup: true,
       },
     })
   }
 
   const connectReply = (e: any) => {
-    const reply = e.detail as SetupReply
+    const reply = e.detail as ConnectReply
     if (reply.data?.state !== 'reconnect') {
       return
     }

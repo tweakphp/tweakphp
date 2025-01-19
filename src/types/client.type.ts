@@ -1,4 +1,4 @@
-export interface SetupReply {
+export interface ConnectReply {
   connected: boolean
   connection?: any
   error?: any

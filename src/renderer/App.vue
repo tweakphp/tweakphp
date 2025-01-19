@@ -73,8 +73,8 @@
       router.push({ name: 'code', params: { id: tab.id } })
       newProjectModal.value.closeModal()
     })
-    window.ipcRenderer.on('client.setup.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.setup.reply', { detail: e }))
+    window.ipcRenderer.on('client.connect.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.connect.reply', { detail: e }))
     })
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))

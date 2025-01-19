@@ -11,7 +11,7 @@
   import DropDown from '../components/DropDown.vue'
   import DropDownItem from '../components/DropDownItem.vue'
   import { useSettingsStore } from '../stores/settings'
-  import { SetupReply } from '../../types/client.type'
+  import { ConnectReply } from '../../types/client.type'
 
   const platform = window.platformInfo.getPlatform()
   const sshStore = useSSHStore()
@@ -62,7 +62,7 @@
   })
 
   onMounted(() => {
-    events.addEventListener('client.setup.reply', connectReply)
+    events.addEventListener('client.connect.reply', connectReply)
     if (props.id) {
       const connection = sshStore.getConnection(props.id)
       if (connection) {
@@ -72,22 +72,23 @@
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.setup.reply', connectReply)
+    events.removeEventListener('client.connect.reply', connectReply)
     sshStore.setConnecting(false)
   })
 
   const connect = () => {
     sshStore.setConnecting(true)
-    window.ipcRenderer.send('client.setup', {
+    window.ipcRenderer.send('client.connect', {
       connection: { ...form.value },
       data: {
         state: props.id ? 'edit' : 'create',
+        setup: true,
       },
     })
   }
 
   const connectReply = (e: any) => {
-    const reply = e.detail as SetupReply
+    const reply = e.detail as ConnectReply
     if (reply.data?.state === 'create') {
       sshStore.setConnecting(false)
       if (reply.connected) {

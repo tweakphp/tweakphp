@@ -54,6 +54,14 @@ export class SSHClient extends BaseClient {
 
   execute(code: string): Promise<string> {
     return new Promise(async resolve => {
+      if (!this.connection.php) {
+        resolve('PHP version not found')
+        return
+      }
+      if (!this.connection.client_path) {
+        resolve('Client path not found')
+        return
+      }
       code = btoa(code.replaceAll('<?php', ''))
       const command = `${this.command()} execute ${code}`
       const result = await this.ssh.exec(command)
@@ -63,6 +71,10 @@ export class SSHClient extends BaseClient {
 
   async info(): Promise<string> {
     return new Promise(async resolve => {
+      if (!this.connection.php || !this.connection.client_path) {
+        resolve('{}')
+        return
+      }
       const command = `${this.command()} info`
       const result = await this.ssh.exec(command)
       resolve(result)

@@ -8,7 +8,7 @@
   import SSHConnectView from './SSHConnectView.vue'
   import events from '../events'
   import { ConnectionConfig } from '../../types/ssh.type'
-  import { SetupReply } from '../../types/client.type'
+  import { ConnectReply } from '../../types/client.type'
 
   const sshStore = useSSHStore()
   const sshConnectModal = ref()
@@ -17,19 +17,20 @@
   const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
-    events.addEventListener('client.setup.reply', connectReply)
+    events.addEventListener('client.connect.reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.setup.reply', connectReply)
+    events.removeEventListener('client.connect.reply', connectReply)
   })
 
   const connect = (connection: ConnectionConfig) => {
     connecting.value = connection.id
-    window.ipcRenderer.send('client.setup', {
+    window.ipcRenderer.send('client.connect', {
       connection: { ...connection },
       data: {
         state: 'connect',
+        setup: true,
       },
     })
   }
@@ -45,7 +46,7 @@
   }
 
   const connectReply = (e: any) => {
-    const reply = e.detail as SetupReply
+    const reply = e.detail as ConnectReply
     if (reply.data?.state === 'connect') {
       connecting.value = null
       if (reply.connected) {

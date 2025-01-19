@@ -13,8 +13,3 @@ export interface ConnectionConfig {
   php: string | undefined
   client_path: string | undefined
 }
-
-export interface ConnectionReply {
-  connected: boolean
-  config: ConnectionConfig
-}

@@ -10,7 +10,7 @@
   import DropDown from '../components/DropDown.vue'
   import { ConnectionConfig } from '../../types/kubectl.type'
   import DropDownItem from '../components/DropDownItem.vue'
-  import { ActionReply, SetupReply } from '../../types/client.type'
+  import { ActionReply, ConnectReply } from '../../types/client.type'
 
   const kubectlStore = useKubectlStore()
   const kubectlConnectModal = ref()
@@ -21,7 +21,7 @@
   const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
-    events.addEventListener('client.setup.reply', setupReply)
+    events.addEventListener('client.connect.reply', connectReply)
     events.addEventListener('client.action.reply', actionReply)
   })
 
@@ -50,21 +50,22 @@
     })
   }
 
-  const setup = (con: ConnectionConfig, pod: string) => {
+  const connect = (con: ConnectionConfig, pod: string) => {
     connecting.value = con.id
     con.pod = pod
-    window.ipcRenderer.send('client.setup', {
+    window.ipcRenderer.send('client.connect', {
       connection: { ...con },
       data: {
-        state: 'setup',
+        state: 'connect',
+        setup: true,
       },
     })
   }
 
-  const setupReply = (e: any) => {
-    const reply = e.detail as SetupReply
+  const connectReply = (e: any) => {
+    const reply = e.detail as ConnectReply
 
-    if (reply.data?.state === 'setup') {
+    if (reply.data?.state === 'connect') {
       connecting.value = null
       if (reply.connected) {
         kubectlStore.updateConnection(reply.connection.id, reply.connection)
@@ -87,7 +88,7 @@
   }
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.setup.reply', setupReply)
+    events.removeEventListener('client.connect.reply', connectReply)
     events.removeEventListener('client.action.reply', actionReply)
   })
 </script>
@@ -145,7 +146,7 @@
                     <DropDownItem
                       v-for="pod in pods"
                       :key="`pod-${pod}`"
-                      @click="setup(connection, pod)"
+                      @click="connect(connection, pod)"
                       class="cursor-pointer"
                     >
                       {{ pod }}

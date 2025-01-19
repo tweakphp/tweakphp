@@ -8,7 +8,7 @@
   import SelectInput from '../components/SelectInput.vue'
   import TextInput from '../components/TextInput.vue'
   import { ConnectionConfig } from '../../types/docker.type.ts'
-  import { SetupReply, ActionReply } from '../../types/client.type.ts'
+  import { ConnectReply, ActionReply } from '../../types/client.type.ts'
   import { useSSHStore } from '../stores/ssh'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { PlusIcon } from '@heroicons/vue/24/outline'
@@ -36,7 +36,7 @@
   })
   const sshConnectModal = ref()
 
-  const setup = () => {
+  const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
 
     if (index === -1) {
@@ -50,13 +50,16 @@
       return
     }
 
-    window.ipcRenderer.send('client.setup', {
+    window.ipcRenderer.send('client.connect', {
       connection: getConnection(),
+      data: {
+        setup: true,
+      },
     })
   }
 
-  const setupReply = (e: any) => {
-    const reply = e.detail as SetupReply
+  const connectReply = (e: any) => {
+    const reply = e.detail as ConnectReply
     if (reply.error) {
       errorResponse.value = reply.error
       return
@@ -141,12 +144,12 @@
 
     selectDockerContainer()
 
-    eventBus.addEventListener('client.setup.reply', setupReply)
+    eventBus.addEventListener('client.connect.reply', connectReply)
     eventBus.addEventListener('client.action.reply', actionReply)
   })
 
   onBeforeUnmount(() => {
-    eventBus.removeEventListener('client.setup.reply', setupReply)
+    eventBus.removeEventListener('client.connect.reply', connectReply)
     eventBus.removeEventListener('client.action.reply', actionReply)
   })
 </script>
@@ -225,7 +228,7 @@
 
           <Divider />
           <div class="flex items-center justify-end">
-            <PrimaryButton @click="setup">Connect</PrimaryButton>
+            <PrimaryButton @click="connect">Connect</PrimaryButton>
           </div>
         </div>
 
