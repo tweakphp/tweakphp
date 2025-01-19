@@ -1,4 +1,4 @@
-import { ConnectionConfig } from '../../types/docker.type'
+import { ConnectionConfig } from './docker.type'
 
 export interface Tab {
   id: number

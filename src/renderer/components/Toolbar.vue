@@ -10,7 +10,7 @@
   import { computed, ComputedRef, onBeforeUnmount, onMounted, ref } from 'vue'
   import DockerView from '../views/DockerView.vue'
   import { useSettingsStore } from '../stores/settings'
-  import { Tab } from '../types/tab.type'
+  import { Tab } from '../../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
   import SSHView from '../views/SSHView.vue'
   import { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'

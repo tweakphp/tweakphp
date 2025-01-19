@@ -8,7 +8,7 @@
   import Editor from '../components/Editor.vue'
   import { useRoute } from 'vue-router'
   import router from '../router/index'
-  import { Tab } from '../types/tab.type'
+  import { Tab } from '../../types/tab.typeype'
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'

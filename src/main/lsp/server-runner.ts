@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws'
 import express from 'express'
 import { upgradeWsServer } from './server-commons'
 import { Server } from 'http'
-import { RunConfig } from '../types/run-config.type'
+import { RunConfig } from '../../types/run-config.type'
 
 let httpServer: Server | null = null
 

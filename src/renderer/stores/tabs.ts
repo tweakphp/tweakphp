@@ -1,6 +1,6 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { Tab } from '../types/tab.type'
+import { Tab } from '../../types/tab.type'
 import router from '../router'
 import { ConnectionConfig as LocalConnectionConfig } from '../../types/local.type'
 import { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'

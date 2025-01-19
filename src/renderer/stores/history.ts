@@ -1,6 +1,6 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { History } from '../types/history.type'
+import { History } from '../../types/history.type'
 
 export const useHistoryStore = defineStore('history', () => {
   let defaultHistory: History[] = []

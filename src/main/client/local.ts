@@ -1,6 +1,5 @@
-import { exec } from 'child_process'
+import { exec, execSync } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
-import * as php from '../php'
 import * as settings from '../settings'
 import { app } from 'electron'
 import path from 'path'
@@ -37,7 +36,7 @@ export class LocalClient extends BaseClient {
 }
 
 export const getLocalPharClient = (): string => {
-  const phpVersion = php.getVersion(settings.getSettings().php)
+  const phpVersion = getPHPVersion(settings.getSettings().php)
   if (app.isPackaged) {
     return path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
   }
@@ -47,4 +46,16 @@ export const getLocalPharClient = (): string => {
   }
 
   return path.join(__dirname, `../public/client-${phpVersion}.phar`)
+}
+
+export const getPHPVersion = (path: string | undefined) => {
+  try {
+    const command = `"${path}" -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
+    const output = execSync(command, { encoding: 'utf8' })
+    return output.trim()
+  } catch (error: any) {
+    console.error('Error executing PHP command:', error.message)
+    console.error('Stack:', error.stack)
+    return null
+  }
 }

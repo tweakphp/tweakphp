@@ -4,7 +4,7 @@ import { createConnection, forward, createProcessStreamConnection } from 'vscode
 import { Message, InitializeRequest } from 'vscode-languageserver'
 import log from 'electron-log/main'
 import cp from 'child_process'
-import { RunConfig } from '../types/run-config.type'
+import { RunConfig } from '../../types/run-config.type'
 import { WebSocket } from 'ws'
 
 let serverProcess: cp.ChildProcess | null = null
