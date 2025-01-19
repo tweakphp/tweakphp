@@ -9,7 +9,7 @@
   import { useRoute } from 'vue-router'
   import router from '../router/index'
   import { Tab } from '../types/tab.type'
-  import { PharPathResponse } from '../../main/types/docker.type.ts'
+  import { PharPathResponse } from '../../types/docker.type.ts'
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
@@ -103,20 +103,34 @@
 
     if (tab.value.execution === 'docker') {
       if (!dockerClients.value.includes(container_name)) {
-        window.ipcRenderer.send('docker.copy-phar.execute', {
+        const args = {
           php_version,
           container_name,
           reply: 'code-view::docker.copy-phar.reply',
-        })
+        }
+
+        if (tab.value.docker.ssh_id) {
+          const conn = sshStore.getConnection(tab.value.docker.ssh_id)
+          window.ipcRenderer.send('docker.copy-phar.execute', { ...args }, { ...conn })
+          return
+        }
+
+        window.ipcRenderer.send('docker.copy-phar.execute', { ...args })
       }
 
-      window.ipcRenderer.send('client.docker.execute', {
+      const args = {
         php,
         code,
         path: remote_path,
         phar_client: remote_phar_client,
         container_name,
-      })
+      }
+      if (tab.value.docker.ssh_id) {
+        const conn = sshStore.getConnection(tab.value.docker.ssh_id)
+        window.ipcRenderer.send('client.docker.execute', { ...args }, { ...conn })
+        return
+      }
+      window.ipcRenderer.send('client.docker.execute', { ...args })
 
       return
     }

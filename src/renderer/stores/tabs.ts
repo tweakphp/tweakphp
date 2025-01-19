@@ -32,6 +32,16 @@ export const useTabsStore = defineStore('tabs', () => {
         container_id: '',
         php_version: '',
       },
+      docker_ssh: {
+        ssh_id: 0,
+        php: '',
+        docker_path: '',
+        container_name: '',
+        container_id: '',
+        php_version: '',
+        phar_client: '',
+        working_directory: '',
+      },
     },
   ]
   let storedTabs = localStorage.getItem('tabs')
@@ -98,6 +108,16 @@ export const useTabsStore = defineStore('tabs', () => {
         container_id: '',
         container_name: '',
         php_version: '',
+      },
+      docker_ssh: {
+        ssh_id: '',
+        php: '',
+        docker_path: '',
+        container_name: '',
+        container_id: '',
+        php_version: '',
+        phar_client: '',
+        working_directory: '',
       },
     }
     let tabExists = tabs.value.find(t => t.id === tab.id)

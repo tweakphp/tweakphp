@@ -2,16 +2,26 @@
   import Container from '../components/Container.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onMounted, onUnmounted, ref, defineEmits, onBeforeUnmount } from 'vue'
+  import { onMounted, ref, defineEmits, onBeforeUnmount } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../stores/tabs.ts'
   import SelectInput from '../components/SelectInput.vue'
   import TextInput from '../components/TextInput.vue'
   import { Tab } from '../types/tab.type.ts'
-  import { DockerContainerResponse, PharPathResponse, PHPInfoResponse } from '../../main/types/docker.type.ts'
-  import { DockerForm } from '../types/docker.type.ts'
+  import {
+    DockerContainerResponse,
+    PharPathResponse,
+    PHPInfoResponse,
+    DockerConnectionConfig,
+  } from '../../types/docker.type.ts'
+  import { useSSHStore } from '../stores/ssh'
+  import SecondaryButton from '@/components/SecondaryButton.vue'
+  import { PlusIcon } from '@heroicons/vue/24/outline'
+  import Modal from '../components/Modal.vue'
+  import SSHConnectView from './SSHConnectView.vue'
 
   const tabsStore = useTabsStore()
+  const sshStore = useSSHStore()
   const emit = defineEmits(['connected'])
 
   const created = ref<boolean>(false)
@@ -21,11 +31,13 @@
   const phpVersion = ref<string | null>(null)
   const phpPath = ref<string | null>(null)
   const shouldConnect = ref<boolean>(false)
-  const form = ref<DockerForm>({
+  const form = ref<DockerConnectionConfig>({
     container_id: '',
     container_name: '',
     working_directory: '/var/www/html',
+    ssh_id: 0,
   })
+  const sshConnectModal = ref()
 
   const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
@@ -44,10 +56,18 @@
 
     form.value.container_name = selected.name
 
-    window.ipcRenderer.send('docker.copy-phar.execute', {
+    const args = {
       php_version: phpVersion.value,
       container_name: form.value.container_name,
-    })
+    }
+
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.copy-phar.execute', { ...args }, { ...connection })
+      return
+    }
+
+    window.ipcRenderer.send('docker.copy-phar.execute', { ...args })
   }
 
   const selectDockerContainer = () => {
@@ -57,14 +77,31 @@
 
     created.value = false
 
-    window.ipcRenderer.send('docker.php-version.info', {
+    const args = {
       container_name: form.value.container_name,
-    })
+    }
+
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.php-version.info', { ...args }, { ...connection })
+      return
+    }
+
+    window.ipcRenderer.send('docker.php-version.info', { ...args })
   }
 
   const listDockerContainer = () => {
     containers.value = []
     loading.value = true
+
+    if (form.value.ssh_id) {
+      const connection = sshStore.getConnection(form.value.ssh_id)
+      window.ipcRenderer.send('docker.containers.info', {
+        ...connection,
+      })
+      return
+    }
+
     window.ipcRenderer.send('docker.containers.info')
   }
 
@@ -100,6 +137,9 @@
     currentTab.docker.php_version = phpVersion.value ?? 'Not Found'
     currentTab.docker.container_id = form.value.container_id
     currentTab.docker.container_name = form.value.container_name
+    if (form.value.ssh_id) {
+      currentTab.docker.ssh_id = form.value.ssh_id
+    }
 
     tabsStore.updateTab(currentTab)
 
@@ -159,6 +199,33 @@
   <Container>
     <div class="mt-3 w-full mx-auto">
       <div class="mx-auto space-y-3">
+        <div class="grid grid-cols-2 items-center">
+          <div>Host</div>
+
+          <div class="flex gap-3 items-center">
+            <div class="w-full">
+              <SelectInput
+                placeholder="Select docker host"
+                id="docker-containers"
+                v-model="form.ssh_id"
+                @change="listDockerContainer"
+              >
+                <option value="0">Local</option>
+                <option v-for="conn in sshStore.connections" :key="`ssh-${conn.id}`" :value="conn.id">
+                  {{ conn.name }}
+                </option>
+              </SelectInput>
+            </div>
+            <div class="w-10 flex justify-center">
+              <SecondaryButton class="!h-7" v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
+                <PlusIcon class="size-4" />
+              </SecondaryButton>
+            </div>
+          </div>
+        </div>
+
+        <Divider />
+
         <div class="grid grid-cols-2 items-center">
           <div>Container</div>
 
@@ -226,6 +293,9 @@
         </div>
       </div>
     </div>
+    <Modal ref="sshConnectModal" title="Add SSH Host" size="lg">
+      <SSHConnectView @connected="sshConnectModal.closeModal()" />
+    </Modal>
   </Container>
 </template>
 

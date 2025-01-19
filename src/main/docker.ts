@@ -1,21 +1,39 @@
 import { execSync } from 'child_process'
 import path from 'path'
 import { app, ipcMain } from 'electron'
-import { DockerContainerResponse, PHPInfoResponse } from './types/docker.type.ts'
+import { DockerContainerResponse, PHPInfoResponse } from '../types/docker.type.ts'
+import { ConnectionConfig } from '../types/ssh.type.ts'
+import * as ssh from './ssh.ts'
 import { isWindows } from './platform.ts'
 
-export const getDockerPath = async () => {
+const dockerPathCache: Record<string, string> = {}
+
+export const getDockerPath = async (connection?: ConnectionConfig) => {
   try {
+    if (connection) {
+      if (dockerPathCache[connection.host]) {
+        return dockerPathCache[connection.host]
+      }
+
+      const result = await ssh.exec(connection, 'which docker')
+      const dockerPath = result.toString().trim()
+      dockerPathCache[connection.host] = dockerPath || 'docker'
+      return dockerPathCache[connection.host]
+    }
+
     return execSync('which docker').toString().trim()
   } catch (error) {
+    if (connection) {
+      dockerPathCache[connection.host] = 'docker'
+    }
     return 'docker'
   }
 }
 
 export const init = async () => {
-  ipcMain.on('docker.containers.info', async event => {
+  ipcMain.on('docker.containers.info', async (event: Electron.IpcMainEvent, connection?: ConnectionConfig) => {
     try {
-      const containers = await getDockerContainers()
+      const containers = await getDockerContainers(connection)
 
       event.reply('docker.containers.reply', containers)
     } catch (error: unknown) {
@@ -23,40 +41,50 @@ export const init = async () => {
     }
   })
 
-  ipcMain.on('docker.php-version.info', async (event, args) => {
-    try {
-      const result = await checkPHPVersion(args.container_name)
+  ipcMain.on(
+    'docker.php-version.info',
+    async (event: Electron.IpcMainEvent, args: any, connection?: ConnectionConfig) => {
+      try {
+        const result = await checkPHPVersion(args.container_name, connection)
 
-      event.reply('docker.php-version.reply', result)
-    } catch (error: unknown) {
-      event.reply('docker.php-version.reply.error', { error })
+        event.reply('docker.php-version.reply', result)
+      } catch (error: unknown) {
+        event.reply('docker.php-version.reply.error', { error })
+      }
     }
-  })
+  )
 
-  ipcMain.on('docker.copy-phar.execute', async (event, args) => {
-    try {
-      const versionMatch = args.php_version.match(/^(\d+\.\d+)/)
-      const phpVersion = versionMatch ? versionMatch[1] : null
+  ipcMain.on(
+    'docker.copy-phar.execute',
+    async (event: Electron.IpcMainEvent, args: any, connection?: ConnectionConfig) => {
+      try {
+        const versionMatch = args.php_version.match(/^(\d+\.\d+)/)
+        const phpVersion = versionMatch ? versionMatch[1] : null
 
-      const result = await copyPharClient(phpVersion, args.container_name)
+        const result = await copyPharClient(phpVersion, args.container_name, connection)
 
-      event.reply(args.reply ?? 'docker.copy-phar.reply', {
-        container_name: args.container_name,
-        phar_path: result,
-      })
-    } catch (error: unknown) {
-      event.reply(args.reply_error ?? 'docker.copy-phar.reply.error', { error })
+        event.reply(args.reply ?? 'docker.copy-phar.reply', {
+          container_name: args.container_name,
+          phar_path: result,
+        })
+      } catch (error: unknown) {
+        event.reply(args.reply_error ?? 'docker.copy-phar.reply.error', { error })
+      }
     }
-  })
+  )
 }
 
-export const getDockerContainers = async (): Promise<DockerContainerResponse[] | null> => {
+export const getDockerContainers = async (connection?: ConnectionConfig): Promise<DockerContainerResponse[] | null> => {
   try {
-    const dockerPath = await getDockerPath()
+    const dockerPath = await getDockerPath(connection)
 
-    const result = execSync(`${dockerPath} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`, {
-      encoding: 'utf-8',
-    }).trim()
+    let result
+    const command = `${dockerPath} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`
+    if (connection) {
+      result = (await ssh.exec(connection, command)).trim()
+    } else {
+      result = execSync(command).toString().trim()
+    }
 
     if (result) {
       return result.split('\n').map(line => {
@@ -71,32 +99,54 @@ export const getDockerContainers = async (): Promise<DockerContainerResponse[] |
   }
 }
 
-export const getPHPPath = async (containerId: string): Promise<string | null> => {
+export const getPHPPath = async (containerId: string, connection?: ConnectionConfig): Promise<string | null> => {
   try {
-    const dockerPath = await getDockerPath()
+    const dockerPath = await getDockerPath(connection)
 
-    return execSync(`${dockerPath} exec ${containerId} which php`).toString().trim()
+    const command = `${dockerPath} exec ${containerId} which php`
+
+    if (connection) {
+      return (await ssh.exec(connection, command)).trim()
+    }
+
+    return execSync(command).toString().trim()
   } catch (error: unknown) {
     throw new Error(parseDockerErrorMessage(error))
   }
 }
 
-export const copyPharClient = async (phpVersion: string | null, containerName: string): Promise<string> => {
-  let client
+export const copyPharClient = async (
+  phpVersion: string | null,
+  containerName: string,
+  connection?: ConnectionConfig
+): Promise<string> => {
+  let getClient
   if (!isWindows()) {
-    client = app.isPackaged
+    getClient = app.isPackaged
       ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
       : path.join(__dirname, `../public/client-${phpVersion}.phar`)
   } else {
-    client = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
+    getClient = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
+  }
+
+  if (connection) {
+    const tmpClientPath = `/tmp/client-${phpVersion}.phar`
+    await ssh.uploadFile(connection, getClient, tmpClientPath)
+    getClient = tmpClientPath
   }
 
   try {
     const pharPath = `/tmp/client-${phpVersion}.phar`
 
-    const dockerPath = await getDockerPath()
+    const dockerPath = await getDockerPath(connection)
 
-    execSync(`${dockerPath} cp "${client}" ${containerName}:${pharPath}`, { stdio: 'inherit' })
+    const command = `${dockerPath} cp ${getClient} ${containerName}:'${pharPath}'`
+
+    if (connection) {
+      await ssh.exec(connection, command)
+    } else {
+      execSync(command)
+    }
 
     return pharPath
   } catch (error) {
@@ -104,17 +154,27 @@ export const copyPharClient = async (phpVersion: string | null, containerName: s
   }
 }
 
-export const checkPHPVersion = async (containerId: string): Promise<PHPInfoResponse> => {
+export const checkPHPVersion = async (
+  containerName: string,
+  connection?: ConnectionConfig
+): Promise<PHPInfoResponse> => {
   try {
-    const dockerPath = await getDockerPath()
+    const dockerPath = await getDockerPath(connection)
 
-    const result = execSync(`${dockerPath} exec ${containerId} php --version`).toString().trim()
+    const command = `${dockerPath} exec ${containerName} php --version`
+
+    let result
+    if (connection) {
+      result = (await ssh.exec(connection, command)).trim()
+    } else {
+      result = execSync(command).toString().trim()
+    }
 
     const versionMatch = result.match(/PHP\s(\d+\.\d+\.\d+)/)
     const phpVersion = versionMatch ? versionMatch[1] : null
 
     return {
-      php_path: (await getPHPPath(containerId)) || '',
+      php_path: (await getPHPPath(containerName, connection)) || '',
       php_version: phpVersion || '',
     }
   } catch (error) {
