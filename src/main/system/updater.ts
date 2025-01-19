@@ -1,8 +1,7 @@
-import { autoUpdater, UpdateFileInfo } from 'electron-updater'
+import { autoUpdater } from 'electron-updater'
 import { UpdateInfo } from 'builder-util-runtime'
-import { app, ipcMain, shell } from 'electron'
-import { window } from './main'
-import fs from 'fs'
+import { ipcMain } from 'electron'
+import { window } from '../main'
 
 let update: UpdateInfo
 

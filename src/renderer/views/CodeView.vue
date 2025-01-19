@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { nextTick, onBeforeUnmount, onMounted, Ref, ref, watch } from 'vue'
+  import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
   import Container from '../components/Container.vue'
@@ -9,21 +9,15 @@
   import { useRoute } from 'vue-router'
   import router from '../router/index'
   import { Tab } from '../types/tab.type'
-  import { PharPathResponse } from '../../types/docker.type.ts'
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
-  import { useSSHStore } from '../stores/ssh'
-  import { useKubectlStore } from '../stores/kubectl'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabsStore = useTabsStore()
-  const sshStore = useSSHStore()
-  const kubectlStore = useKubectlStore()
   const codeEditor = ref(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
-  const dockerClients: Ref<string[]> = ref([])
 
   const tabsContainer = ref<HTMLDivElement | null>(null)
 
@@ -34,8 +28,6 @@
     code: '',
     path: '',
     execution: 'local',
-    remote_phar_client: '',
-    remote_path: '',
     result: '',
     pane: {
       code: 50,
@@ -45,13 +37,6 @@
       name: '',
       php_version: '',
       version: '',
-    },
-    docker: {
-      php: '',
-      enable: false,
-      container_id: '',
-      container_name: '',
-      php_version: '',
     },
   })
   const route = useRoute()
@@ -91,82 +76,24 @@
     tabsStore.updateTab(tab.value)
   }
 
-  window.ipcRenderer.on('code-view::docker.copy-phar.reply', (e: PharPathResponse) => {
-    e.container_name && dockerClients.value.push(e.container_name)
-  })
-
   const executeHandler = () => {
-    const { docker, code, path, remote_path, remote_phar_client } = tab.value
-    const { php, container_name, php_version } = docker || {}
+    let connection = tabsStore.getConnectionConfig(tab.value)
+    const { code } = tab.value
 
     executeStore.setExecuting(true)
 
-    if (tab.value.execution === 'docker') {
-      if (!dockerClients.value.includes(container_name)) {
-        const args = {
-          php_version,
-          container_name,
-          reply: 'code-view::docker.copy-phar.reply',
-        }
-
-        if (tab.value.docker.ssh_id) {
-          const conn = sshStore.getConnection(tab.value.docker.ssh_id)
-          window.ipcRenderer.send('docker.copy-phar.execute', { ...args }, { ...conn })
-          return
-        }
-
-        window.ipcRenderer.send('docker.copy-phar.execute', { ...args })
-      }
-
-      const args = {
-        php,
-        code,
-        path: remote_path,
-        phar_client: remote_phar_client,
-        container_name,
-      }
-      if (tab.value.docker.ssh_id) {
-        const conn = sshStore.getConnection(tab.value.docker.ssh_id)
-        window.ipcRenderer.send('client.docker.execute', { ...args }, { ...conn })
-        return
-      }
-      window.ipcRenderer.send('client.docker.execute', { ...args })
-
-      return
-    }
-
-    if (tab.value.execution === 'ssh' && tab.value.ssh?.id) {
-      let connection = sshStore.getConnection(tab.value.ssh.id)
-      window.ipcRenderer.send('client.ssh.execute', {
-        connection: { ...connection },
-        code,
-      })
-
-      return
-    }
-
-    if (tab.value.execution === 'kubectl' && tab.value.kubectl?.id) {
-      let connection = kubectlStore.getConnection(tab.value.kubectl.id)
-      window.ipcRenderer.send('client.kubectl.execute', {
-        connection: { ...connection },
-        code,
-      })
-
-      return
-    }
-
-    window.ipcRenderer.send('client.local.execute', {
-      php: settingsStore.settings.php,
+    window.ipcRenderer.send('client.execute', {
+      connection: { ...connection },
       code,
-      path,
     })
   }
 
-  const infoHandler = () => {
+  const getInfo = () => {
+    let connection = tabsStore.getConnectionConfig(tab.value)
+
     if (tab.value.type === 'code') {
-      window.ipcRenderer.send('client.local.info', {
-        php: settingsStore.settings.php,
-        path: tab.value.path,
+      window.ipcRenderer.send('client.info', {
+        connection: { ...connection },
       })
     }
   }
@@ -212,20 +139,12 @@
       return
     }
 
-    infoHandler()
+    getInfo()
 
-    // add keyboard listener
     window.addEventListener('keydown', keydownListener)
-
-    // add execute reply listener
     events.addEventListener('execute', executeHandler)
-
-    // add execute listener
     events.addEventListener('client.execute.reply', executeReplyListener)
-
-    // add info listener
     events.addEventListener('client.info.reply', infoReplyListener)
-
     if (tabsContainer.value) {
       tabsContainer.value.scrollLeft = tabsStore.scrollPosition
       tabsContainer.value.addEventListener('wheel', tabsContainerWheelListener)
@@ -233,19 +152,10 @@
   })
 
   onBeforeUnmount(async () => {
-    // remove keyboard listener
     window.removeEventListener('keydown', keydownListener)
-
-    // remove execute reply listener
     events.removeEventListener('client.execute.reply', executeReplyListener)
-
-    // remove info listener
     events.removeEventListener('client.info.reply', infoReplyListener)
-
-    // remote execute listener
     events.removeEventListener('execute', executeHandler)
-
-    // remove tabsContainer wheel listener
     if (tabsContainer.value) {
       tabsContainer.value.removeEventListener('wheel', tabsContainerWheelListener)
     }
@@ -262,7 +172,7 @@
     () => tab.value.execution,
     async () => {
       await nextTick()
-      infoHandler()
+      getInfo()
     }
   )
 
@@ -270,7 +180,7 @@
     () => tab.value.type,
     async () => {
       await nextTick()
-      infoHandler()
+      getInfo()
     }
   )
 
@@ -299,7 +209,7 @@
     <Splitpanes
       v-if="tab.type === 'code'"
       v-bind:horizontal="settingsStore.settings.layout === 'horizontal'"
-      class="pb-4 default-theme"
+      class="pb-6 default-theme"
       @resized="paneResized"
     >
       <pane :size="tab.pane.code">
@@ -339,9 +249,7 @@
       }"
     >
       <div class="px-2 flex gap-1 w-1/2 items-center">
-        <div class="whitespace-nowrap">
-          PHP {{ tab.execution === 'docker' ? tab.docker.php_version : tab.info.php_version }}
-        </div>
+        <div class="whitespace-nowrap">PHP {{ tab.info.php_version }}</div>
       </div>
       <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
         <ProgressBar />
@@ -350,25 +258,3 @@
     </div>
   </Container>
 </template>
-<style>
-  .default-theme.splitpanes--vertical > .splitpanes__splitter,
-  .default-theme .splitpanes--vertical > .splitpanes__splitter {
-    width: 4px;
-  }
-  .default-theme.splitpanes--vertical > .splitpanes__splitter,
-  .default-theme .splitpanes--vertical > .splitpanes__splitter {
-    border-left: 0 !important;
-    border-top: 0 !important;
-  }
-  .default-theme.splitpanes--horizontal > .splitpanes__splitter,
-  .default-theme .splitpanes--horizontal > .splitpanes__splitter {
-    border-left: 0 !important;
-    border-top: 0 !important;
-  }
-  .splitpanes.default-theme .splitpanes__splitter {
-    background: var(--splitter-gutter-bg) !important;
-  }
-  .splitpanes.default-theme .splitpanes__pane {
-    background: var(--splitter-gutter-bg) !important;
-  }
-</style>

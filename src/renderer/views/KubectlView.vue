@@ -10,6 +10,7 @@
   import DropDown from '../components/DropDown.vue'
   import { ConnectionConfig } from '../../types/kubectl.type'
   import DropDownItem from '../components/DropDownItem.vue'
+  import { ActionReply, SetupReply } from '../../types/client.type'
 
   const kubectlStore = useKubectlStore()
   const kubectlConnectModal = ref()
@@ -20,15 +21,8 @@
   const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
-    events.addEventListener('kubectl.connect.reply', connectReply)
-    events.addEventListener('kubectl.pods.reply', podsReply)
-    events.addEventListener('dialog.remove.confirmed', removeConfirmed)
-  })
-
-  onBeforeUnmount(() => {
-    events.removeEventListener('kubectl.connect.reply', connectReply)
-    events.removeEventListener('kubectl.pods.reply', podsReply)
-    events.removeEventListener('dialog.remove.confirmed', removeConfirmed)
+    events.addEventListener('client.setup.reply', setupReply)
+    events.addEventListener('client.action.reply', actionReply)
   })
 
   const add = () => {
@@ -41,53 +35,61 @@
     kubectlConnectModal.value.openModal()
   }
 
-  const podsReply = (e: any) => {
-    loadingPods.value = false
-    pods.value = e.detail.pods
-  }
-
   const remove = (id: number) => {
-    window.ipcRenderer.send('dialog', {
-      buttons: ['No', 'Yes'],
-      title: 'Remove Connection',
-      message: 'Are you sure you want to remove it?',
-      listener: 'dialog.remove.confirmed',
-      params: { id },
-    })
-  }
-
-  const removeConfirmed = (e: any) => {
-    if (e.detail.result === 0) {
-      return
+    if (confirm('Are you sure you want to remove it?')) {
+      kubectlStore.remove(id)
+      emit('removed', id)
     }
-
-    kubectlStore.remove(e.detail.params.id)
-    emit('removed', e.detail.params.id)
   }
 
   const getPods = (con: ConnectionConfig) => {
     loadingPods.value = true
-    window.ipcRenderer.send('kubectl.pods', {
-      context: con.context,
-      namespace: con.namespace,
+    window.ipcRenderer.send('client.action', {
+      type: 'getPods',
+      connection: { ...con },
     })
   }
 
-  const connect = (con: ConnectionConfig, pod: string) => {
+  const setup = (con: ConnectionConfig, pod: string) => {
     connecting.value = con.id
     con.pod = pod
-    window.ipcRenderer.send('kubectl.connect', { ...con }, { state: 'connect' })
+    window.ipcRenderer.send('client.setup', {
+      connection: { ...con },
+      data: {
+        state: 'setup',
+      },
+    })
   }
 
-  const connectReply = (e: any) => {
-    if (e.detail.data.state === 'connect') {
+  const setupReply = (e: any) => {
+    const reply = e.detail as SetupReply
+
+    if (reply.data?.state === 'setup') {
       connecting.value = null
-      if (e.detail.connected) {
-        kubectlStore.updateConnection(e.detail.connection.id, e.detail.connection)
-        emit('connected', e.detail.connection)
+      if (reply.connected) {
+        kubectlStore.updateConnection(reply.connection.id, reply.connection)
+        emit('connected', reply.connection)
       }
     }
   }
+
+  const actionReply = (e: any) => {
+    const reply = e.detail as ActionReply
+    if (reply.error) {
+      alert(reply.error)
+      return
+    }
+
+    if (reply.type === 'getPods') {
+      loadingPods.value = false
+      pods.value = reply.result
+    }
+  }
+
+  onBeforeUnmount(() => {
+    events.removeEventListener('client.setup.reply', setupReply)
+    events.removeEventListener('client.action.reply', actionReply)
+  })
 </script>
 
 <template>
@@ -143,7 +145,7 @@
                     <DropDownItem
                       v-for="pod in pods"
                       :key="`pod-${pod}`"
-                      @click="connect(connection, pod)"
+                      @click="setup(connection, pod)"
                       class="cursor-pointer"
                     >
                       {{ pod }}

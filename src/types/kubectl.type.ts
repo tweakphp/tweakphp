@@ -1,4 +1,5 @@
 export interface ConnectionConfig {
+  type: 'kubectl'
   id: number
   name: string
   color: string
@@ -7,5 +8,5 @@ export interface ConnectionConfig {
   pod: string
   path: string
   php: string | undefined
-  phar_client: string | undefined
+  client_path: string | undefined
 }

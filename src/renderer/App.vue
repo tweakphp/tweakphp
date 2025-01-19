@@ -73,29 +73,17 @@
       router.push({ name: 'code', params: { id: tab.id } })
       newProjectModal.value.closeModal()
     })
+    window.ipcRenderer.on('client.setup.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.setup.reply', { detail: e }))
+    })
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
     })
+    window.ipcRenderer.on('client.action.reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.action.reply', { detail: e }))
+    })
     window.ipcRenderer.on('client.info.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.info.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('ssh.connect.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('ssh.connect.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('kubectl.connect.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('kubectl.connect.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('kubectl.contexts.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('kubectl.contexts.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('kubectl.namespaces.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('kubectl.namespaces.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('kubectl.pods.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('kubectl.pods.reply', { detail: e }))
-    })
-    window.ipcRenderer.on('dialog.remove.confirmed', (e: any) => {
-      events.dispatchEvent(new CustomEvent('dialog.remove.confirmed', { detail: e }))
     })
 
     window.addEventListener('keydown', keydownListener)

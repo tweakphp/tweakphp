@@ -1,3 +1,5 @@
+import { ConnectionConfig } from '../../types/docker.type'
+
 export interface Tab {
   id: number
   name: string
@@ -5,8 +7,6 @@ export interface Tab {
   code: string
   path: string | undefined
   execution: string
-  remote_phar_client: string | undefined
-  remote_path: string | undefined
   result: string | undefined
   pane: {
     code: number
@@ -17,14 +17,7 @@ export interface Tab {
     php_version: string
     version: string
   }
-  docker: {
-    enable: boolean
-    php: string
-    container_name: string
-    container_id: string
-    php_version: string
-    ssh_id?: number
-  }
+  docker?: ConnectionConfig
   ssh?: {
     id: number
   }

@@ -4,7 +4,7 @@ import * as lsp from './lsp/index'
 import { app, ipcMain } from 'electron'
 import { Settings } from '../types/settings.type'
 import os from 'os'
-import { isWindows } from './platform.ts'
+import { isWindows } from './system/platform.ts'
 
 const homeDir = os.homedir()
 

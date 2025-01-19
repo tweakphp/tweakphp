@@ -11,6 +11,7 @@
   import DropDown from '../components/DropDown.vue'
   import DropDownItem from '../components/DropDownItem.vue'
   import { useSettingsStore } from '../stores/settings'
+  import { SetupReply } from '../../types/client.type'
 
   const platform = window.platformInfo.getPlatform()
   const sshStore = useSSHStore()
@@ -45,6 +46,7 @@
     'rose',
   ]
   const form: Ref<ConnectionConfig> = ref({
+    type: 'ssh',
     id: Date.now(),
     name: '',
     color: 'rose',
@@ -56,11 +58,11 @@
     privateKey: '',
     path: '',
     php: undefined,
-    phar_client: undefined,
+    client_path: undefined,
   })
 
   onMounted(() => {
-    events.addEventListener('ssh.connect.reply', connectReply)
+    events.addEventListener('client.setup.reply', connectReply)
     if (props.id) {
       const connection = sshStore.getConnection(props.id)
       if (connection) {
@@ -70,31 +72,34 @@
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('ssh.connect.reply', connectReply)
+    events.removeEventListener('client.setup.reply', connectReply)
+    sshStore.setConnecting(false)
   })
 
   const connect = () => {
     sshStore.setConnecting(true)
-    if (props.id) {
-      window.ipcRenderer.send('ssh.connect', { ...form.value }, { state: 'edit', notify: true })
-      return
-    }
-    window.ipcRenderer.send('ssh.connect', { ...form.value }, { state: 'create', notify: true })
+    window.ipcRenderer.send('client.setup', {
+      connection: { ...form.value },
+      data: {
+        state: props.id ? 'edit' : 'create',
+      },
+    })
   }
 
   const connectReply = (e: any) => {
-    if (e.detail.data.state === 'create') {
+    const reply = e.detail as SetupReply
+    if (reply.data?.state === 'create') {
       sshStore.setConnecting(false)
-      if (e.detail.connected) {
-        sshStore.addConnection(e.detail.config)
+      if (reply.connected) {
+        sshStore.addConnection(reply.connection)
         emit('connected')
       }
     }
 
-    if (e.detail.data.state === 'edit') {
+    if (reply.data?.state === 'edit') {
       sshStore.setConnecting(false)
-      if (e.detail.connected) {
-        sshStore.updateConnection(e.detail.config.id, e.detail.config)
+      if (reply.connected) {
+        sshStore.updateConnection(reply.connection.id, reply.connection)
         emit('connected')
       }
     }

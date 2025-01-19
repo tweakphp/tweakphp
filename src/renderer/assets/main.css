@@ -30,3 +30,24 @@ body {
 .splitpanes--vertical .splitpanes__pane {
   transition: none !important;
 }
+
+.default-theme.splitpanes--vertical > .splitpanes__splitter,
+.default-theme .splitpanes--vertical > .splitpanes__splitter {
+  width: 4px;
+}
+.default-theme.splitpanes--vertical > .splitpanes__splitter,
+.default-theme .splitpanes--vertical > .splitpanes__splitter {
+  border-left: 0 !important;
+  border-top: 0 !important;
+}
+.default-theme.splitpanes--horizontal > .splitpanes__splitter,
+.default-theme .splitpanes--horizontal > .splitpanes__splitter {
+  border-left: 0 !important;
+  border-top: 0 !important;
+}
+.splitpanes.default-theme .splitpanes__splitter {
+  background: var(--splitter-gutter-bg) !important;
+}
+.splitpanes.default-theme .splitpanes__pane {
+  background: var(--splitter-gutter-bg) !important;
+}

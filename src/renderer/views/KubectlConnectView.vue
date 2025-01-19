@@ -10,6 +10,7 @@
   import DropDownItem from '../components/DropDownItem.vue'
   import { useSettingsStore } from '../stores/settings'
   import { useKubectlStore } from '../stores/kubectl'
+  import { ActionReply } from '../../types/client.type'
 
   const kubectlStore = useKubectlStore()
   const settingsStore = useSettingsStore()
@@ -45,6 +46,7 @@
     'rose',
   ]
   const form: Ref<ConnectionConfig> = ref({
+    type: 'kubectl',
     id: Date.now(),
     name: '',
     color: 'rose',
@@ -53,26 +55,34 @@
     pod: '',
     path: '',
     php: undefined,
-    phar_client: undefined,
+    client_path: undefined,
   })
 
   onMounted(() => {
-    events.addEventListener('kubectl.contexts.reply', contextsReply)
-    events.addEventListener('kubectl.namespaces.reply', namespacesReply)
-    window.ipcRenderer.send('kubectl.contexts')
+    events.addEventListener('client.action.reply', actionReply)
+    getContexts()
     if (props.id) {
       const connection = kubectlStore.getConnection(props.id)
       if (connection) {
         form.value = { ...connection }
-        window.ipcRenderer.send('kubectl.namespaces', { context: connection.context })
+        getNamespaces()
       }
     }
   })
 
-  onBeforeUnmount(() => {
-    events.removeEventListener('kubectl.contexts.reply', contextsReply)
-    events.removeEventListener('kubectl.namespaces.reply', namespacesReply)
-  })
+  const getContexts = () => {
+    window.ipcRenderer.send('client.action', {
+      type: 'getContexts',
+      connection: { ...form.value },
+    })
+  }
+
+  const getNamespaces = () => {
+    window.ipcRenderer.send('client.action', {
+      type: 'getNamespaces',
+      connection: { ...form.value },
+    })
+  }
 
   const save = () => {
     if (props.id) {
@@ -84,17 +94,25 @@
     emit('done')
   }
 
-  const contextsReply = (e: any) => {
-    contexts.value = e.detail.contexts
+  const actionReply = (e: any) => {
+    const reply = e.detail as ActionReply
+    if (reply.error) {
+      alert(reply.error)
+      return
+    }
+
+    if (reply.type === 'getContexts') {
+      contexts.value = reply.result
+    }
+
+    if (reply.type === 'getNamespaces') {
+      namespaces.value = reply.result
+    }
   }
 
-  const getNamespaces = (context: string) => {
-    window.ipcRenderer.send('kubectl.namespaces', { context })
-  }
-
-  const namespacesReply = (e: any) => {
-    namespaces.value = e.detail.namespaces
-  }
+  onBeforeUnmount(() => {
+    events.removeEventListener('client.action.reply', actionReply)
+  })
 </script>
 
 <template>
@@ -134,12 +152,7 @@
       <Divider />
       <div class="grid grid-cols-2 items-center">
         <div>Context</div>
-        <SelectInput
-          id="context"
-          v-model="form.context"
-          placeholder="Select context"
-          @change="getNamespaces(form.context)"
-        >
+        <SelectInput id="context" v-model="form.context" placeholder="Select context" @change="getNamespaces()">
           <option v-for="context in contexts" :value="context" :key="`context-${context}`">{{ context }}</option>
         </SelectInput>
       </div>

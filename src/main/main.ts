@@ -4,23 +4,18 @@ import log from 'electron-log/main'
 
 import * as dotenv from 'dotenv'
 import * as source from './source'
-import * as client from './client'
+import * as client from './client/index.ts'
 import * as settings from './settings'
 import * as lsp from './lsp/index'
 import * as laravel from './laravel'
-import * as updater from './updater'
-import * as link from './link'
-import * as tray from './tray'
-import * as docker from './docker'
-import * as ssh from './ssh'
-import * as dialog from './dialog'
-import * as notification from './notification'
-import * as kubectl from './kubectl'
+import * as updater from './system/updater.ts'
+import * as link from './system/link.ts'
+import * as tray from './system/tray.ts'
 
 import url from 'url'
 
-import { fixPath } from './fix-path.ts'
-import { isWindows } from './platform.ts'
+import { fixPath } from './utils/fix-path.ts'
+import { isWindows } from './system/platform.ts'
 
 fixPath()
 
@@ -91,19 +86,7 @@ const createMainWindow = async () => {
 }
 
 const initializeModules = async () => {
-  await Promise.all([
-    settings.init(),
-    docker.init(),
-    tray.init(),
-    updater.init(),
-    link.init(),
-    client.init(),
-    source.init(),
-    ssh.init(),
-    dialog.init(window),
-    notification.init(),
-    kubectl.init(),
-  ])
+  await Promise.all([settings.init(), tray.init(), updater.init(), link.init(), client.init(), source.init()])
 }
 
 app.whenReady().then(async () => {

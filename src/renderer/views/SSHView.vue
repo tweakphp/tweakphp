@@ -8,6 +8,7 @@
   import SSHConnectView from './SSHConnectView.vue'
   import events from '../events'
   import { ConnectionConfig } from '../../types/ssh.type'
+  import { SetupReply } from '../../types/client.type'
 
   const sshStore = useSSHStore()
   const sshConnectModal = ref()
@@ -16,20 +17,21 @@
   const emit = defineEmits(['connected', 'removed'])
 
   onMounted(() => {
-    events.addEventListener('ssh.connect.reply', connectReply)
-
-    window.ipcRenderer.on('dialog.remove.confirmed', handleRemoveSSHConnection)
+    events.addEventListener('client.setup.reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('ssh.connect.reply', connectReply)
-
-    window.ipcRenderer.removeListener('dialog.remove.confirmed', handleRemoveSSHConnection)
+    events.removeEventListener('client.setup.reply', connectReply)
   })
 
   const connect = (connection: ConnectionConfig) => {
     connecting.value = connection.id
-    window.ipcRenderer.send('ssh.connect', { ...connection }, { state: 'connect' })
+    window.ipcRenderer.send('client.setup', {
+      connection: { ...connection },
+      data: {
+        state: 'connect',
+      },
+    })
   }
 
   const add = () => {
@@ -43,31 +45,20 @@
   }
 
   const connectReply = (e: any) => {
-    if (e.detail.data.state === 'connect') {
+    const reply = e.detail as SetupReply
+    if (reply.data?.state === 'connect') {
       connecting.value = null
-      if (e.detail.connected) {
-        emit('connected', e.detail.config)
+      if (reply.connected) {
+        emit('connected', reply.connection)
       }
     }
   }
 
   const remove = (id: number) => {
-    window.ipcRenderer.send('dialog', {
-      buttons: ['No', 'Yes'],
-      title: 'Remove Connection',
-      message: 'Are you sure you want to remove it?',
-      listener: 'dialog.remove.confirmed',
-      params: { id },
-    })
-  }
-
-  const handleRemoveSSHConnection = (e: { result: number; params: any }) => {
-    if (e.result === 0) {
-      return
+    if (confirm('Are you sure you want to remove it?')) {
+      sshStore.remove(id)
+      emit('removed', id)
     }
-
-    sshStore.remove(e.params.id)
-    emit('removed', e.params.id)
   }
 </script>
 
