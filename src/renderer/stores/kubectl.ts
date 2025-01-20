@@ -6,7 +6,9 @@ export const useKubectlStore = defineStore('kubectl', () => {
   let storedConnections: ConnectionConfig[] = []
   const storedConnectionsRaw = localStorage.getItem('kubectl-connections')
   if (storedConnectionsRaw) {
-    storedConnections = JSON.parse(storedConnectionsRaw)
+    storedConnections = JSON.parse(storedConnectionsRaw).map((connection: any) => {
+      return normalize(connection)
+    })
   }
   const connections: Ref<ConnectionConfig[]> = ref(storedConnections)
   const connecting = ref(false)
@@ -42,3 +44,18 @@ export const useKubectlStore = defineStore('kubectl', () => {
 
   return { connections, setConnecting, connecting, remove, getConnection, addConnection, updateConnection }
 })
+
+const normalize = (connection: any): any => {
+  return {
+    type: 'kubectl',
+    id: connection.id ?? 0,
+    name: connection.name ?? '',
+    color: connection.color ?? '',
+    context: connection.context ?? '',
+    namespace: connection.namespace ?? '',
+    pod: connection.pod ?? '',
+    path: connection.path ?? '',
+    php: connection.php ?? '',
+    client_path: connection.client_path ?? '',
+  }
+}

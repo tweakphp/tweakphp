@@ -98,8 +98,6 @@
   }
 
   const kubectlConnected = (config: KubectlConnectionConfig) => {
-    kubectlModal.value.closeModal()
-
     if (!tabStore.current) {
       return
     }
@@ -108,7 +106,7 @@
     tabStore.current.kubectl = { id: config.id }
 
     tabStore.updateTab(tabStore.current)
-    sshModal.value.closeModal()
+    kubectlModal.value.closeModal()
   }
 
   const kubectlRemoved = (id: number) => {
@@ -262,7 +260,7 @@
 
     <!-- modals -->
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
-      <DockerView @connected="dockerModal.closeModal()" />
+      <DockerView @connected="alert(1)" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />

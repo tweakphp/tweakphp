@@ -12,35 +12,14 @@ import { useKubectlStore } from './kubectl'
 
 export const useTabsStore = defineStore('tabs', () => {
   // setup tabs
-  let defaultTabs = [
-    {
-      id: Date.now(),
-      type: 'home',
-      name: 'home',
-      path: '',
-      execution: 'local',
-      code: '<?php\n\n',
-      result: '',
-      pane: {
-        code: 50,
-        result: 50,
-      },
-      info: {
-        name: '',
-        version: '',
-        php_version: '',
-      },
-    },
-  ]
+  let defaultTabs = []
   let storedTabs = localStorage.getItem('tabs')
   if (storedTabs) {
     defaultTabs = JSON.parse(storedTabs)
-      .filter((tab: Tab) => tab.type !== 'home')
-      .map((tab: Tab) => ({
-        ...tab,
-        pane: tab.pane || defaultTabs[0].pane,
-        execution: tab.execution as 'local' | 'ssh' | 'docker',
-      }))
+      .filter((tab: any) => tab.type !== 'home')
+      .map((tab: any) => {
+        return normalize(tab)
+      })
   }
   const tabs: Ref<Tab[]> = ref(defaultTabs)
   const current: Ref<Tab | null> = ref(null)
@@ -66,7 +45,7 @@ export const useTabsStore = defineStore('tabs', () => {
     return findTab(id ? parseInt(id) : null)
   }
 
-  const addTab = (data: { id?: number | null; type: string; path?: string } = { type: 'home' }) => {
+  const addTab = (data: { id?: number | null; type: string; path: string }) => {
     if (!data.id) {
       data.id = Date.now()
     }
@@ -76,7 +55,7 @@ export const useTabsStore = defineStore('tabs', () => {
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.type === 'home' ? 'home' : (data.path?.split(pathSplitter).pop() as string),
+      name: data.path.split(pathSplitter).pop() as string,
       path: data.path,
       execution: 'local',
       code: '<?php\n\n',
@@ -193,3 +172,50 @@ export const useTabsStore = defineStore('tabs', () => {
     getConnectionConfig,
   }
 })
+
+const normalize = (tab: any): Tab => {
+  let t: Tab = {
+    id: (tab.id as number) ?? Date.now(),
+    name: tab.name as string,
+    type: tab.type as string,
+    code: (tab.code as string) ?? '',
+    path: tab.path as string | undefined,
+    execution: (tab.execution as 'local' | 'ssh' | 'docker' | 'kubectl') ?? 'local',
+    result: (tab.result as string) ?? '',
+    pane: {
+      code: (tab.pane?.code as number) ?? 50,
+      result: (tab.pane?.result as number) ?? 50,
+    },
+    info: {
+      name: (tab.info?.name as string) ?? '',
+      php_version: (tab.info?.php_version as string) ?? '',
+      version: (tab.info?.version as string) ?? '',
+    },
+  }
+  if (tab.docker && tab.docker.container_name) {
+    t.docker = {
+      type: 'docker',
+      working_directory: tab.docker.working_directory,
+      container_id: tab.docker.container_id,
+      container_name: tab.docker.container_name,
+      php_version: tab.docker.php_version ?? '',
+      php_path: tab.docker.php_path ?? '',
+      client_path: tab.docker.client_path ?? tab.docker.phar_path,
+      ssh_id: tab.docker.ssh_id ?? 0,
+    }
+  }
+
+  if (tab.ssh && tab.ssh.id) {
+    t.ssh = {
+      id: tab.ssh.id,
+    }
+  }
+
+  if (tab.kubectl && tab.kubectl.id) {
+    t.kubectl = {
+      id: tab.kubectl.id,
+    }
+  }
+
+  return t
+}

@@ -6,7 +6,9 @@ export const useSSHStore = defineStore('ssh', () => {
   let storedConnections: ConnectionConfig[] = []
   const storedConnectionsRaw = localStorage.getItem('ssh-connections')
   if (storedConnectionsRaw) {
-    storedConnections = JSON.parse(storedConnectionsRaw)
+    storedConnections = JSON.parse(storedConnectionsRaw).map((connection: any) => {
+      return normalize(connection)
+    })
   }
   const connections: Ref<ConnectionConfig[]> = ref(storedConnections)
   const connecting = ref(false)
@@ -42,3 +44,21 @@ export const useSSHStore = defineStore('ssh', () => {
 
   return { connections, setConnecting, connecting, remove, getConnection, addConnection, updateConnection }
 })
+
+const normalize = (connection: any): any => {
+  return {
+    type: 'ssh',
+    id: connection.id ?? 0,
+    name: connection.name ?? '',
+    color: connection.color ?? '',
+    host: connection.host ?? '',
+    port: connection.port ?? 22,
+    username: connection.username ?? '',
+    auth_type: connection.auth_type ?? 'password',
+    password: connection.password ?? '',
+    privateKey: connection.privateKey ?? '',
+    path: connection.path ?? '',
+    php: connection.php ?? '',
+    client_path: connection.phar_client ? connection.phar_client : connection.client_path,
+  }
+}
