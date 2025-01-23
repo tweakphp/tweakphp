@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { onMounted, onBeforeUnmount, ref, useTemplateRef } from 'vue'
+  import { onMounted, onBeforeUnmount, ref } from 'vue'
   import * as monaco from 'monaco-editor'
   import { MonacoLanguageClient } from 'monaco-languageclient'
   import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
