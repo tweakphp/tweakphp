@@ -71,7 +71,7 @@
       </div>
       <Divider class="mt-3" />
       <div class="mt-3 grid grid-cols-2 items-center">
-        <div>VIM mode</div>
+        <div>Vim mode</div>
         <SelectInput id="editor-vim-mode" v-model="settingsStore.settings.vimMode" @change="saveSettings()">
           <option value="on">Enabled</option>
           <option value="off">Disabled</option>
