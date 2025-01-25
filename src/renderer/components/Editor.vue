@@ -4,6 +4,7 @@
   import { MonacoLanguageClient } from 'monaco-languageclient'
   import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
   import { CloseAction, ErrorAction } from 'vscode-languageclient'
+  import { initVimMode } from 'monaco-vim'
   import { installPHPLanguage, installOutputLanguage, installThemes } from '../editor'
   import { useSettingsStore } from '../stores/settings'
 
@@ -40,6 +41,7 @@
   })
 
   const editorContainer = ref(null)
+  const vimMode = ref(null)
 
   let languageClient: MonacoLanguageClient | null = null
   let editor: monaco.editor.IStandaloneCodeEditor | null = null
@@ -73,6 +75,10 @@
         scrollBeyondLastLine: false,
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
       })
+
+      if (settingsStore.settings.vimMode === 'on') {
+        vimMode.value = initVimMode(editor)
+      }
 
       const file = `${props.path}/${props.editorId}.${props.language}`
 
@@ -108,6 +114,10 @@
 
   onBeforeUnmount(async () => {
     if (editor) {
+      if (vimMode.value) {
+        vimMode.value.dispose()
+      }
+
       editor.dispose()
     }
     if (languageClient && languageClient.isRunning()) {

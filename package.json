@@ -143,6 +143,7 @@
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@~7.0.7",
     "monaco-editor-wrapper": "~5.4.0",
     "monaco-languageclient": "~8.7.0",
+    "monaco-vim": "^0.4.2",
     "node-fetch": "^2.7.0",
     "pinia": "^2.1.7",
     "postcss": "^8.4.38",

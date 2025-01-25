@@ -36,6 +36,7 @@ export const useSettingsStore = defineStore('settings', () => {
     editorWordWrap: 'on',
     layout: 'vertical',
     output: 'code',
+    vimMode: 'off',
   }
 
   const settings = ref<Settings>(defaultSettings)

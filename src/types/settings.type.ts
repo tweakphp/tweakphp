@@ -7,4 +7,5 @@ export interface Settings {
   editorWordWrap: string
   layout: string
   output: string
+  vimMode: string
 }

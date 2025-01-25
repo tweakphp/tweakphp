@@ -28,6 +28,7 @@ const defaultSettings: Settings = {
   editorWordWrap: 'on',
   layout: 'vertical',
   output: 'code',
+  vimMode: 'off',
 }
 
 export const init = async () => {
@@ -58,6 +59,7 @@ export const getSettings = () => {
       editorWordWrap: settingsJson.editorWordWrap || defaultSettings.editorWordWrap,
       layout: settingsJson.layout || defaultSettings.layout,
       output: settingsJson.output || defaultSettings.output,
+      vimMode: settingsJson.vimMode || defaultSettings.vimMode,
     }
   } else {
     settings = defaultSettings
