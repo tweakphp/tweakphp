@@ -61,7 +61,7 @@
       updateStore.setChecking(true)
     })
     window.ipcRenderer.on('init.reply', async (e: any) => {
-      settingsStore.settings = e.settings
+      settingsStore.setSettings(e.settings)
       isAppReady.value = true
     })
     window.ipcRenderer.on('source.open.reply', (e: any) => {

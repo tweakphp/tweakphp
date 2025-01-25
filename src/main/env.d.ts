@@ -12,11 +12,3 @@ declare namespace NodeJS {
     VITE_PUBLIC: string
   }
 }
-
-declare global {
-  // Used in Renderer process, expose in `preload.ts`
-  interface Window {
-    ipcRenderer: IpcRenderer
-    platformInfo: PlatformInfo
-  }
-}

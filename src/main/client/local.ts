@@ -14,8 +14,7 @@ export class LocalClient extends BaseClient {
     return new Promise(resolve => {
       const phpPath = `"${this.connection.php}"`
       const path = `"${this.connection.path}"`
-      code = btoa(code.replaceAll('<?php', ''))
-      const command = `${phpPath} ${getLocalPharClient()} ${path} execute ${code}`
+      const command = `${phpPath} ${getLocalPharClient()} ${path} execute ${btoa(code)}`
       exec(command, (_err, stdout) => {
         resolve(stdout)
       })

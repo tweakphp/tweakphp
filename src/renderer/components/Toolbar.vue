@@ -260,7 +260,7 @@
 
     <!-- modals -->
     <Modal title="Connect to Docker" ref="dockerModal" size="xl">
-      <DockerView @connected="alert(1)" />
+      <DockerView @connected="dockerModal.closeModal()" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
       <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />

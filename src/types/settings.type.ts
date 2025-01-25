@@ -6,4 +6,5 @@ export interface Settings {
   editorFontSize: number
   editorWordWrap: string
   layout: string
+  output: string
 }

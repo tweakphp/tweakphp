@@ -1,6 +1,6 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { Tab } from '../../types/tab.type'
+import { Tab, Result } from '../../types/tab.type'
 import router from '../router'
 import { ConnectionConfig as LocalConnectionConfig } from '../../types/local.type'
 import { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'
@@ -59,7 +59,7 @@ export const useTabsStore = defineStore('tabs', () => {
       path: data.path,
       execution: 'local',
       code: '<?php\n\n',
-      result: '',
+      result: [],
       pane: {
         code: 50,
         result: 50,
@@ -174,6 +174,15 @@ export const useTabsStore = defineStore('tabs', () => {
 })
 
 const normalize = (tab: any): Tab => {
+  const isResultArray = (arr: any): arr is Result[] => {
+    return (
+      Array.isArray(arr) &&
+      arr.every(
+        item => typeof item.line === 'number' && typeof item.code === 'string' && typeof item.output === 'string'
+      )
+    )
+  }
+
   let t: Tab = {
     id: (tab.id as number) ?? Date.now(),
     name: tab.name as string,
@@ -181,7 +190,7 @@ const normalize = (tab: any): Tab => {
     code: (tab.code as string) ?? '',
     path: tab.path as string | undefined,
     execution: (tab.execution as 'local' | 'ssh' | 'docker' | 'kubectl') ?? 'local',
-    result: (tab.result as string) ?? '',
+    result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
     pane: {
       code: (tab.pane?.code as number) ?? 50,
       result: (tab.pane?.result as number) ?? 50,

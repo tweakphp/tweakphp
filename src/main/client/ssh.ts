@@ -62,8 +62,7 @@ export class SSHClient extends BaseClient {
         resolve('Client path not found')
         return
       }
-      code = btoa(code.replaceAll('<?php', ''))
-      const command = `${this.command()} execute ${code}`
+      const command = `${this.command()} execute ${btoa(code)}`
       const result = await this.ssh.exec(command)
       resolve(result)
     })

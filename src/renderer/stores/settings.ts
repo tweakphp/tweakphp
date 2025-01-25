@@ -35,6 +35,7 @@ export const useSettingsStore = defineStore('settings', () => {
     editorFontSize: 15,
     editorWordWrap: 'on',
     layout: 'vertical',
+    output: 'code',
   }
 
   const settings = ref<Settings>(defaultSettings)
@@ -42,6 +43,19 @@ export const useSettingsStore = defineStore('settings', () => {
   const colors = computed(() => {
     return themeColors[settings.value.theme as keyof typeof themeColors]
   })
+
+  const setSettings = (s: any) => {
+    settings.value = {
+      version: s.version || '',
+      laravelPath: s.laravelPath || '',
+      php: s.php || '',
+      theme: s.theme || 'dracula',
+      editorFontSize: s.editorFontSize || 15,
+      editorWordWrap: s.editorWordWrap || 'on',
+      layout: s.layout || 'vertical',
+      output: s.output || 'code',
+    }
+  }
 
   const update = () => {
     // clone settings json
@@ -58,5 +72,5 @@ export const useSettingsStore = defineStore('settings', () => {
     monaco.editor.defineTheme('catppuccin', typedCatppuccinTheme)
   }
 
-  return { settings, themes, update, colors, defineEditorThemes }
+  return { settings, themes, setSettings, update, colors, defineEditorThemes }
 })

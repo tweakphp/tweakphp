@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
   import Container from '../components/Container.vue'
@@ -12,6 +12,7 @@
   import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
+  import StackedOutput from '../components/StackedOutput.vue'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -28,7 +29,7 @@
     code: '',
     path: '',
     execution: 'local',
-    result: '',
+    result: [],
     pane: {
       code: 50,
       result: 50,
@@ -40,6 +41,11 @@
     },
   })
   const route = useRoute()
+
+  const rawOutput = computed(() => {
+    const output = [...tab.value.result].reverse().find(item => item.output.trim() !== '')
+    return output ? output.output : ''
+  })
 
   const keydownListener = (event: any) => {
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey) {
@@ -58,9 +64,21 @@
   }
 
   const executeReplyListener = (e: any) => {
-    tab.value.result = e.detail
+    let result = e.detail ?? ''
+    if (e.detail && e.detail.output !== undefined) {
+      tab.value.result = e.detail.output
+    } else {
+      tab.value.result = [
+        {
+          code: '',
+          line: 0,
+          output: result,
+          html: '',
+        },
+      ]
+    }
     if (resultEditor.value) {
-      resultEditor.value.updateValue(e.detail)
+      resultEditor.value.updateValue(rawOutput.value)
     }
     tabsStore.updateTab(tab.value)
     executeStore.setExecuting(false)
@@ -192,6 +210,16 @@
     },
     { immediate: true }
   )
+
+  watch(
+    () => settingsStore.settings.output,
+    async () => {
+      await nextTick()
+      if (resultEditor.value) {
+        resultEditor.value.updateValue(rawOutput.value)
+      }
+    }
+  )
 </script>
 
 <template>
@@ -219,14 +247,16 @@
       </pane>
       <pane :size="tab.pane.result">
         <Editor
+          v-if="settingsStore.settings.output === 'code'"
           :key="`result-${tab.id}`"
           ref="resultEditor"
           :editor-id="`${tab.id}-result`"
-          v-model:value="tab.result"
+          :value="rawOutput"
           language="output"
           :readonly="true"
           :wrap="true"
         />
+        <StackedOutput v-else :output="tab.result" />
       </pane>
     </Splitpanes>
 

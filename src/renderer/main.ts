@@ -1,4 +1,6 @@
 import './assets/main.css'
+import './assets/sf-dump.css'
+import './assets/sf-dump.js'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

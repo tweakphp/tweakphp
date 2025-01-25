@@ -46,10 +46,15 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     await client.connect()
     let result = await client.execute(payload.code)
     result = result.trim()
-    if (result.startsWith('"') && result.endsWith('"')) {
-      result = result.slice(1, -1)
+    let output = result.split('TWEAKPHP_RESULT:')[1]?.trim()
+    if (output) {
+      try {
+        output = JSON.parse(output)
+      } catch (error: any) {
+        //
+      }
     }
-    event.reply('client.execute.reply', result)
+    event.reply('client.execute.reply', output ?? result)
   } catch (error: any) {
     event.reply('client.execute.reply', error)
   } finally {

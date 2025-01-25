@@ -38,8 +38,7 @@ export default class KubectlClient extends BaseClient {
 
   execute(code: string): Promise<string> {
     return new Promise(async resolve => {
-      code = btoa(code.replaceAll('<?php', ''))
-      const command = `${this.command()} execute ${code}`
+      const command = `${this.command()} execute ${btoa(code)}`
       const result = await this.kubectl.exec(command, this.connection)
       resolve(result)
     })

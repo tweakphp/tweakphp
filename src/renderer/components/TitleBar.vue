@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { PlayIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+  import { PlayIcon, ArrowPathIcon, XMarkIcon, CodeBracketIcon, RectangleStackIcon } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
   import router from '../router'
@@ -32,6 +32,11 @@
     settingsStore.settings.layout = layout
     settingsStore.update()
   }
+
+  const updateOutput = (output: 'code' | 'stack') => {
+    settingsStore.settings.output = output
+    settingsStore.update()
+  }
 </script>
 
 <template>
@@ -55,20 +60,36 @@
       <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
       <div class="flex-grow-0 flex items-center space-x-2">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
-          <SecondaryButton v-tippy="{ content: 'Change layout', placement: 'left' }" class="!px-1">
+          <SecondaryButton
+            class="!px-1"
+            v-tippy="{ content: 'Change layout', placement: 'left' }"
+            @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
+          >
             <VerticalSplitIcon
-              @click="updateLayout('vertical')"
               v-if="settingsStore.settings.layout === 'horizontal'"
               class="cursor-pointer size-7 hover:!stroke-primary-500"
             />
             <HorizontalSplitIcon
-              @click="updateLayout('horizontal')"
               v-if="settingsStore.settings.layout === 'vertical'"
               class="cursor-pointer size-7 hover:!stroke-primary-500"
             />
           </SecondaryButton>
           <SecondaryButton
-            class="!px-2 !w-5"
+            class="!px-2"
+            v-tippy="{ content: 'Output Style', placement: 'bottom' }"
+            @click="updateOutput(settingsStore.settings.output === 'stack' ? 'code' : 'stack')"
+          >
+            <CodeBracketIcon
+              v-if="settingsStore.settings.output === 'stack'"
+              class="cursor-pointer size-4 hover:!stroke-primary-500"
+            />
+            <RectangleStackIcon
+              v-if="settingsStore.settings.output === 'code'"
+              class="cursor-pointer size-4 hover:!stroke-primary-500"
+            />
+          </SecondaryButton>
+          <SecondaryButton
+            class="!px-2"
             v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }"
           >
             <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />

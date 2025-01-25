@@ -27,6 +27,7 @@ const defaultSettings: Settings = {
   editorFontSize: 15,
   editorWordWrap: 'on',
   layout: 'vertical',
+  output: 'code',
 }
 
 export const init = async () => {
@@ -56,6 +57,7 @@ export const getSettings = () => {
       editorFontSize: settingsJson.editorFontSize || defaultSettings.editorFontSize,
       editorWordWrap: settingsJson.editorWordWrap || defaultSettings.editorWordWrap,
       layout: settingsJson.layout || defaultSettings.layout,
+      output: settingsJson.output || defaultSettings.output,
     }
   } else {
     settings = defaultSettings

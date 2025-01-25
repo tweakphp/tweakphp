@@ -35,10 +35,9 @@ export default class DockerClient extends BaseClient {
       let result = ''
       const phpPath = `"${this.connection.php_path}"`
       const path = `"${this.connection.working_directory}"`
-      code = btoa(code.replaceAll('<?php', ''))
       const clientPath = `"${this.connection.client_path}"`
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${code}`
+      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${btoa(code)}`
 
       if (this.ssh) {
         result = await this.ssh.exec(command)
