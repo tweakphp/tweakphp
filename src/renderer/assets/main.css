@@ -51,3 +51,11 @@ body {
 .splitpanes.default-theme .splitpanes__pane {
   background: var(--splitter-gutter-bg) !important;
 }
+
+#title-bar {
+  -webkit-app-region: drag;
+}
+
+#title-bar button {
+  -webkit-app-region: no-drag;
+}

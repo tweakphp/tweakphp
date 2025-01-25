@@ -57,7 +57,7 @@
       <div class="flex-grow-0" :class="{ 'pl-[70px]': platform === 'darwin', 'pl-[50px]': platform !== 'darwin' }">
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
-      <div class="flex h-full flex-grow w-full drag" v-if="platform === 'darwin'"></div>
+      <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>
       <div class="flex-grow-0 flex items-center space-x-2">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
           <SecondaryButton
@@ -112,9 +112,3 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-  .drag {
-    -webkit-app-region: drag;
-  }
-</style>
