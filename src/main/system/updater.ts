@@ -17,6 +17,9 @@ export const init = async () => {
   autoUpdater.on('update-not-available', (info: UpdateInfo) => {
     window.webContents.send('update.not-available', info)
   })
+  autoUpdater.on('update-downloaded', () => {
+    autoUpdater.quitAndInstall()
+  })
   ipcMain.on('update.check', () => {
     checkForUpdates()
   })
