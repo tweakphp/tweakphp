@@ -28,6 +28,9 @@
       const el = document.getElementById(`dump-${item.line}`)?.querySelector('.sf-dump')
       if (el) {
         window.Sfdump(el.id)
+        if (settingsStore.settings.stackedDump === 'compact') {
+          el.querySelector('samp')?.classList.replace('sf-dump-expanded', 'sf-dump-compact')
+        }
       }
     })
   }

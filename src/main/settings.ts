@@ -29,6 +29,7 @@ const defaultSettings: Settings = {
   layout: 'vertical',
   output: 'code',
   vimMode: 'off',
+  stackedDump: 'extended',
 }
 
 export const init = async () => {
@@ -60,6 +61,7 @@ export const getSettings = () => {
       layout: settingsJson.layout || defaultSettings.layout,
       output: settingsJson.output || defaultSettings.output,
       vimMode: settingsJson.vimMode || defaultSettings.vimMode,
+      stackedDump: settingsJson.stackedDump || defaultSettings.stackedDump,
     }
   } else {
     settings = defaultSettings

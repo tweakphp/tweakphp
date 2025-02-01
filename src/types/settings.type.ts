@@ -8,4 +8,5 @@ export interface Settings {
   layout: string
   output: string
   vimMode: string
+  stackedDump: string
 }

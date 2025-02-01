@@ -37,6 +37,7 @@ export const useSettingsStore = defineStore('settings', () => {
     layout: 'vertical',
     output: 'code',
     vimMode: 'off',
+    stackedDump: 'extended',
   }
 
   const settings = ref<Settings>(defaultSettings)
@@ -55,6 +56,8 @@ export const useSettingsStore = defineStore('settings', () => {
       editorWordWrap: s.editorWordWrap || 'on',
       layout: s.layout || 'vertical',
       output: s.output || 'code',
+      vimMode: s.vimMode || 'off',
+      stackedDump: s.stackedDump || 'extended',
     }
   }
 
