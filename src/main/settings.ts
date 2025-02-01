@@ -30,15 +30,19 @@ const defaultSettings: Settings = {
   output: 'code',
   vimMode: 'off',
   stackedDump: 'extended',
+  windowWidth: 1100,
+  windowHeight: 700,
 }
 
 export const init = async () => {
-  ipcMain.on('settings.store', storeSettings)
+  ipcMain.on('settings.store', async (_event: any, data: Settings) => {
+    setSettings(data)
+    !isWindows() && (await lsp.init())
+  })
 }
 
-export const storeSettings = async (_event: any, data: Settings) => {
+export const setSettings = async (data: Settings) => {
   fs.writeFileSync(settingsPath, JSON.stringify(data))
-  !isWindows() && (await lsp.init())
 }
 
 export const getSettings = () => {
@@ -62,10 +66,12 @@ export const getSettings = () => {
       output: settingsJson.output || defaultSettings.output,
       vimMode: settingsJson.vimMode || defaultSettings.vimMode,
       stackedDump: settingsJson.stackedDump || defaultSettings.stackedDump,
+      windowWidth: settingsJson.windowWidth || defaultSettings.windowWidth,
+      windowHeight: settingsJson.windowHeight || defaultSettings.windowHeight,
     }
   } else {
     settings = defaultSettings
-    storeSettings(null, settings)
+    setSettings(settings)
   }
 
   // merge default settings with stored settings and take stored settings as priority

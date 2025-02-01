@@ -38,6 +38,8 @@ export const useSettingsStore = defineStore('settings', () => {
     output: 'code',
     vimMode: 'off',
     stackedDump: 'extended',
+    windowWidth: 1100,
+    windowHeight: 700,
   }
 
   const settings = ref<Settings>(defaultSettings)
@@ -47,18 +49,7 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   const setSettings = (s: any) => {
-    settings.value = {
-      version: s.version || '',
-      laravelPath: s.laravelPath || '',
-      php: s.php || '',
-      theme: s.theme || 'dracula',
-      editorFontSize: s.editorFontSize || 15,
-      editorWordWrap: s.editorWordWrap || 'on',
-      layout: s.layout || 'vertical',
-      output: s.output || 'code',
-      vimMode: s.vimMode || 'off',
-      stackedDump: s.stackedDump || 'extended',
-    }
+    settings.value = s
   }
 
   const update = () => {

@@ -30,8 +30,8 @@ const createMainWindow = async () => {
     title: 'TweakPHP',
     minWidth: 1100,
     minHeight: 700,
-    width: 1100,
-    height: 700,
+    width: settings.getSettings().windowWidth,
+    height: settings.getSettings().windowHeight,
     show: false,
     maximizable: true,
     minimizable: true,
@@ -76,6 +76,15 @@ const createMainWindow = async () => {
 
   window.on('closed', (): void => {
     app.exit(0)
+  })
+
+  window.on('resize', (): void => {
+    const [width, height] = window.getSize()
+    settings.setSettings({
+      ...settings.getSettings(),
+      windowWidth: width,
+      windowHeight: height,
+    })
   })
 
   const isDev: boolean = process.env.NODE_ENV === 'development'

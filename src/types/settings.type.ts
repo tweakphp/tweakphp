@@ -9,4 +9,6 @@ export interface Settings {
   output: string
   vimMode: string
   stackedDump: string
+  windowWidth: number
+  windowHeight: number
 }
