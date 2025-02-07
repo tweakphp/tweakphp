@@ -96,7 +96,7 @@
     executeStore.setExecuting(true)
 
     window.ipcRenderer.send('client.execute', {
-      connection: { ...connection },
+      connection: JSON.parse(JSON.stringify(connection)),
       code,
     })
   }
@@ -104,9 +104,9 @@
   const getInfo = () => {
     let connection = tabsStore.getConnectionConfig(tab.value)
 
-    if (tab.value.type === 'code') {
+    if (connection && tab.value.type === 'code') {
       window.ipcRenderer.send('client.info', {
-        connection: { ...connection },
+        connection: JSON.parse(JSON.stringify(connection)),
       })
     }
   }

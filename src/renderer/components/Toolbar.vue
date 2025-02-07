@@ -47,7 +47,7 @@
     connecting.value = execution
     let connection = tabStore.getConnectionConfig(tabStore.current, execution)
     window.ipcRenderer.send('client.connect', {
-      connection: { ...connection },
+      connection: JSON.parse(JSON.stringify(connection)),
       data: {
         state: 'reconnect',
         setup: true,

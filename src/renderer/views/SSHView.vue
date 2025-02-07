@@ -29,7 +29,7 @@
     window.ipcRenderer.send('client.connect', {
       connection: { ...connection },
       data: {
-        state: 'connect',
+        state: 'connect-ssh',
         setup: true,
       },
     })
@@ -47,7 +47,7 @@
 
   const connectReply = (e: any) => {
     const reply = e.detail as ConnectReply
-    if (reply.data?.state === 'connect') {
+    if (reply.data?.state === 'connect-ssh') {
       connecting.value = null
       if (reply.connected) {
         emit('connected', reply.connection)

@@ -81,7 +81,7 @@
     window.ipcRenderer.send('client.connect', {
       connection: { ...form.value },
       data: {
-        state: props.id ? 'edit' : 'create',
+        state: props.id ? 'edit-ssh' : 'create-ssh',
         setup: true,
       },
     })
@@ -89,7 +89,7 @@
 
   const connectReply = (e: any) => {
     const reply = e.detail as ConnectReply
-    if (reply.data?.state === 'create') {
+    if (reply.data?.state === 'create-ssh') {
       sshStore.setConnecting(false)
       if (reply.connected) {
         sshStore.addConnection(reply.connection)
@@ -97,7 +97,7 @@
       }
     }
 
-    if (reply.data?.state === 'edit') {
+    if (reply.data?.state === 'edit-ssh') {
       sshStore.setConnecting(false)
       if (reply.connected) {
         sshStore.updateConnection(reply.connection.id, reply.connection)

@@ -42,6 +42,7 @@ export default class DockerClient extends BaseClient {
       if (this.ssh) {
         result = await this.ssh.exec(command)
         resolve(result)
+        return
       }
 
       exec(command, (_err, stdout) => {
@@ -62,6 +63,7 @@ export default class DockerClient extends BaseClient {
       if (this.ssh) {
         result = await this.ssh.exec(command)
         resolve(result)
+        return
       }
 
       result = execSync(command).toString()

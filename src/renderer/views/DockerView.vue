@@ -35,6 +35,7 @@
     ssh_id: 0,
   })
   const sshConnectModal = ref()
+  const connecting = ref(false)
 
   const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
@@ -50,9 +51,11 @@
       return
     }
 
+    connecting.value = true
     window.ipcRenderer.send('client.connect', {
       connection: getConnection(),
       data: {
+        state: 'connect-docker',
         setup: true,
       },
     })
@@ -60,6 +63,9 @@
 
   const connectReply = (e: any) => {
     const reply = e.detail as ConnectReply
+    if (reply.data?.state !== 'connect-docker') {
+      return
+    }
     if (reply.error) {
       errorResponse.value = reply.error
       return
@@ -228,7 +234,14 @@
 
           <Divider />
           <div class="flex items-center justify-end">
-            <PrimaryButton @click="connect">Connect</PrimaryButton>
+            <PrimaryButton @click="connect" :disabled="connecting">
+              <ArrowPathIcon
+                v-if="connecting"
+                :spin="true"
+                class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
+              />
+              Connect
+            </PrimaryButton>
           </div>
         </div>
 
