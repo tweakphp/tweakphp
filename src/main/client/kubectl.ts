@@ -37,17 +37,17 @@ export default class KubectlClient extends BaseClient {
     this.connection.client_path = pharClientRemotePath
   }
 
-  execute(code: string): Promise<string> {
+  execute(code: string, loader?: string): Promise<string> {
     return new Promise(async resolve => {
-      const command = `${this.command()} execute ${base64Encode(code)}`
+      const command = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       const result = await this.kubectl.exec(command, this.connection)
       resolve(result)
     })
   }
 
-  async info(): Promise<string> {
+  async info(loader?: string): Promise<string> {
     return new Promise(async resolve => {
-      const command = `${this.command()} info`
+      const command = `${this.command()} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       const result = await this.kubectl.exec(command, this.connection)
       resolve(result)
     })

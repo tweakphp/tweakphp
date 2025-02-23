@@ -1,104 +1,36 @@
 <script setup lang="ts">
-  import Container from '../components/Container.vue'
-  import Title from '../components/Title.vue'
-  import Divider from '../components/Divider.vue'
-  import { useSettingsStore } from '../stores/settings'
-  import SelectInput from '../components/SelectInput.vue'
-  import TextInput from '../components/TextInput.vue'
   import { ref } from 'vue'
-  import UpdateApp from '../components/UpdateApp.vue'
-
-  const saved = ref(false)
+  import Container from '../components/Container.vue'
+  import { useSettingsStore } from '../stores/settings'
+  import GeneralSettings from './settings/GeneralSettings.vue'
+  import LoadersSettings from './settings/LoadersSettings.vue'
   const settingsStore = useSettingsStore()
-
-  const saveSettings = () => {
-    saved.value = true
-    settingsStore.update()
-    setTimeout(() => {
-      saved.value = false
-    }, 2000)
-  }
+  const active = ref('general')
 </script>
 
 <template>
   <Container class="pt-[38px]">
     <div class="max-w-2xl mx-auto p-10">
-      <div class="flex items-center justify-between">
-        <Title>Settings</Title>
-        <span :class="{ 'opacity-0': !saved, 'opacity-65': saved }" class="transition-all duration-300"
-          >Changes Saved</span
+      <ul class="w-full flex items-center py-3 border-b" :style="{ borderBottomColor: settingsStore.colors.border }">
+        <li
+          class="cursor-pointer hover:text-primary-500"
+          :class="{ 'text-primary-500': active === 'general' }"
+          @click="active = 'general'"
         >
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>App version</div>
-        <div class="flex items-center justify-between">
-          {{ settingsStore.settings.version }}
-          <UpdateApp />
-        </div>
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>PHP path</div>
-        <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" />
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Theme</div>
-        <SelectInput
-          id="theme"
-          v-model="settingsStore.settings.theme"
-          @change="saveSettings()"
-          placeholder="Select a theme"
+          General
+        </li>
+        <li class="mx-3">|</li>
+        <li
+          class="cursor-pointer hover:text-primary-500"
+          :class="{ 'text-primary-500': active === 'loaders' }"
+          @click="active = 'loaders'"
         >
-          <option v-for="theme in settingsStore.themes" :value="theme">
-            {{ theme }}
-          </option>
-        </SelectInput>
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Editor font size</div>
-        <TextInput id="editor-font-size" v-model="settingsStore.settings.editorFontSize" @change="saveSettings()" />
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Editor word wrap</div>
-        <SelectInput
-          id="editor-word-wrap"
-          v-model="settingsStore.settings.editorWordWrap"
-          @change="saveSettings()"
-          placeholder="Select"
-        >
-          <option value="on">Wrap</option>
-          <option value="off">No Wrap</option>
-        </SelectInput>
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Vim mode</div>
-        <SelectInput
-          id="editor-vim-mode"
-          v-model="settingsStore.settings.vimMode"
-          @change="saveSettings()"
-          placeholder="Select"
-        >
-          <option value="on">Enabled</option>
-          <option value="off">Disabled</option>
-        </SelectInput>
-      </div>
-      <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Stacked Dump</div>
-        <SelectInput
-          id="editor-vim-mode"
-          v-model="settingsStore.settings.stackedDump"
-          @change="saveSettings()"
-          placeholder="Select"
-        >
-          <option value="compact">Compact</option>
-          <option value="extended">Extended</option>
-        </SelectInput>
+          Loaders
+        </li>
+      </ul>
+      <div class="py-10">
+        <GeneralSettings v-if="active === 'general'" />
+        <LoadersSettings v-if="active === 'loaders'" />
       </div>
     </div>
   </Container>

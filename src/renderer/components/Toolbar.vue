@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-  import { ArrowPathIcon, ChevronDownIcon, FolderIcon, ServerIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, BoltIcon, ChevronDownIcon, FolderIcon, ServerIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from './SecondaryButton.vue'
   import DockerIcon from './icons/DockerIcon.vue'
   import KubectlIcon from './icons/KubectlIcon.vue'
@@ -19,11 +19,14 @@
   import { useKubectlStore } from '../stores/kubectl'
   import KubectlView from '../views/KubectlView.vue'
   import { ConnectReply } from '../../types/client.type'
+  import { useLodaersStore } from '../stores/loaders'
+  import Divider from './Divider.vue'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
   const kubectlStore = useKubectlStore()
+  const loadersStore = useLodaersStore()
   const dockerModal = ref()
   const sshModal = ref()
   const kubectlModal = ref()
@@ -120,6 +123,15 @@
       tabStore.updateTab(tabStore.current)
     }
   }
+
+  const updateLoader = (name?: string) => {
+    if (!tabStore.current) {
+      return
+    }
+
+    tabStore.current.loader = name || ''
+    tabStore.updateTab(tabStore.current)
+  }
 </script>
 
 <template>
@@ -139,7 +151,7 @@
       <span class="text-xs">Local</span>
     </SecondaryButton>
 
-    <template v-if="tabStore.getCurrent().path !== settingsStore.settings.laravelPath">
+    <template v-if="tabStore.getCurrent()?.path !== settingsStore.settings.laravelPath">
       <!-- docker -->
       <DropDown>
         <template v-slot:trigger>
@@ -152,7 +164,7 @@
             />
             <span class="text-xs max-w-[150px] truncate">
               <template
-                v-if="tabStore.getCurrent().execution === 'docker' && tabStore.getCurrent()?.docker?.container_name"
+                v-if="tabStore.getCurrent()?.execution === 'docker' && tabStore.getCurrent()?.docker?.container_name"
               >
                 {{ tabStore.getCurrent()?.docker?.container_name }}
               </template>
@@ -255,6 +267,35 @@
         </div>
       </DropDown>
     </template>
+
+    <!-- loader -->
+    <DropDown>
+      <template v-slot:trigger>
+        <SecondaryButton class="!px-2">
+          <BoltIcon class="size-4 mr-1" />
+          <div class="text-xs max-w-[150px] truncate">
+            <div v-if="tab && tab.loader">
+              {{ tab.loader }}
+            </div>
+            <div v-else>Loader</div>
+          </div>
+          <ChevronDownIcon class="size-4 ml-1" />
+        </SecondaryButton>
+      </template>
+      <div>
+        <DropDownItem key="loader-default" class="truncate" @click="updateLoader()"> Default </DropDownItem>
+        <DropDownItem
+          v-for="loader in loadersStore.loaders"
+          :key="`loader-${loader.name}`"
+          class="truncate"
+          @click="updateLoader(loader.name)"
+        >
+          {{ loader.name }}
+        </DropDownItem>
+        <Divider class="my-1" />
+        <DropDownItem @click="kubectlModal.openModal()"> Add Loader </DropDownItem>
+      </div>
+    </DropDown>
 
     <!-- other tools -->
 

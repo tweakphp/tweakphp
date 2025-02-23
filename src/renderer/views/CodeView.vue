@@ -13,12 +13,14 @@
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
+  import { useLodaersStore } from '../stores/loaders'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabsStore = useTabsStore()
   const codeEditor = ref(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
+  const loadersStore = useLodaersStore()
 
   const tabsContainer = ref<HTMLDivElement | null>(null)
 
@@ -91,24 +93,33 @@
 
   const executeHandler = () => {
     let connection = tabsStore.getConnectionConfig(tab.value)
-    const { code } = tab.value
+    const { code, loader } = tab.value
+    const loaderCode = getLoader(loader ?? '')
 
     executeStore.setExecuting(true)
 
     window.ipcRenderer.send('client.execute', {
       connection: JSON.parse(JSON.stringify(connection)),
       code,
+      loader: loaderCode,
     })
   }
 
   const getInfo = () => {
     let connection = tabsStore.getConnectionConfig(tab.value)
+    const { loader } = tab.value
+    const loaderCode = getLoader(loader ?? '')
 
     if (connection && tab.value.type === 'code') {
       window.ipcRenderer.send('client.info', {
         connection: JSON.parse(JSON.stringify(connection)),
+        loader: loaderCode,
       })
     }
+  }
+
+  const getLoader = (name: string) => {
+    return loadersStore.get(name)?.code ?? ''
   }
 
   const tabsContainerWheelListener = (event: WheelEvent) => {
@@ -183,6 +194,14 @@
 
   watch(
     () => tab.value.execution,
+    async () => {
+      await nextTick()
+      getInfo()
+    }
+  )
+
+  watch(
+    () => tab.value.loader,
     async () => {
       await nextTick()
       getInfo()

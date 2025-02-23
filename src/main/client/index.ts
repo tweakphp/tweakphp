@@ -44,7 +44,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   const client = getClient(payload)
   try {
     await client.connect()
-    let result = await client.execute(payload.code)
+    let result = await client.execute(payload.code, payload.loader)
     result = result.trim()
     let output = result.split('TWEAKPHP_RESULT:')[1]?.trim()
     if (output) {
@@ -85,7 +85,7 @@ const info = async (event: Electron.IpcMainEvent, data: any) => {
   const client = getClient(data)
   try {
     await client.connect()
-    const result = await client.info()
+    const result = await client.info(data.loader)
     event.reply('client.info.reply', result)
   } catch (error: any) {
     throw new Error(error)

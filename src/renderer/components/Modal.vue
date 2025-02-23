@@ -63,6 +63,9 @@
                   'max-w-lg': props.size === 'lg',
                   'max-w-xl': props.size === 'xl',
                   'max-w-2xl': props.size === '2xl',
+                  'max-w-3xl': props.size === '3xl',
+                  'max-w-4xl': props.size === '4xl',
+                  'max-w-5xl': props.size === '5xl',
                 }"
                 :style="{
                   backgroundColor: settingsStore.colors.background,

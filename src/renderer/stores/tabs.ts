@@ -190,6 +190,7 @@ const normalize = (tab: any): Tab => {
     code: (tab.code as string) ?? '',
     path: tab.path as string | undefined,
     execution: (tab.execution as 'local' | 'ssh' | 'docker' | 'kubectl') ?? 'local',
+    loader: tab.loader as string,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
     pane: {
       code: (tab.pane?.code as number) ?? 50,

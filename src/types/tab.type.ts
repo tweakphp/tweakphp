@@ -14,6 +14,7 @@ export interface Tab {
   code: string
   path: string | undefined
   execution: string
+  loader?: string
   result: Result[]
   pane: {
     code: number
