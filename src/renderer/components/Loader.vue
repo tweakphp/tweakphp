@@ -1,5 +1,4 @@
 <script setup lang="ts">
-  import Divider from '../components/Divider.vue'
   import TextInput from '../components/TextInput.vue'
   import { onMounted, Ref, ref } from 'vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
@@ -27,9 +26,14 @@ namespace TweakPHP\\Client\\Loaders;
 
 class MyCustomLoader extends BaseLoader
 {
+    /**
+     * @param string $path is the root path of your project
+     */
     public function __construct(string $path)
     {
-        require $path.'/vendor/autoload.php';
+        // your custom loader logic here
+        // for example:
+        // require $path.'/vendor/autoload.php';
     }
 
     public function name(): string
@@ -77,13 +81,13 @@ class MyCustomLoader extends BaseLoader
   <div class="mt-3 w-full mx-auto">
     <form class="mx-auto space-y-3">
       <TextInput id="name" v-model="form.name" placeholder="MyCustomLoader" class="w-full" />
-      <Divider />
       <Editor
         ref="editor"
         v-model:value="form.code"
-        class="w-full h-[500px] border rounded-md p-1"
+        class="w-full border rounded-md p-1"
         :style="{
           borderColor: settingsStore.colors.border,
+          height: '500px',
         }"
         language="php"
       />

@@ -16,7 +16,6 @@ export class LocalClient extends BaseClient {
       const phpPath = `"${this.connection.php}"`
       const path = `"${this.connection.path}"`
       const command = `${phpPath} "${getLocalPharClient()}" ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-      console.log(command)
       exec(command, (_err, stdout) => {
         resolve(stdout)
       })

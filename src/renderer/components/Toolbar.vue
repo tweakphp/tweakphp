@@ -21,12 +21,14 @@
   import { ConnectReply } from '../../types/client.type'
   import { useLodaersStore } from '../stores/loaders'
   import Divider from './Divider.vue'
+  import { useRouter } from 'vue-router'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
   const kubectlStore = useKubectlStore()
   const loadersStore = useLodaersStore()
+  const router = useRouter()
   const dockerModal = ref()
   const sshModal = ref()
   const kubectlModal = ref()
@@ -272,7 +274,7 @@
     <DropDown>
       <template v-slot:trigger>
         <SecondaryButton class="!px-2">
-          <BoltIcon class="size-4 mr-1" />
+          <BoltIcon class="size-4 mr-1" :class="{ 'text-primary-500': tab.loader }" />
           <div class="text-xs max-w-[150px] truncate">
             <div v-if="tab && tab.loader">
               {{ tab.loader }}
@@ -293,7 +295,9 @@
           {{ loader.name }}
         </DropDownItem>
         <Divider class="my-1" />
-        <DropDownItem @click="kubectlModal.openModal()"> Add Loader </DropDownItem>
+        <DropDownItem @click="router.push({ name: 'settings', params: { tab: 'loaders' } })">
+          Manage Loaders
+        </DropDownItem>
       </div>
     </DropDown>
 

@@ -160,7 +160,10 @@
               class="absolute top-[5px] right-[5px] bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
             >
             </span>
-            <RouterLink to="/settings">
+            <RouterLink
+              :to="{ name: 'settings' }"
+              :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+            >
               <CogIcon class="w-6 h-6 hover:text-primary-500" />
             </RouterLink>
           </SidebarItem>

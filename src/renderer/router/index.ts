@@ -17,7 +17,7 @@ const router = createRouter({
       component: CodeView,
     },
     {
-      path: '/settings',
+      path: '/settings/:tab?',
       name: 'settings',
       component: SettingsView,
     },
