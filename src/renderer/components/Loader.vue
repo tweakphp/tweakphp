@@ -50,6 +50,7 @@ class MyCustomLoader extends BaseLoader
   const saving = ref(false)
   const saved = ref(false)
   const editor = ref()
+  const editorIsReady = ref(false)
 
   onMounted(() => {
     if (props.edit) {
@@ -58,7 +59,10 @@ class MyCustomLoader extends BaseLoader
         form.value = { ...loader }
       }
     }
-    editor.value.updateValue(form.value.code)
+    setTimeout(() => {
+      editorIsReady.value = true
+      editor.value.updateValue(form.value.code)
+    }, 100)
   })
 
   const save = () => {
@@ -83,6 +87,7 @@ class MyCustomLoader extends BaseLoader
       <TextInput id="name" v-model="form.name" placeholder="MyCustomLoader" class="w-full" />
       <Editor
         ref="editor"
+        v-show="editorIsReady"
         v-model:value="form.code"
         class="w-full border rounded-md p-1"
         :style="{
@@ -107,5 +112,3 @@ class MyCustomLoader extends BaseLoader
     </form>
   </div>
 </template>
-
-<style scoped></style>

@@ -7,8 +7,8 @@
   import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
   import Modal from '../../components/Modal.vue'
   import Loader from '../../components/Loader.vue'
-  const loadersStore = useLodaersStore()
 
+  const loadersStore = useLodaersStore()
   const editName = ref('')
   const loaderModal = ref()
 
@@ -66,5 +66,3 @@
     </Modal>
   </div>
 </template>
-
-<style scoped></style>
