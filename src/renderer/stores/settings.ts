@@ -5,6 +5,7 @@ import drakulaTheme from '../assets/editor-themes/dracula.json'
 import monokaiTheme from '../assets/editor-themes/monokai.json'
 import githubLightTheme from '../assets/editor-themes/github-light.json'
 import catppuccinTheme from '../assets/editor-themes/catppuccin.json'
+import nightOwlTheme from '../assets/editor-themes/night-owl.json'
 import { computed, ref } from 'vue'
 import { Settings } from '../../types/settings.type.ts'
 
@@ -14,6 +15,7 @@ const typedDrakulaTheme = drakulaTheme as monaco.editor.IStandaloneThemeData
 const typedMonokaiTheme = monokaiTheme as monaco.editor.IStandaloneThemeData
 const typedGithubLightTheme = githubLightTheme as monaco.editor.IStandaloneThemeData
 const typedCatppuccinTheme = catppuccinTheme as monaco.editor.IStandaloneThemeData
+const typedNightOwlTheme = nightOwlTheme as monaco.editor.IStandaloneThemeData
 
 const themeColors: { [key: string]: { [key: string]: string } } = {
   'nord': nordTheme.colors,
@@ -21,6 +23,7 @@ const themeColors: { [key: string]: { [key: string]: string } } = {
   'monokai': monokaiTheme.colors,
   'github-light': githubLightTheme.colors,
   'catppuccin': catppuccinTheme.colors,
+  'night-owl': nightOwlTheme.colors,
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -65,6 +68,7 @@ export const useSettingsStore = defineStore('settings', () => {
     monaco.editor.defineTheme('monokai', typedMonokaiTheme)
     monaco.editor.defineTheme('github-light', typedGithubLightTheme)
     monaco.editor.defineTheme('catppuccin', typedCatppuccinTheme)
+    monaco.editor.defineTheme('night-owl', typedNightOwlTheme)
   }
 
   return { settings, themes, setSettings, update, colors, defineEditorThemes }
