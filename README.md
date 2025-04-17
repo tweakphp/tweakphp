@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/662ad228-c169-4fd3-ae42-1369f65dff27" width="100px"/>
+  <img src="/build/icon.png" width="100px"/>
 </div>
 
 <div align="center">
@@ -23,5 +23,3 @@
 <div align="center">
   <a href="https://github.com/tweakphp/tweakphp/releases">Download Now</a> | <a href="https://tweakphp.com/">Documentation</a> | <a href="https://discord.gg/Et3UTT4xwC">Discord</a>
 </div>
-
-
