@@ -247,6 +247,9 @@
             </DropDownItem>
           </template>
           <DropDownItem v-if="vaporConfig?.environment" @click="vaporRemoved()"> Disconnect </DropDownItem>
+          <DropDownItem v-if="vaporConfig?.environments.length == 0">
+            <span>No environments found</span>
+          </DropDownItem>
         </div>
       </DropDown>
 
