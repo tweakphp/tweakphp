@@ -10,9 +10,8 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"node build.js --dev && electron .\"",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "update-clients": "node ./scripts/update-clients.js",
-    "build": "vite build && node build.js --prod",
+    "build": "vite build && electron-rebuild -f -w better-sqlite3 && node build.js --prod",
     "build-mac": "npm run build && electron-builder --mac --universal",
     "build-linux": "npm run build && electron-builder --linux",
     "build-win": "npm run build && electron-builder --win",
@@ -178,9 +177,9 @@
     "vue-tippy": "^6.4.4",
     "vue-tsc": "^2.0.26",
     "ws": "^8.17.0",
-    "zod": "^3.25.67"
+    "zod": "^3.25.67",
+    "@types/better-sqlite3": "^7.6.13"
   },
   "dependencies": {
-    "@types/better-sqlite3": "^7.6.13"
   }
 }

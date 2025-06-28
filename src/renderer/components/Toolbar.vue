@@ -200,10 +200,7 @@
   <div class="flex items-center space-x-2" v-if="tab">
     <!-- snippet -->
     <SecondaryButton class="!px-2" @click="snippetHistoryModal.openModal()">
-      <BookmarkIcon class="size-4 mr-1" />
-      <span class="text-xs max-w-[150px] truncate flex items-center gap-2">
-        <span>Snippets</span>
-      </span>
+      <BookmarkIcon class="size-4" />
     </SecondaryButton>
 
     <!-- local -->

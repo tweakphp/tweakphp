@@ -17,8 +17,8 @@ export async function initSnippet() {
         const snippetSchema = z.object({
           code: z.string().min(1, 'Code cannot be empty'),
           name: z.string().min(1, 'Name cannot be empty'),
-          tab_id: z.number().optional(),
-          tab_name: z.string().optional(),
+          tab_id: z.number().nullable().optional(),
+          tab_name: z.string().nullable().optional(),
           tags: z.array(z.string()).optional(),
         })
 

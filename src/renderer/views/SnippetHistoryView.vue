@@ -29,6 +29,8 @@
   const snippetTags = ref<string[]>([])
   const snippetCode = ref<string>('')
   const snippets = ref<Snippet[] | []>([])
+  const snippetTabId = ref<string | number | null>(null)
+  const snippetTabName = ref<string | null>(null)
 
   type SnippetResponse = {
     error?: string
@@ -71,6 +73,8 @@
     snippetName.value = snippetSelected.value.name
     snippetTags.value = snippetSelected.value.tags || []
     snippetCode.value = snippetSelected.value.code
+    snippetTabId.value = snippetSelected.value.tab_id || null
+    snippetTabName.value = snippetSelected.value.tab_name || null
   }
 
   watch(searchQuery, newQuery => {
@@ -139,14 +143,16 @@
 
     loadingEdit.value = true
 
-    const result = snippetSchema.safeParse({
-      id: snippetSelected.value?.id,
+    const payload = {
+      id: snippetSelected.value.id,
       name: snippetName.value,
       code: snippetCode.value,
-      tab_id: snippetSelected.value?.tab_id,
-      tab_name: snippetSelected.value?.tab_name,
+      tab_id: tabsStore.current?.id,
+      tab_name: tabsStore.current?.name,
       tags: snippetTags.value,
-    })
+    }
+
+    const result = snippetSchema.safeParse(payload)
 
     if (!result.success) {
       console.error('Validation errors:', result.error.errors)

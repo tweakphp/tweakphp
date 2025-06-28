@@ -11,12 +11,14 @@
   import { Snippet } from '../../types/snippet.type.ts'
   import TagsInput from '@/components/TagsInput.vue'
   import { z } from 'zod'
+  import SwitchInput from '@/components/SwitchInput.vue'
 
   const emit = defineEmits(['saved'])
   const tabsStore = useTabsStore()
   const snippetStore = useSnippetStore()
 
   const loading = ref<boolean>(false)
+  const saveTabRef = ref<boolean>(false)
   const errorResponse = ref<string>('')
   const snippetName = ref('')
   const snippetTags = ref<string[]>([])
@@ -28,8 +30,8 @@
   const snippetSchema = z.object({
     code: z.string().min(1, 'Code cannot be empty'),
     name: z.string().min(1, 'Name cannot be empty'),
-    tab_id: z.number().optional(),
-    tab_name: z.string().optional(),
+    tab_id: z.number().nullable().optional(),
+    tab_name: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
   })
 
@@ -43,6 +45,14 @@
       tab_id: tabsStore.current?.id,
       tab_name: tabsStore.current?.name,
       tags: snippetTags.value,
+    }
+
+    if (saveTabRef.value && tabsStore.current) {
+      payload.tab_id = tabsStore.current.id
+      payload.tab_name = tabsStore.current.name
+    } else {
+      payload.tab_id = null
+      payload.tab_name = null
     }
 
     const result = snippetSchema.safeParse(payload)
@@ -86,6 +96,12 @@
               v-model="snippetTags"
               placeholder="Snippet tags (Enter to add, comma to separate)"
             />
+            <div class="flex items-center justify-start gap-2">
+              Save snippet to current tab:
+              <SwitchInput
+                v-model="saveTabRef"
+              />
+            </div>
           </div>
 
           <Divider />
