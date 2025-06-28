@@ -1,14 +1,16 @@
 <script setup lang="ts">
-  import { onMounted, onBeforeUnmount, ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import * as monaco from 'monaco-editor'
   import { MonacoLanguageClient } from 'monaco-languageclient'
   import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
   import { CloseAction, ErrorAction } from 'vscode-languageclient'
   import { initVimMode } from 'monaco-vim'
-  import { installPHPLanguage, installOutputLanguage, installThemes } from '../editor'
+  import { installOutputLanguage, installPHPLanguage, installThemes } from '../editor'
   import { useSettingsStore } from '../stores/settings'
+  import { useSnippetStore } from '../stores/snippet'
 
   const settingsStore = useSettingsStore()
+  const snippetStore = useSnippetStore()
 
   // Props
   const props = defineProps({
@@ -76,6 +78,27 @@
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
       })
 
+      editor.addAction({
+        id: 'save-snippet',
+        label: 'Save Snippet',
+        contextMenuGroupId: 'navigation',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS],
+        run: editor => {
+          const selection = editor.getSelection()
+          const model = editor.getModel()
+          if (!model) {
+            console.warn('No model found for the editor.')
+            return
+          }
+
+          if (!selection || selection.isEmpty()) {
+            console.warn('No code selected to save.')
+            return
+          }
+          snippetStore.openModal(model.getValueInRange(selection))
+        },
+      })
+
       if (settingsStore.settings.vimMode === 'on') {
         vimMode.value = initVimMode(editor)
       }
@@ -133,6 +156,12 @@
       editor.setValue(value)
     }
   }
+
+  watch(() => props.value, (newValue) => {
+    if (editor && editor.getValue() !== newValue) {
+      editor.setValue(newValue)
+    }
+  })
 
   const focusEditor = () => {
     if (editor) {

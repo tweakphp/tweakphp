@@ -10,6 +10,7 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"node build.js --dev && electron .\"",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "update-clients": "node ./scripts/update-clients.js",
     "build": "vite build && node build.js --prod",
     "build-mac": "npm run build && electron-builder --mac --universal",
@@ -35,7 +36,11 @@
     ],
     "extraFiles": [
       "build/**/*",
-      "public/**/*"
+      "public/**/*",
+      {
+        "from": "migrations",
+        "to": "migrations"
+      }
     ],
     "publish": {
       "provider": "github",
@@ -115,6 +120,7 @@
     "@codingame/monaco-vscode-textmate-service-override": "~7.0.7",
     "@codingame/monaco-vscode-theme-defaults-default-extension": "~7.0.7",
     "@codingame/monaco-vscode-theme-service-override": "~7.0.7",
+    "@electron/rebuild": "^4.0.1",
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.1.3",
     "@types/adm-zip": "^0.5.7",
@@ -127,8 +133,10 @@
     "@types/ssh2": "^1.15.1",
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vueuse/core": "^13.4.0",
     "adm-zip": "^0.5.16",
     "autoprefixer": "^10.4.19",
+    "better-sqlite3": "^12.1.1",
     "bufferutil": "^4.0.8",
     "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
@@ -150,6 +158,7 @@
     "pinia": "^2.1.7",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",
+    "radix-vue": "^1.9.17",
     "semver": "^7.6.3",
     "shell-env": "^4.0.1",
     "splitpanes": "^3.1.5",
@@ -157,6 +166,7 @@
     "tailwindcss": "^3.4.3",
     "tippy.js": "^6.3.7",
     "typescript": "^5.2.2",
+    "unplugin-vue-components": "^28.7.0",
     "utf-8-validate": "^5.0.10",
     "vite": "^6.3.1",
     "vscode-jsonrpc": "^8.2.1",
@@ -167,6 +177,10 @@
     "vue-router": "^4.3.0",
     "vue-tippy": "^6.4.4",
     "vue-tsc": "^2.0.26",
-    "ws": "^8.17.0"
+    "ws": "^8.17.0",
+    "zod": "^3.25.67"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13"
   }
 }

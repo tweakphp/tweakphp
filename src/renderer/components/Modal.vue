@@ -17,9 +17,12 @@
     },
   })
 
+  const emits = defineEmits(['close'])
+
   const isModalOpen = ref(false)
   const closeModal = () => {
     isModalOpen.value = false
+    emits('close')
   }
 
   const openModal = () => {

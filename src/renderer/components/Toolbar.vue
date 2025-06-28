@@ -8,7 +8,7 @@
   import DropDown from './DropDown.vue'
   import DropDownItem from './DropDownItem.vue'
   import Modal from './Modal.vue'
-  import { computed, ComputedRef, onBeforeUnmount, onMounted, ref } from 'vue'
+  import { computed, ComputedRef, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import DockerView from '../views/DockerView.vue'
   import { useSettingsStore } from '../stores/settings'
   import { Tab } from '../../types/tab.type'
@@ -22,12 +22,13 @@
   import { ConnectReply } from '../../types/client.type'
   import { useLodaersStore } from '../stores/loaders'
   import { useVaporStore } from '../stores/vapor.ts'
+  import { useSnippetStore } from '../stores/snippet'
+
   import Divider from './Divider.vue'
   import { useRouter } from 'vue-router'
-  import SnippetIcon from './icons/SnippetIcon.vue'
-  import ClockIcon from './icons/ClockIcon.vue'
   import SnippetSaveView from '../views/SnippetSaveView.vue'
   import SnippetHistoryView from '../views/SnippetHistoryView.vue'
+  import BookmarkIcon from '@/components/icons/BookmarkIcon.vue'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -35,6 +36,7 @@
   const kubectlStore = useKubectlStore()
   const loadersStore = useLodaersStore()
   const vaporStore = useVaporStore()
+  const snippetStore = useSnippetStore()
   const router = useRouter()
   const dockerModal = ref()
   const snippetSaveModal = ref()
@@ -46,6 +48,21 @@
   const sshConnecting = ref(false)
   const kubectlConnecting = ref(false)
   const connecting = ref('')
+
+  watch(
+    () => snippetStore.showModal,
+    (show) => {
+      if (show) {
+        snippetSaveModal.value?.openModal()
+      } else {
+        snippetSaveModal.value?.closeModal()
+      }
+    }
+  )
+
+  function closeSnippetSaveModal() {
+    snippetStore.modalClosed()
+  }
 
   onMounted(() => {
     events.addEventListener('client.connect.reply', connectReply)
@@ -181,6 +198,14 @@
 
 <template>
   <div class="flex items-center space-x-2" v-if="tab">
+    <!-- snippet -->
+    <SecondaryButton class="!px-2" @click="snippetHistoryModal.openModal()">
+      <BookmarkIcon class="size-4 mr-1" />
+      <span class="text-xs max-w-[150px] truncate flex items-center gap-2">
+        <span>Snippets</span>
+      </span>
+    </SecondaryButton>
+
     <!-- local -->
     <SecondaryButton
       class="!px-2"
@@ -374,35 +399,6 @@
       </div>
     </DropDown>
 
-    <!-- snippet -->
-    <DropDown>
-      <template v-slot:trigger>
-        <SecondaryButton class="!px-2">
-          <SnippetIcon class="size-4 mr-1" />
-          <span class="text-xs max-w-[150px] truncate flex items-center gap-2">
-            <span>Snippets</span>
-          </span>
-          <ChevronDownIcon class="size-4 ml-1" />
-        </SecondaryButton>
-      </template>
-      <div>
-        <DropDownItem @click="snippetSaveModal.openModal()">
-          <span>Save</span>
-        </DropDownItem>
-        <DropDownItem @click="snippetHistoryModal.openModal()">
-          <span>Show</span>
-        </DropDownItem>
-      </div>
-    </DropDown>
-
-    <!-- history -->
-    <SecondaryButton class="!px-2" @click="historyModal.openModal()">
-      <ClockIcon class="size-4 mr-1" />
-      <span class="text-xs max-w-[150px] truncate flex items-center gap-2">
-        <span>History</span>
-      </span>
-    </SecondaryButton>
-
     <!-- other tools -->
 
     <!-- modals -->
@@ -415,12 +411,11 @@
     <Modal title="Connect to Kubernetes" ref="kubectlModal" size="2xl">
       <KubectlView @connected="kubectlConnected($event)" @removed="kubectlRemoved($event)" />
     </Modal>
-    <Modal title="Snippets" ref="snippetSaveModal" size="xl">
-      <SnippetSaveView @saved="snippetSaveModal.closeModal()" />
+    <Modal title="Save snippet" ref="snippetSaveModal" size="xl" @close="closeSnippetSaveModal">
+      <SnippetSaveView @saved="closeSnippetSaveModal" />
     </Modal>
-    <Modal title="Snippet History" ref="snippetHistoryModal" size="5xl">
-      <SnippetHistoryView @saved="snippetHistoryModal.closeModal()" />
+    <Modal title="Snippets" ref="snippetHistoryModal" size="5xl">
+      <SnippetHistoryView @selected="snippetHistoryModal.closeModal()" />
     </Modal>
-    <Modal title="History" ref="historyModal" size="5xl"> // </Modal>
   </div>
 </template>

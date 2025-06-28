@@ -2,27 +2,58 @@
   import Container from '../components/Container.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import Divider from '../components/Divider.vue'
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import TextInput from '../components/TextInput.vue'
   import { useTabsStore } from '../stores/tabs'
+  import { useSnippetStore } from '../stores/snippet'
+  import Editor from '@/components/Editor.vue'
+  import { Snippet } from '../../types/snippet.type.ts'
+  import TagsInput from '@/components/TagsInput.vue'
+  import { z } from 'zod'
 
   const emit = defineEmits(['saved'])
   const tabsStore = useTabsStore()
+  const snippetStore = useSnippetStore()
 
   const loading = ref<boolean>(false)
   const errorResponse = ref<string>('')
-  const name = ref('')
+  const snippetName = ref('')
+  const snippetTags = ref<string[]>([])
+
+  const snippetCode = computed(() => {
+    return snippetStore.getCode() || ''
+  })
+
+  const snippetSchema = z.object({
+    code: z.string().min(1, 'Code cannot be empty'),
+    name: z.string().min(1, 'Name cannot be empty'),
+    tab_id: z.number().optional(),
+    tab_name: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  });
 
   const saveSnippet = async () => {
     loading.value = true
     errorResponse.value = ''
-    window.ipcRenderer.send('snippet-saved', {
-      code: tabsStore.current?.code || '',
-      name: name.value,
-      tab_id: tabsStore.current?.id || 0,
-      tab_name: tabsStore.current?.name || '',
-    })
+
+    const payload: Omit<Snippet, 'id' | 'created_at' | 'updated_at'> = {
+      code: snippetCode.value,
+      name: snippetName.value,
+      tab_id: tabsStore.current?.id,
+      tab_name: tabsStore.current?.name,
+      tags: snippetTags.value,
+    };
+
+    const result = snippetSchema.safeParse(payload);
+
+    if (!result.success) {
+      errorResponse.value = result.error.errors.map(e => e.message).join(', ')
+      loading.value = false
+      return;
+    }
+
+    window.ipcRenderer.send('snippet-saved', JSON.parse(JSON.stringify(payload)));
   }
 
   const saveSnippetReply = (e: any) => {
@@ -30,8 +61,7 @@
     if (e.error) {
       errorResponse.value = e.error
     } else {
-      name.value = ''
-      emit('saved', e.snippet)
+      emit('saved', e.data)
     }
   }
 
@@ -49,12 +79,36 @@
     <div class="mt-3 w-full mx-auto">
       <div class="mx-auto space-y-3">
         <div class="space-y-3">
-          <div class="grid grid-cols-2 items-center">
-            <div>Name snippet</div>
-            <TextInput id="name_snippet" v-model="name" />
+          <div class="grid grid-cols-1 gap-4 items-center">
+            <TextInput
+              id="snippet_name"
+              v-model="snippetName"
+              placeholder="Snippet name"
+            />
+            <TagsInput
+              id="tag_input"
+              v-model="snippetTags"
+              placeholder="Snippet tags (Enter to add, comma to separate)"
+            />
           </div>
 
           <Divider />
+
+          <h3>Preview</h3>
+
+          <div class="h-[200px] flex w-auto">
+            <Editor
+              :id="`snippet-preview-${Date.now()}`"
+              :key="`snippet-preview-${Date.now()}`"
+              :editor-id="`snippet-preview-${Date.now()}`"
+              language="output"
+              :value="snippetCode"
+              :readonly="true"
+            />
+          </div>
+
+          <Divider />
+
           <div class="flex items-center justify-end">
             <PrimaryButton @click="saveSnippet" :disabled="loading">
               <ArrowPathIcon

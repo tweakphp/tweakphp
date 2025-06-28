@@ -28,3 +28,7 @@ release
 public/laravel
 
 .env
+
+tweakphp.db
+tweakphp.db-shm
+tweakphp.db-wal
