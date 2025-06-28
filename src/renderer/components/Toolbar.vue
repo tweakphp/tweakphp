@@ -51,7 +51,7 @@
 
   watch(
     () => snippetStore.showModal,
-    (show) => {
+    show => {
       if (show) {
         snippetSaveModal.value?.openModal()
       } else {

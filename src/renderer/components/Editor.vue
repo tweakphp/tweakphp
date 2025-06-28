@@ -157,11 +157,14 @@
     }
   }
 
-  watch(() => props.value, (newValue) => {
-    if (editor && editor.getValue() !== newValue) {
-      editor.setValue(newValue)
+  watch(
+    () => props.value,
+    newValue => {
+      if (editor && editor.getValue() !== newValue) {
+        editor.setValue(newValue)
+      }
     }
-  })
+  )
 
   const focusEditor = () => {
     if (editor) {

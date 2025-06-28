@@ -7,22 +7,22 @@
   const settingsStore = useSettingsStore()
 
   const props = defineProps<{
-    modelValue: string[];
+    modelValue: string[]
   }>()
 
   const emit = defineEmits<{
-    (e: 'update:modelValue', value: string[]): void;
-  }>();
+    (e: 'update:modelValue', value: string[]): void
+  }>()
 
-  const localModelValue = ref<string[]>(props.modelValue || []);
+  const localModelValue = ref<string[]>(props.modelValue || [])
 
   watch(props.modelValue, (newValue: string[]) => {
-    localModelValue.value = newValue;
+    localModelValue.value = newValue
   })
 
   watch(localModelValue, (newValue: string[]) => {
-    emit('update:modelValue', newValue);
-  });
+    emit('update:modelValue', newValue)
+  })
 </script>
 
 <template>
@@ -43,7 +43,7 @@
     >
       <TagsInputItemText class="text-sm pl-1" />
       <TagsInputItemDelete class="p-0.5 rounded bg-transparent">
-        <XCircleIcon class="size-4"/>
+        <XCircleIcon class="size-4" />
       </TagsInputItemDelete>
     </TagsInputItem>
 

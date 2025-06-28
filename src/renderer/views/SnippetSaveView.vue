@@ -31,7 +31,7 @@
     tab_id: z.number().optional(),
     tab_name: z.string().optional(),
     tags: z.array(z.string()).optional(),
-  });
+  })
 
   const saveSnippet = async () => {
     loading.value = true
@@ -43,17 +43,17 @@
       tab_id: tabsStore.current?.id,
       tab_name: tabsStore.current?.name,
       tags: snippetTags.value,
-    };
+    }
 
-    const result = snippetSchema.safeParse(payload);
+    const result = snippetSchema.safeParse(payload)
 
     if (!result.success) {
       errorResponse.value = result.error.errors.map(e => e.message).join(', ')
       loading.value = false
-      return;
+      return
     }
 
-    window.ipcRenderer.send('snippet-saved', JSON.parse(JSON.stringify(payload)));
+    window.ipcRenderer.send('snippet-saved', JSON.parse(JSON.stringify(payload)))
   }
 
   const saveSnippetReply = (e: any) => {
@@ -80,11 +80,7 @@
       <div class="mx-auto space-y-3">
         <div class="space-y-3">
           <div class="grid grid-cols-1 gap-4 items-center">
-            <TextInput
-              id="snippet_name"
-              v-model="snippetName"
-              placeholder="Snippet name"
-            />
+            <TextInput id="snippet_name" v-model="snippetName" placeholder="Snippet name" />
             <TagsInput
               id="tag_input"
               v-model="snippetTags"
