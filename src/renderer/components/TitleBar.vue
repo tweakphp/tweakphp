@@ -122,7 +122,7 @@
           <SecondaryButton
             v-if="tab"
             class="!px-2"
-            v-tippy="{ content: 'Close', placement: 'bottom' }"
+            v-tippy="{ content: 'Remove', placement: 'bottom' }"
             @click="removeTab(tab.id)"
           >
             <XMarkIcon class="size-4" />

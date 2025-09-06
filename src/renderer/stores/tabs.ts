@@ -166,6 +166,14 @@ export const useTabsStore = defineStore('tabs', () => {
     return connection
   }
 
+  const updateTabName = (tabId: number, newName: string) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (tabToUpdate && newName.trim() !== '') {
+      tabToUpdate.name = newName.trim()
+      updateTab(tabToUpdate)
+    }
+  }
+
   return {
     tabs,
     current,
@@ -175,6 +183,7 @@ export const useTabsStore = defineStore('tabs', () => {
     findTab,
     setCurrent,
     getCurrent,
+    updateTabName,
     scrollPosition,
     setScrollPosition,
     getConnectionConfig,
