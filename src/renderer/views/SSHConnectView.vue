@@ -158,7 +158,6 @@
         <div>Authentication Type</div>
         <SelectInput id="auth-type" v-model="form.auth_type" placeholder="Authentication Type">
           <option value="key">Private Key (Recommended)</option>
-          <option value="key-passphrase">Private Key with password</option>
           <option value="password">Password</option>
         </SelectInput>
       </div>
@@ -172,12 +171,12 @@
         <div>Password</div>
         <TextInput id="password" type="password" v-model="form.password" />
       </div>
-      <div v-if="form.auth_type === 'key-passphrase'" class="grid grid-cols-2 items-center">
+      <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Passphrase</div>
         <TextInput id="passphrase" type="password" v-model="form.passphrase" />
       </div>
-      <Divider v-if="form.auth_type === 'key-passphrase'"/>
-      <div v-if="form.auth_type === 'key' || form.auth_type === 'key-passphrase'" class="grid grid-cols-2 items-center">
+      <Divider v-if="form.auth_type === 'key'"/>
+      <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Private Key Path</div>
         <TextInput
           id="key"

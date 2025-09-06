@@ -22,18 +22,10 @@ export class SSH {
       this.config.password = connectionConfig.password
       this.config.authHandler = ['password']
     }
-    if (connectionConfig.auth_type === 'key-passphrase' && connectionConfig.privateKey && connectionConfig.passphrase) {
-      try {
-        this.config.privateKey = readFileSync(connectionConfig.privateKey, 'utf8')
-        this.config.passphrase = connectionConfig.passphrase
-      } catch (error: any) {
-        //
-      }
-      this.config.authHandler = ['publickey']
-    }
     if (connectionConfig.auth_type === 'key' && connectionConfig.privateKey) {
       try {
         this.config.privateKey = readFileSync(connectionConfig.privateKey, 'utf8')
+        this.config.passphrase = connectionConfig.passphrase
       } catch (error: any) {
         //
       }
