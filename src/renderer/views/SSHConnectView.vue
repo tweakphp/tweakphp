@@ -175,7 +175,7 @@
         <div>Passphrase</div>
         <TextInput id="passphrase" type="password" v-model="form.passphrase" />
       </div>
-      <Divider v-if="form.auth_type === 'key'"/>
+      <Divider v-if="form.auth_type === 'key'" />
       <div v-if="form.auth_type === 'key'" class="grid grid-cols-2 items-center">
         <div>Private Key Path</div>
         <TextInput
