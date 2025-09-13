@@ -5,6 +5,7 @@ import monokaiTheme from './assets/editor-themes/monokai.json'
 import githubLightTheme from './assets/editor-themes/github-light.json'
 import catppuccinTheme from './assets/editor-themes/catppuccin.json'
 import nightOwlTheme from './assets/editor-themes/night-owl.json'
+import rosePineTheme from './assets/editor-themes/rose-pine.json'
 
 // Explicitly type the themes
 const typedNordTheme = nordTheme as monaco.editor.IStandaloneThemeData
@@ -13,6 +14,7 @@ const typedMonokaiTheme = monokaiTheme as monaco.editor.IStandaloneThemeData
 const typedGithubLightTheme = githubLightTheme as monaco.editor.IStandaloneThemeData
 const typedCatppuccinTheme = catppuccinTheme as monaco.editor.IStandaloneThemeData
 const typedNightOwlTheme = nightOwlTheme as monaco.editor.IStandaloneThemeData
+const typedRosePineTheme = rosePineTheme as monaco.editor.IStandaloneThemeData
 
 export const installThemes = () => {
   monaco.editor.defineTheme('nord', typedNordTheme)
@@ -21,6 +23,7 @@ export const installThemes = () => {
   monaco.editor.defineTheme('github-light', typedGithubLightTheme)
   monaco.editor.defineTheme('catppuccin', typedCatppuccinTheme)
   monaco.editor.defineTheme('night-owl', typedNightOwlTheme)
+  monaco.editor.defineTheme('rose-pine', typedRosePineTheme)
 }
 
 export const installPHPLanguage = () => {
