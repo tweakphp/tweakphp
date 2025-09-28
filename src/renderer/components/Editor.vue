@@ -330,13 +330,13 @@
               '**/node_modules/**',
               '**/vendor/**/{Tests,tests}/**',
               '**/vendor/**/vendor/**',
-            ]
+            ],
           },
         },
         errorHandler: {
           error: () => ({ action: ErrorAction.Continue }),
           closed: () => ({ action: CloseAction.DoNotRestart }),
-        }
+        },
       },
       connectionProvider: {
         get: () => Promise.resolve(messageTransports),
