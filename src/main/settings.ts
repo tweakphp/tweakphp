@@ -68,7 +68,7 @@ export const getSettings = () => {
       stackedDump: settingsJson.stackedDump || defaultSettings.stackedDump,
       windowWidth: settingsJson.windowWidth || defaultSettings.windowWidth,
       windowHeight: settingsJson.windowHeight || defaultSettings.windowHeight,
-      intelephenseLicenseKey: settingsJson.intelephenseLicenseKey || '',
+      intelephenseLicenseKey: settingsJson.intelephenseLicenseKey || ''
     }
   } else {
     settings = defaultSettings
