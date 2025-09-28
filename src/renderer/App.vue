@@ -45,6 +45,19 @@
     window.ipcRenderer.send('init')
   }, 500)
 
+  const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
+    const reason: any = event.reason
+    const message = typeof reason === 'string' ? reason : reason?.message
+    const name = reason?.name
+    if (
+      (typeof message === 'string' && message.includes('Pending response rejected since connection got disposed')) ||
+      name === '_ResponseError'
+    ) {
+      event.preventDefault()
+      return
+    }
+  }
+
   onMounted(async () => {
     colorSchemeSetup()
     let media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -88,12 +101,14 @@
     })
 
     window.addEventListener('keydown', keydownListener)
+    window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
     await initEditor()
   })
 
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', keydownListener)
+    window.removeEventListener('unhandledrejection', unhandledRejectionListener)
   })
 
   const initEditor = async () => {

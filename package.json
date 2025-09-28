@@ -109,6 +109,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.1.1",
+    "intelephense": "^1.12.6",
     "js-yaml": "^4.1.0",
     "reka-ui": "^2.4.1"
   },

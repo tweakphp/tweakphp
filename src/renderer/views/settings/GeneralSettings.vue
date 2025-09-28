@@ -86,6 +86,21 @@
       </SelectInput>
     </div>
     <Divider class="mt-3" />
+    <div class="mt-3 grid grid-cols-2 items-start">
+      <div>Intelephense License key</div>
+      <div class="flex flex-col gap-1">
+        <TextInput
+          id="intelephense-license-key"
+          v-model="settingsStore.settings.intelephenseLicenseKey"
+          @change="saveSettings()"
+          type="password"
+          placeholder="Optional — paste your license to enable premium features"
+          autocomplete="off"
+        />
+        <span class="text-[11px] opacity-60">Leave empty to use the free version. Changes restart the PHP language server.</span>
+      </div>
+    </div>
+    <Divider class="mt-3" />
     <div class="mt-3 grid grid-cols-2 items-center">
       <div>Stacked Dump</div>
       <SelectInput

@@ -67,6 +67,11 @@
   const handleLspReconnect = () => {
     if (lspStore.status === 'disconnected') {
       window.ipcRenderer.send('lsp.restart')
+      try {
+        // @ts-ignore - template ref typed at runtime
+        codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
+      } catch (e) {
+      }
     }
   }
 

@@ -1,31 +1,33 @@
 import * as runServer from './server-runner'
 import log from 'electron-log/main'
-import path from 'path'
-import { app } from 'electron'
+
 import * as settings from '../settings'
 
 export const init = async () => {
-  const lspPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'public/phpactor.phar')
-    : path.join(__dirname, '/../public/phpactor.phar')
+  console.log('Initiating PHP language server (Intelephense)')
 
-  console.log('Initiating PHP language server')
-
-  if (!settings.getSettings().php) {
-    log.error('PHP executable not found in settings')
+  let intelephenseEntry = ''
+  try {
+    intelephenseEntry = require.resolve('intelephense')
+  } catch (e) {
     return
   }
 
   try {
     await runServer.runLanguageServer({
-      serverName: 'PHP',
+      serverName: 'Intelephense',
       pathName: '/',
-      serverPort: 54331,
-      runCommand: settings.getSettings().php,
-      runCommandArgs: [lspPath, 'language-server'],
+      serverPort: Number(process.env.VITE_LSP_WEBSOCKET_PORT || 54331),
+      runCommand: process.execPath,
+      runCommandArgs: [intelephenseEntry, '--stdio'],
       spawnOptions: {
         env: {
           ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
+          INTELEPHENSE_TELEMETRY_ENABLED: '0',
+          ...(settings.getSettings().intelephenseLicenseKey
+            ? { INTELEPHENSE_LICENSE_KEY: settings.getSettings().intelephenseLicenseKey }
+            : {}),
         },
         shell: true,
       },

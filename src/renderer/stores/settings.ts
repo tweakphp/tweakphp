@@ -46,6 +46,7 @@ export const useSettingsStore = defineStore('settings', () => {
     stackedDump: 'extended',
     windowWidth: 1100,
     windowHeight: 700,
+    intelephenseLicenseKey: ''
   }
 
   const settings = ref<Settings>(defaultSettings)
