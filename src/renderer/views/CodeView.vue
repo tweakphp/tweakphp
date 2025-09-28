@@ -70,8 +70,7 @@
       try {
         // @ts-ignore - template ref typed at runtime
         codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
-      } catch (e) {
-      }
+      } catch (e) {}
     }
   }
 
