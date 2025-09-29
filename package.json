@@ -55,6 +55,7 @@
       "description": "Tweak your PHP code easily",
       "icon": "./build/icon.png",
       "target": [
+        "rpm",
         {
           "target": "AppImage",
           "arch": [
@@ -73,6 +74,13 @@
       },
       "maintainer": "Saeed Vaziry",
       "category": "Development"
+    },
+    "rpm": {
+      "icon": "icon.ico",
+      "packageCategory": "Development",
+      "depends": [
+        "zlib"
+      ]
     },
     "deb": {
       "packageCategory": "Development",
