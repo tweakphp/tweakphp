@@ -43,9 +43,19 @@ jobs:
         run: |
             sudo snap install snapcraft --classic
 
-      - name: Build & Publish Mac
+      - name: Build & Publish Mac Arm
         if: matrix.os == 'macos-latest'
-        run: npm run publish-mac
+        run: npm run publish-mac-arm
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Build & Publish Mac Intel
+        if: matrix.os == 'macos-latest'
+        run: npm run publish-mac-intel
         env:
           VITE_LSP_WEBSOCKET_PORT: 54331
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
