@@ -38,14 +38,12 @@ const defaultSettings: Settings = {
 export const init = async () => {
   ipcMain.on('settings.store', async (_event: any, data: Settings) => {
     try {
-      const phpExecutable = isWindows() ? 'php.exe' : 'php'
-
       if (fs.existsSync(data.php) && fs.lstatSync(data.php).isDirectory()) {
+        let phpExecutable = isWindows() ? 'php.exe' : 'php'
         let potentialPath = path.join(data.php, phpExecutable)
 
         if (fs.existsSync(potentialPath)) {
           data.php = potentialPath
-
           _event.sender.send('settings.php-located', potentialPath)
         }
       }
