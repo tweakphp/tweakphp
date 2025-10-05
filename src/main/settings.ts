@@ -4,6 +4,7 @@ import * as lsp from './lsp/index'
 import { app, ipcMain } from 'electron'
 import { Settings } from '../types/settings.type'
 import os from 'os'
+import { isWindows } from './system/platform.ts'
 
 const homeDir = os.homedir()
 
@@ -36,6 +37,22 @@ const defaultSettings: Settings = {
 
 export const init = async () => {
   ipcMain.on('settings.store', async (_event: any, data: Settings) => {
+    try {
+      const phpExecutable = isWindows() ? 'php.exe' : 'php'
+
+      if (fs.existsSync(data.php) && fs.lstatSync(data.php).isDirectory()) {
+        let potentialPath = path.join(data.php, phpExecutable)
+
+        if (fs.existsSync(potentialPath)) {
+          data.php = potentialPath
+
+          _event.sender.send('settings.php-located', potentialPath)
+        }
+      }
+    } catch (err) {
+      // Ignore errors - perhaps path no longer exists or has been changed
+    }
+
     setSettings(data)
     await lsp.init()
   })
