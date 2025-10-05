@@ -52,7 +52,6 @@ const handlePhpExecutable = (_event: any, data: Settings) => {
 
       if (fs.existsSync(potentialPath)) {
         data.php = potentialPath
-
         _event.sender.send('settings.php-located', potentialPath)
       }
     }
