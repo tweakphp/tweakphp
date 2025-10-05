@@ -37,23 +37,29 @@ const defaultSettings: Settings = {
 
 export const init = async () => {
   ipcMain.on('settings.store', async (_event: any, data: Settings) => {
-    try {
-      if (fs.existsSync(data.php) && fs.lstatSync(data.php).isDirectory()) {
-        let phpExecutable = isWindows() ? 'php.exe' : 'php'
-        let potentialPath = path.join(data.php, phpExecutable)
-
-        if (fs.existsSync(potentialPath)) {
-          data.php = potentialPath
-          _event.sender.send('settings.php-located', potentialPath)
-        }
-      }
-    } catch (err) {
-      // Ignore errors - perhaps path no longer exists or has been changed
-    }
-
-    setSettings(data)
+    let returnedData = handlePhpExecutable(_event, data)
+    setSettings(returnedData)
     await lsp.init()
   })
+}
+
+const handlePhpExecutable = (_event: any, data: Settings) => {
+  try {
+    const phpExecutable = isWindows() ? 'php.exe' : 'php'
+
+    if (fs.existsSync(data.php) && fs.lstatSync(data.php).isDirectory()) {
+      let potentialPath = path.join(data.php, phpExecutable)
+
+      if (fs.existsSync(potentialPath)) {
+        data.php = potentialPath
+
+        _event.sender.send('settings.php-located', potentialPath)
+      }
+    }
+  } catch (err) {
+    // Ignore errors — e.g., path no longer exists or has been changed
+  }
+  return data
 }
 
 export const setSettings = async (data: Settings) => {
