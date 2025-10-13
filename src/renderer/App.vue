@@ -148,7 +148,11 @@
       <div class="relative h-full flex flex-col justify-between pb-[70px]">
         <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
           <button @click="newProjectModal.openModal()" class="w-full">
-            <ProjectTile tooltip="Add new project" tooltip-placement="right" :expanded="settingsStore.isNavigationExpanded">
+            <ProjectTile
+              tooltip="Add new project"
+              tooltip-placement="right"
+              :expanded="settingsStore.isNavigationExpanded"
+            >
               <PlusIcon class="w-4 h-4 flex-shrink-0" />
               <span v-if="settingsStore.isNavigationExpanded" class="ml-2 text-sm truncate block min-w-0 flex-1">
                 Add new project
@@ -196,25 +200,26 @@
             </span>
             <RouterLink
               :to="{ name: 'settings' }"
-              :class="{ 
+              :class="{
                 'text-primary-500': router.currentRoute.value.name === 'settings',
                 'flex items-center justify-center': !settingsStore.isNavigationExpanded,
                 'flex items-center justify-start w-full': settingsStore.isNavigationExpanded,
               }"
             >
               <CogIcon class="w-6 h-6 hover:text-primary-500" />
-              <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm">
-                Settings
-              </span>
+              <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm"> Settings </span>
             </RouterLink>
           </SidebarItem>
         </div>
       </div>
     </aside>
-    <div class="h-full flex transition-all duration-300" :class="{
-      'pl-12': !settingsStore.isNavigationExpanded,
-      'pl-48': settingsStore.isNavigationExpanded,
-    }">
+    <div
+      class="h-full flex transition-all duration-300"
+      :class="{
+        'pl-12': !settingsStore.isNavigationExpanded,
+        'pl-48': settingsStore.isNavigationExpanded,
+      }"
+    >
       <main class="w-full h-full">
         <RouterView :key="$route.fullPath" />
       </main>
