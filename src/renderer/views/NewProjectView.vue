@@ -68,7 +68,7 @@
     <div class="space-y-3 mt-3">
       <div class="flex items-center justify-between" v-for="h in history" :key="`history-${h.path}`">
         <button type="button" @click="addTab(h)" class="w-full flex items-start">
-          <ProjectTile :name="h.path"> {{ getHistoryName(h.path)[0] }} </ProjectTile>
+          <ProjectTile :expanded="false" :name="h.path"> {{ getHistoryName(h.path)[0] }} </ProjectTile>
           <div class="flex flex-col ml-2 items-start">
             <p class="text-xs capitalize">{{ getHistoryName(h.path) }}</p>
             <p class="text-[10px] opacity-40 mt-[1px] truncate w-[300px] text-left">{{ h.path }}</p>

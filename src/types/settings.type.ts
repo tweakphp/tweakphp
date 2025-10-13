@@ -12,4 +12,5 @@ export interface Settings {
   windowWidth: number
   windowHeight: number
   intelephenseLicenseKey?: string
+  navigationDisplay?: string
 }

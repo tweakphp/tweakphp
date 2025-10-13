@@ -12,6 +12,10 @@
       type: Boolean,
       default: false,
     },
+    expanded: {
+      type: Boolean,
+      default: false,
+    },
   })
 
   const settingsStore = useSettingsStore()
@@ -26,11 +30,13 @@
     :class="{
       'bg-gradient-to-r from-primary-500 to-primary-800 text-white shadow-md': props.active,
       'border': !props.active,
+      'w-8 justify-center': !props.expanded,
+      'w-full justify-start px-3': props.expanded,
     }"
-    class="text-md flex h-8 w-8 items-center justify-center rounded-lg capitalize cursor-pointer hover:shadow-md transition-shadow"
+    class="text-md flex h-8 items-center rounded-lg capitalize cursor-pointer hover:shadow-md transition-all"
     v-tippy="{ content: props.tooltip, placement: props.tooltipPlacement }"
   >
-    <span>
+    <span class="flex items-center min-w-0 w-full">
       <slot></slot>
     </span>
   </div>

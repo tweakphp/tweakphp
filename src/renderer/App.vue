@@ -133,10 +133,12 @@
   <div v-if="isAppReady" class="h-full" :style="{ color: settingsStore.colors.foreground }">
     <TitleBar />
     <aside
-      class="w-12 fixed z-40 left-0 bottom-0 justify-between border-r"
+      class="fixed z-40 left-0 bottom-0 justify-between border-r transition-all duration-300"
       :class="{
         'top-[38px]': platform === 'darwin',
         'top-0': platform !== 'darwin',
+        'w-12': !settingsStore.isNavigationExpanded,
+        'w-48': settingsStore.isNavigationExpanded,
       }"
       :style="{
         backgroundColor: settingsStore.colors.background,
@@ -145,50 +147,74 @@
     >
       <div class="relative h-full flex flex-col justify-between pb-[70px]">
         <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
-          <button @click="newProjectModal.openModal()">
-            <ProjectTile tooltip="Add new project" tooltip-placement="right">
-              <PlusIcon class="w-4 h-4" />
+          <button @click="newProjectModal.openModal()" class="w-full">
+            <ProjectTile tooltip="Add new project" tooltip-placement="right" :expanded="settingsStore.isNavigationExpanded">
+              <PlusIcon class="w-4 h-4 flex-shrink-0" />
+              <span v-if="settingsStore.isNavigationExpanded" class="ml-2 text-sm truncate block min-w-0 flex-1">
+                Add new project
+              </span>
             </ProjectTile>
           </button>
           <template v-for="tab in tabStore.tabs" :key="tab.id">
             <button
               @click="router.replace({ name: 'code', params: { id: tab.id } })"
               @mousedown.middle="tabStore.removeTab(tab.id)"
+              class="w-full"
             >
               <ProjectMenuContext :tab="tab">
                 <ProjectTile
                   :active="router.currentRoute.value.name === 'code' && tabStore.getCurrent()?.id === tab.id"
                   :name="tab.name"
-                  :tooltip="tab.name"
+                  :tooltip="settingsStore.isNavigationExpanded ? '' : tab.name"
+                  :expanded="settingsStore.isNavigationExpanded"
                   tooltip-placement="right"
                 >
-                  {{ tab.name[0] }}
+                  <span v-if="settingsStore.isNavigationExpanded" class="text-sm truncate block min-w-0 flex-1">
+                    {{ tab.name }}
+                  </span>
+                  <span v-else class="flex-shrink-0">
+                    {{ tab.name[0] }}
+                  </span>
                 </ProjectTile>
               </ProjectMenuContext>
             </button>
           </template>
         </div>
-        <div class="absolute bottom-0 left-0 border-t" :style="{ borderColor: settingsStore.colors.border }">
+        <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
           <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
             <span
               v-if="
                 updateStore.update &&
                 updateStore.isUpdateAvailable(settingsStore.settings.version, updateStore.update.version)
               "
-              class="absolute top-[5px] right-[5px] bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
+              class="absolute bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
+              :class="{
+                'top-[5px] right-[5px]': !settingsStore.isNavigationExpanded,
+                'top-[12px] right-[12px]': settingsStore.isNavigationExpanded,
+              }"
             >
             </span>
             <RouterLink
               :to="{ name: 'settings' }"
-              :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+              :class="{ 
+                'text-primary-500': router.currentRoute.value.name === 'settings',
+                'flex items-center justify-center': !settingsStore.isNavigationExpanded,
+                'flex items-center justify-start w-full': settingsStore.isNavigationExpanded,
+              }"
             >
               <CogIcon class="w-6 h-6 hover:text-primary-500" />
+              <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm">
+                Settings
+              </span>
             </RouterLink>
           </SidebarItem>
         </div>
       </div>
     </aside>
-    <div class="h-full flex pl-12">
+    <div class="h-full flex transition-all duration-300" :class="{
+      'pl-12': !settingsStore.isNavigationExpanded,
+      'pl-48': settingsStore.isNavigationExpanded,
+    }">
       <main class="w-full h-full">
         <RouterView :key="$route.fullPath" />
       </main>
