@@ -36,7 +36,7 @@
     class="text-md flex h-8 items-center rounded-lg capitalize cursor-pointer hover:shadow-md transition-all"
     v-tippy="{ content: props.tooltip, placement: props.tooltipPlacement }"
   >
-    <span class="flex items-center min-w-0 w-full">
+    <span class="flex items-center" :class="{ 'min-w-0 w-full': props.expanded }">
       <slot></slot>
     </span>
   </div>
