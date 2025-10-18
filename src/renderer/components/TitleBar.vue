@@ -75,7 +75,14 @@
         backgroundColor: settingsStore.colors.background,
       }"
     >
-      <div class="flex-grow-0" :class="{ 'pl-[70px]': platform === 'darwin', 'pl-[50px]': platform !== 'darwin' }">
+      <div
+        class="flex-grow-0 transition-all duration-300"
+        :class="{
+          'pl-[70px]': platform === 'darwin',
+          'pl-[50px]': platform !== 'darwin' && !settingsStore.isNavigationExpanded,
+          'pl-48': platform !== 'darwin' && settingsStore.isNavigationExpanded,
+        }"
+      >
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
       <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>
