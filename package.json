@@ -76,7 +76,6 @@
       "category": "Development"
     },
     "rpm": {
-      "icon": "icon.ico",
       "packageCategory": "Development",
       "depends": [
         "zlib"
