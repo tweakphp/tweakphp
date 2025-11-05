@@ -10,6 +10,7 @@ export interface IpcRenderer {
 
 export interface PlatformInfo {
   getPlatform: () => NodeJS.Platform
+  getLspPort: () => Number
 }
 
 const ipcRendererHandler: IpcRenderer = {
@@ -31,6 +32,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', ipcRendererHandler)
 
 contextBridge.exposeInMainWorld('platformInfo', {
   getPlatform: () => os.platform(),
+  getLspPort: () => parseInt(process.env.VITE_LSP_WEBSOCKET_PORT || '54331', 10),
 })
 
 /**
