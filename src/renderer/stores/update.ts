@@ -8,8 +8,12 @@ export const useUpdateStore = defineStore('update', () => {
   const checking = ref(true)
 
   let storedUpdate = localStorage.getItem('update')
-  if (storedUpdate) {
-    update.value = JSON.parse(storedUpdate)
+  if (storedUpdate && storedUpdate !== 'undefined' && storedUpdate !== 'null') {
+    try {
+      update.value = JSON.parse(storedUpdate)
+    } catch (error) {
+      localStorage.removeItem('update') // Clean up invalid data
+    }
   }
 
   const setUpdate = (info: UpdateInfo): void => {
