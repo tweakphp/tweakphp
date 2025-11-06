@@ -57,6 +57,7 @@ const normalize = (connection: any): any => {
     auth_type: connection.auth_type ?? 'password',
     password: connection.password ?? '',
     privateKey: connection.privateKey ?? '',
+    passphrase: connection.passphrase ?? '',
     path: connection.path ?? '',
     php: connection.php ?? '',
     client_path: connection.phar_client ? connection.phar_client : connection.client_path,
