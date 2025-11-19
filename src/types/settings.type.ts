@@ -20,4 +20,6 @@ export interface Settings {
   aiPromptTemplateCompleteComment: string
   aiPromptTemplateCompleteCode: string
   navigationDisplay?: string
+  mcpEnabled?: boolean
+  mcpPort?: number
 }

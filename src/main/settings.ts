@@ -41,6 +41,8 @@ const defaultSettings: Settings = {
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
   navigationDisplay: 'collapsed',
+  mcpEnabled: false,
+  mcpPort: 3000,
 }
 
 export const init = async () => {
@@ -109,6 +111,8 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+      mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
+      mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
     }
   } else {
     settings = defaultSettings

@@ -7,6 +7,7 @@ export interface IpcRenderer {
   on: (channel: string, callback: (...args: any[]) => void) => void
   removeListener: (channel: string, callback: (...args: any[]) => void) => void
   once: (channel: string, callback: (...args: any[]) => void) => void
+  invoke: (channel: string, ...args: any[]) => Promise<any>
 }
 
 export interface PlatformInfo {
@@ -30,6 +31,9 @@ const ipcRendererHandler: IpcRenderer = {
   },
   once: (channel: string, callback: (...args: any[]) => void) => {
     ipcRenderer.once(channel, (_, ...args) => callback(...args))
+  },
+  invoke: (channel: string, ...args: any[]) => {
+    return ipcRenderer.invoke(channel, ...args)
   },
 }
 

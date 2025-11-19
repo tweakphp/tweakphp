@@ -120,6 +120,7 @@
     "http-proxy-agent": "^7.0.2"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "better-sqlite3": "^12.1.1",
     "intelephense": "^1.12.6",
     "js-yaml": "^4.1.1",
