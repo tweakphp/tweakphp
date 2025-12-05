@@ -12,7 +12,7 @@
   })
 
   const classes = computed(() => {
-    return `w-full h-full ${props.class}`
+    return `w-full h-full overflow-y-auto ${props.class}`
   })
 </script>
 
