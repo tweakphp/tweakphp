@@ -74,6 +74,18 @@
     window.ipcRenderer.on('update.checking', () => {
       updateStore.setChecking(true)
     })
+    window.ipcRenderer.on('update.download-progress', (progress: any) => {
+      updateStore.setDownloading(true)
+      updateStore.setDownloadProgress(progress)
+    })
+    window.ipcRenderer.on('update.downloaded', () => {
+      updateStore.setDownloading(false)
+      updateStore.resetDownloadProgress()
+    })
+    window.ipcRenderer.on('update.cancelled', () => {
+      updateStore.setDownloading(false)
+      updateStore.resetDownloadProgress()
+    })
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
       isAppReady.value = true

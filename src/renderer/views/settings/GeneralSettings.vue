@@ -2,6 +2,7 @@
   import Title from '../../components/Title.vue'
   import Divider from '../../components/Divider.vue'
   import { useSettingsStore } from '../../stores/settings'
+  import { useUpdateStore } from '../../stores/update'
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
   import { ref, onMounted } from 'vue'
@@ -11,6 +12,7 @@
   const saved = ref(false)
   const showToast = ref(false)
   const settingsStore = useSettingsStore()
+  const updateStore = useUpdateStore()
 
   onMounted(() => {
     window.ipcRenderer.on('settings.php-located', updatePhpSetting)
@@ -40,9 +42,9 @@
     <Divider class="mt-3" />
     <div class="mt-3 grid grid-cols-2 items-center">
       <div>App version</div>
-      <div class="flex items-center justify-between">
-        {{ settingsStore.settings.version }}
-        <UpdateApp />
+      <div class="flex items-center justify-between w-full">
+        <span v-if="!updateStore.downloading">{{ settingsStore.settings.version }}</span>
+        <UpdateApp class="flex-1" />
       </div>
     </div>
     <Divider class="mt-3" />
