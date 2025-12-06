@@ -181,7 +181,7 @@
                 </option>
               </SelectInput>
             </div>
-            <div class="w-10 flex justify-center">
+            <div>
               <SecondaryButton class="!h-7" v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
                 <PlusIcon class="size-4" />
               </SecondaryButton>
@@ -207,7 +207,7 @@
                 </option>
               </SelectInput>
             </div>
-            <div class="w-10 flex justify-center">
+            <div>
               <ArrowPathIcon
                 :spin="true"
                 @click="getContainers"

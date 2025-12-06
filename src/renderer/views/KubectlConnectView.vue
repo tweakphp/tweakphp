@@ -120,8 +120,8 @@
     <form class="mx-auto space-y-3">
       <div class="grid grid-cols-2 items-center">
         <div>Name</div>
-        <div class="flex items-center justify-between">
-          <TextInput class="flex-grow mr-3" id="name" v-model="form.name" placeholder="production-server" />
+        <div class="flex gap-3 items-center justify-between">
+          <TextInput class="w-full" id="name" v-model="form.name" placeholder="production-server" />
           <DropDown align="right" class="flex-grow-0">
             <template #trigger>
               <div
