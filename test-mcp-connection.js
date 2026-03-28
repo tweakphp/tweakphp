@@ -76,6 +76,7 @@ const testMCPTool = () => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
       'Content-Length': Buffer.byteLength(postData),
     },
     timeout: 5000,

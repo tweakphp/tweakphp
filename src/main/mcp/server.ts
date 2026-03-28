@@ -275,10 +275,13 @@ export class MCPServerImpl implements MCPServer {
     req.on('data', chunk => {
       bodyBytes += chunk.length
       if (bodyBytes > MCPServerImpl.MAX_BODY_BYTES) {
-        req.destroy()
         if (!res.headersSent) {
           res.writeHead(413, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Request body too large' }, id: null }))
+          // Send the response first, then destroy to stop receiving data
+          res.end(
+            JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Request body too large' }, id: null }),
+            () => req.destroy()
+          )
         }
         return
       }
