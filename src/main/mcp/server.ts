@@ -83,7 +83,12 @@ export class MCPServerImpl implements MCPServer {
         } catch (err: any) {
           this.errorCount++
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
             isError: true,
           }
         }
@@ -103,12 +108,23 @@ export class MCPServerImpl implements MCPServer {
       async ({ code, loader, projectPath, connectionId, timeout }) => {
         this.requestCount++
         try {
-          const result = await this.executeWithLoaderHandler.handle({ code, loader, projectPath, connectionId, timeout })
+          const result = await this.executeWithLoaderHandler.handle({
+            code,
+            loader,
+            projectPath,
+            connectionId,
+            timeout,
+          })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
             isError: true,
           }
         }
@@ -139,7 +155,12 @@ export class MCPServerImpl implements MCPServer {
         } catch (err: any) {
           this.errorCount++
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
             isError: true,
           }
         }
@@ -165,7 +186,12 @@ export class MCPServerImpl implements MCPServer {
         } catch (err: any) {
           this.errorCount++
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
             isError: true,
           }
         }
@@ -189,7 +215,12 @@ export class MCPServerImpl implements MCPServer {
         } catch (err: any) {
           this.errorCount++
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
             isError: true,
           }
         }
@@ -311,10 +342,15 @@ export class MCPServerImpl implements MCPServer {
         await server.connect(transport)
         await transport.handleRequest(req, res, parsedBody)
       } catch (error) {
-        this.logger.logError({ code: 'INTERNAL_ERROR', message: 'Error handling MCP request', details: { error: String(error) } }, 'mcp_request')
+        this.logger.logError(
+          { code: 'INTERNAL_ERROR', message: 'Error handling MCP request', details: { error: String(error) } },
+          'mcp_request'
+        )
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null }))
+          res.end(
+            JSON.stringify({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null })
+          )
         }
       }
     })

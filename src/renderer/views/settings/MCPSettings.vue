@@ -186,7 +186,12 @@
         v-model="mcpPort"
         type="number"
         :disabled="!mcpEnabled"
-        @change="() => { saveSettings(); if (mcpEnabled) window.ipcRenderer.send('mcp.settings-changed', true) }"
+        @change="
+          () => {
+            saveSettings()
+            if (mcpEnabled) window.ipcRenderer.send('mcp.settings-changed', true)
+          }
+        "
         placeholder="3000"
       />
     </div>
@@ -222,15 +227,13 @@
     <div class="mt-3 grid grid-cols-2 items-start">
       <div>Connection Info</div>
       <div class="flex flex-col gap-2">
-        <div v-if="!mcpEnabled" class="text-[11px] opacity-60">
-          Enable the MCP server to allow AI agent connections
-        </div>
+        <div v-if="!mcpEnabled" class="text-[11px] opacity-60">Enable the MCP server to allow AI agent connections</div>
         <template v-else>
-          <div class="text-[11px] opacity-60">
-            Add to your AI agent config (Claude Desktop, Cursor, VS Code, etc.):
-          </div>
+          <div class="text-[11px] opacity-60">Add to your AI agent config (Claude Desktop, Cursor, VS Code, etc.):</div>
           <div class="relative">
-            <pre class="text-[10px] bg-gray-800 p-2 rounded leading-relaxed select-all overflow-x-auto">{{ configSnippet }}</pre>
+            <pre class="text-[10px] bg-gray-800 p-2 rounded leading-relaxed select-all overflow-x-auto">{{
+              configSnippet
+            }}</pre>
             <button
               @click="copyConfig"
               class="absolute top-1 right-1 text-[10px] opacity-50 hover:opacity-100 px-1.5 py-0.5 rounded bg-gray-700"

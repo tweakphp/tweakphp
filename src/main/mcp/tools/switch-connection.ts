@@ -202,10 +202,7 @@ export class SwitchConnectionHandler {
         break
       case 'kubectl':
         if (!connection.pod) {
-          throw this.errorHandler.createError(
-            MCPErrorCode.INVALID_PARAMETERS,
-            'Kubectl connection requires "pod"'
-          )
+          throw this.errorHandler.createError(MCPErrorCode.INVALID_PARAMETERS, 'Kubectl connection requires "pod"')
         }
         break
       case 'vapor':
