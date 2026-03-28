@@ -26,7 +26,10 @@
     get: () => settingsStore.settings.mcpEnabled ?? false,
     set: async (value: boolean) => {
       settingsStore.settings.mcpEnabled = value
-      saveSettings()
+
+      // Await the save so the main process has the updated settings on disk
+      // before mcp.settings-changed triggers a start/stop/restart
+      await window.ipcRenderer.invoke('settings.save', { ...settingsStore.settings })
 
       // Notify main process about settings change
       window.ipcRenderer.send('mcp.settings-changed', value)

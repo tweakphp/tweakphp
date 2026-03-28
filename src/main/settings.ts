@@ -51,6 +51,13 @@ export const init = async () => {
     setSettings(data)
     await lsp.init()
   })
+
+  // Awaitable variant used where callers need confirmation the write completed
+  ipcMain.handle('settings.save', async (_event: any, data: Settings) => {
+    data.php = handlePhpExecutable(_event, data.php)
+    setSettings(data)
+    await lsp.init()
+  })
 }
 
 const handlePhpExecutable = (_event: any, phpPath: string) => {
