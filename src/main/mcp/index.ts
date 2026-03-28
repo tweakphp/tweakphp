@@ -10,7 +10,6 @@ import { getSettings } from '../settings'
 
 export { getMCPServer, MCPServerImpl } from './server'
 export type { MCPServer } from './server'
-export { ToolRouter } from './router'
 export { ConnectionManager } from './connection-manager'
 export { ExecutionHistoryDB } from './execution-history-db'
 export { getErrorHandler, ErrorHandler } from './error-handler'

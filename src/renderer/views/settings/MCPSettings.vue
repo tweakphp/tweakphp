@@ -43,6 +43,17 @@
     },
   })
 
+  const activePort = computed(() => (serverStatus.value.running ? serverStatus.value.port : mcpPort.value))
+
+  const configSnippet = computed(
+    () =>
+      `{\n  "mcpServers": {\n    "tweakphp": {\n      "url": "http://127.0.0.1:${activePort.value}/mcp",\n      "type": "http"\n    }\n  }\n}`
+  )
+
+  const copyConfig = () => {
+    navigator.clipboard.writeText(configSnippet.value)
+  }
+
   const formatUptime = (milliseconds: number): string => {
     const seconds = Math.floor(milliseconds / 1000)
     const minutes = Math.floor(seconds / 60)
@@ -205,17 +216,24 @@
 
     <div class="mt-3 grid grid-cols-2 items-start">
       <div>Connection Info</div>
-      <div class="flex flex-col gap-1">
-        <div class="text-[11px] opacity-60">
-          <div v-if="mcpEnabled && serverStatus.running">
-            AI agents can connect to:
-            <code class="bg-gray-800 px-1 py-0.5 rounded">localhost:{{ serverStatus.port }}</code>
-          </div>
-          <div v-else-if="mcpEnabled && !serverStatus.running">
-            Server will start on: <code class="bg-gray-800 px-1 py-0.5 rounded">localhost:{{ mcpPort }}</code>
-          </div>
-          <div v-else>Enable the MCP server to allow AI agent connections</div>
+      <div class="flex flex-col gap-2">
+        <div v-if="!mcpEnabled" class="text-[11px] opacity-60">
+          Enable the MCP server to allow AI agent connections
         </div>
+        <template v-else>
+          <div class="text-[11px] opacity-60">
+            Add to your AI agent config (Claude Desktop, Cursor, VS Code, etc.):
+          </div>
+          <div class="relative">
+            <pre class="text-[10px] bg-gray-800 p-2 rounded leading-relaxed select-all overflow-x-auto">{{ configSnippet }}</pre>
+            <button
+              @click="copyConfig"
+              class="absolute top-1 right-1 text-[10px] opacity-50 hover:opacity-100 px-1.5 py-0.5 rounded bg-gray-700"
+            >
+              copy
+            </button>
+          </div>
+        </template>
       </div>
     </div>
   </div>

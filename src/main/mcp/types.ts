@@ -3,18 +3,6 @@
  * Core types for Model Context Protocol integration
  */
 
-export interface MCPToolRequest {
-  tool: string
-  parameters: Record<string, unknown>
-  apiKey?: string
-}
-
-export interface MCPToolResponse {
-  success: boolean
-  data?: unknown
-  error?: MCPError
-}
-
 export interface MCPError {
   code: string
   message: string

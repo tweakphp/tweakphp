@@ -4,7 +4,7 @@
  */
 
 import { ExecutePhpParams } from './schemas'
-import { MCPError, MCPErrorCode } from '../types'
+import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
 import { ExecutionHistoryDB } from '../execution-history-db'
 import { getErrorHandler } from '../error-handler'
