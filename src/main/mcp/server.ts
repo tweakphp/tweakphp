@@ -266,11 +266,26 @@ export class MCPServerImpl implements MCPServer {
    * Handle a single POST /mcp request using a fresh McpServer + transport per the
    * stateless pattern documented in the MCP SDK examples.
    */
+  private static readonly MAX_BODY_BYTES = 1 * 1024 * 1024 // 1 MB
+
   private handleMcpRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
     // Collect body first so we can pass parsedBody to handleRequest
     let body = ''
-    req.on('data', chunk => { body += chunk.toString() })
+    let bodyBytes = 0
+    req.on('data', chunk => {
+      bodyBytes += chunk.length
+      if (bodyBytes > MCPServerImpl.MAX_BODY_BYTES) {
+        req.destroy()
+        if (!res.headersSent) {
+          res.writeHead(413, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Request body too large' }, id: null }))
+        }
+        return
+      }
+      body += chunk.toString()
+    })
     req.on('end', async () => {
+      if (bodyBytes > MCPServerImpl.MAX_BODY_BYTES) return
       let parsedBody: unknown
       try {
         parsedBody = JSON.parse(body)

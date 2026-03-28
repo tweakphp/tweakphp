@@ -12,7 +12,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 interface ExecuteWithLoaderResult {
-  output: string
+  output: unknown
   exitCode: number
   duration: number
   connectionType: string
@@ -70,7 +70,7 @@ export class ExecuteWithLoaderHandler {
     }
 
     // Validate framework exists at path
-    if (projectPath && !this.validateFrameworkPath(params.loader, projectPath)) {
+    if (projectPath && !this.validateFrameworkPath(params.loader, projectPath, connection)) {
       throw this.errorHandler.createError(
         MCPErrorCode.EXECUTION_ERROR,
         `Failed to initialize ${params.loader} framework`,
@@ -108,13 +108,17 @@ export class ExecuteWithLoaderHandler {
       // Only pass loader when it is a custom base64-encoded PHP class.
       const standardLoaders = ['laravel', 'symfony']
       const loaderArg = standardLoaders.includes(params.loader) ? undefined : params.loader
-      const result = await this.executeWithTimeout(() => client.execute(params.code, loaderArg), timeout)
+      const result = await this.executeWithTimeout(
+        () => client.execute(params.code, loaderArg, params.projectPath),
+        timeout
+      )
 
       const duration = Date.now() - startTime
 
       // Parse the result
-      let output = result.trim()
-      const tweakphpResult = output.split('TWEAKPHP_RESULT:')[1]?.trim()
+      const trimmed = result.trim()
+      const tweakphpResult = trimmed.split('TWEAKPHP_RESULT:')[1]?.trim()
+      let output: unknown = trimmed
 
       if (tweakphpResult) {
         try {
@@ -222,10 +226,13 @@ export class ExecuteWithLoaderHandler {
   }
 
   private detectFramework(loader: string, connection: any): string {
-    // Use the connection's path as the project path
     const basePath = connection.path || connection.working_directory || process.cwd()
 
-    // For Laravel, check for artisan file
+    // Only do local filesystem checks for local connections; remote paths are not accessible here
+    if (connection.type !== 'local') {
+      return basePath
+    }
+
     if (loader === 'laravel') {
       const artisanPath = path.join(basePath, 'artisan')
       if (fs.existsSync(artisanPath)) {
@@ -233,7 +240,6 @@ export class ExecuteWithLoaderHandler {
       }
     }
 
-    // For Symfony, check for bin/console
     if (loader === 'symfony') {
       const consolePath = path.join(basePath, 'bin', 'console')
       if (fs.existsSync(consolePath)) {
@@ -244,16 +250,19 @@ export class ExecuteWithLoaderHandler {
     return basePath
   }
 
-  private validateFrameworkPath(loader: string, projectPath: string): boolean {
+  private validateFrameworkPath(loader: string, projectPath: string, connection: any): boolean {
+    // Remote connections (docker, ssh, kubectl, vapor) cannot be validated via local fs
+    if (connection.type !== 'local') {
+      return true
+    }
+
     try {
-      // For Laravel, check for artisan and vendor/autoload.php
       if (loader === 'laravel') {
         const artisanPath = path.join(projectPath, 'artisan')
         const autoloadPath = path.join(projectPath, 'vendor', 'autoload.php')
         return fs.existsSync(artisanPath) && fs.existsSync(autoloadPath)
       }
 
-      // For Symfony, check for bin/console and vendor/autoload.php
       if (loader === 'symfony') {
         const consolePath = path.join(projectPath, 'bin', 'console')
         const autoloadPath = path.join(projectPath, 'vendor', 'autoload.php')

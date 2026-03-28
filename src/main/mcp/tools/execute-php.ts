@@ -10,7 +10,7 @@ import { ExecutionHistoryDB } from '../execution-history-db'
 import { getErrorHandler } from '../error-handler'
 
 interface ExecutePhpResult {
-  output: string
+  output: unknown
   exitCode: number
   duration: number
   connectionType: string
@@ -68,8 +68,9 @@ export class ExecutePhpHandler {
       const duration = Date.now() - startTime
 
       // Parse the result
-      let output = result.trim()
-      const tweakphpResult = output.split('TWEAKPHP_RESULT:')[1]?.trim()
+      const trimmed = result.trim()
+      const tweakphpResult = trimmed.split('TWEAKPHP_RESULT:')[1]?.trim()
+      let output: unknown = trimmed
 
       if (tweakphpResult) {
         try {

@@ -31,11 +31,11 @@ export default class DockerClient extends BaseClient {
     }
   }
 
-  execute(code: string, loader?: string): Promise<string> {
+  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(async resolve => {
       let result = ''
       const phpPath = `"${this.connection.php_path}"`
-      const path = `"${this.connection.working_directory}"`
+      const path = `"${projectPath || this.connection.working_directory}"`
       const clientPath = `"${this.connection.client_path}"`
       const dockerPath = await this.getDockerPath()
       const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`

@@ -53,7 +53,7 @@ export class SSHClient extends BaseClient {
     this.connection.client_path = pharClientRemotePath
   }
 
-  execute(code: string, loader?: string): Promise<string> {
+  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(async resolve => {
       if (!this.connection.php) {
         resolve('PHP version not found')
@@ -63,7 +63,7 @@ export class SSHClient extends BaseClient {
         resolve('Client path not found')
         return
       }
-      const command = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       const result = await this.ssh.exec(command)
       resolve(result)
     })
@@ -81,9 +81,9 @@ export class SSHClient extends BaseClient {
     })
   }
 
-  private command(): string {
+  private command(projectPath?: string): string {
     const phpPath = 'php'
-    const path = this.connection.path
+    const path = projectPath || this.connection.path
     const clientPath = this.connection.client_path
     return `${phpPath} ${clientPath} ${path}`
   }

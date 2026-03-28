@@ -12,10 +12,10 @@ export class LocalClient extends BaseClient {
     super(connection)
   }
 
-  execute(code: string, loader?: string): Promise<string> {
+  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(resolve => {
       const phpPath = `"${this.connection.php}"`
-      const path = `"${this.connection.path}"`
+      const path = `"${projectPath || this.connection.path}"`
       const command = `${phpPath} "${getLocalPharClient()}" ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       exec(command, (_err, stdout) => {
         resolve(stdout)
