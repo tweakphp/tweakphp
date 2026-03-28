@@ -1,4 +1,5 @@
 import { exec, execSync } from 'child_process'
+import * as fs from 'fs'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { app } from 'electron'
@@ -39,16 +40,30 @@ export class LocalClient extends BaseClient {
 }
 
 export const getLocalPharClient = (): string => {
-  const phpVersion = getPHPVersion(settings.getSettings().php)
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
-  }
-
   if (process.env.CLIENT_PATH) {
     return process.env.CLIENT_PATH
   }
 
-  return path.join(__dirname, `../public/client-${phpVersion}.phar`)
+  const phpVersion = getPHPVersion(settings.getSettings().php)
+  const baseDir = app.isPackaged ? process.resourcesPath + '/public' : path.join(__dirname, '../public')
+  const exact = path.join(baseDir, `client-${phpVersion}.phar`)
+
+  if (fs.existsSync(exact)) {
+    return exact
+  }
+
+  // Fall back to the highest available version
+  const available = fs
+    .readdirSync(baseDir)
+    .filter(f => f.match(/^client-[\d.]+\.phar$/))
+    .sort()
+    .reverse()
+
+  if (available.length > 0) {
+    return path.join(baseDir, available[0])
+  }
+
+  return exact // let it fail with a clear error
 }
 
 export const getPHPVersion = (path: string | undefined) => {

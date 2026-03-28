@@ -102,8 +102,13 @@ export class ExecuteWithLoaderHandler {
         1000 // 1 second base delay
       )
 
-      // Execute with loader and timeout
-      const result = await this.executeWithTimeout(() => client.execute(params.code, params.loader), timeout)
+      // Execute with loader and timeout.
+      // Standard loader names ('laravel', 'symfony') are auto-detected by the phar from the
+      // project path — passing them as --loader would cause the phar to eval the string as PHP.
+      // Only pass loader when it is a custom base64-encoded PHP class.
+      const standardLoaders = ['laravel', 'symfony']
+      const loaderArg = standardLoaders.includes(params.loader) ? undefined : params.loader
+      const result = await this.executeWithTimeout(() => client.execute(params.code, loaderArg), timeout)
 
       const duration = Date.now() - startTime
 
@@ -122,7 +127,7 @@ export class ExecuteWithLoaderHandler {
       // Save to execution history
       this.historyDB.insert({
         code: params.code,
-        output,
+        output: typeof output === 'string' ? output : JSON.stringify(output),
         exitCode: 0,
         connectionType: connection.type,
         connectionName: this.connectionManager.getConnectionName(connection),

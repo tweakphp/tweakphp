@@ -62,7 +62,6 @@ export class ExecutePhpHandler {
         2, // max 2 retries for connection
         1000 // 1 second base delay
       )
-
       // Execute with timeout
       const result = await this.executeWithTimeout(() => client.execute(params.code), timeout)
 
@@ -83,7 +82,7 @@ export class ExecutePhpHandler {
       // Save to execution history
       this.historyDB.insert({
         code: params.code,
-        output,
+        output: typeof output === 'string' ? output : JSON.stringify(output),
         exitCode: 0,
         connectionType: connection.type,
         connectionName: this.connectionManager.getConnectionName(connection),
@@ -99,7 +98,6 @@ export class ExecutePhpHandler {
       }
     } catch (err: any) {
       const duration = Date.now() - startTime
-
       // Save failed execution to history
       this.historyDB.insert({
         code: params.code,
