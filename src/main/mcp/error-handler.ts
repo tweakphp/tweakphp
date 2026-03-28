@@ -42,8 +42,8 @@ export class ErrorHandler {
    * Convert any error to MCPError format
    */
   toMCPError(error: any): MCPError {
-    // Already an MCPError
-    if (error.code && error.message) {
+    // Already an MCPError (only if the code is a known MCPErrorCode value)
+    if (error.code && error.message && Object.values(MCPErrorCode).includes(error.code)) {
       return error as MCPError
     }
 

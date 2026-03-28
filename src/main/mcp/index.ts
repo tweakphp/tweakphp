@@ -104,9 +104,13 @@ export const init = async () => {
     }
   })
 
-  // Listen for settings changes to start/stop server
+  // Listen for settings changes to start/stop/restart server
   ipcMain.on('mcp.settings-changed', async (_event, enabled: boolean) => {
     if (enabled) {
+      // Stop first to pick up any config changes (e.g. port), then restart
+      if (server.isRunning()) {
+        await stopServer()
+      }
       await startServerFromSettings()
     } else {
       await stopServer()

@@ -185,10 +185,10 @@ export class SwitchConnectionHandler {
         }
         break
       case 'docker':
-        if (!connection.container_id && !connection.container_name) {
+        if (!connection.container_name) {
           throw this.errorHandler.createError(
             MCPErrorCode.INVALID_PARAMETERS,
-            'Docker connection requires "container_id" or "container_name"'
+            'Docker connection requires "container_name"'
           )
         }
         break
@@ -201,10 +201,10 @@ export class SwitchConnectionHandler {
         }
         break
       case 'kubectl':
-        if (!connection.pod_name && !connection.deployment_name) {
+        if (!connection.pod) {
           throw this.errorHandler.createError(
             MCPErrorCode.INVALID_PARAMETERS,
-            'Kubectl connection requires "pod_name" or "deployment_name"'
+            'Kubectl connection requires "pod"'
           )
         }
         break

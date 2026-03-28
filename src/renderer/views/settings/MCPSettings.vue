@@ -38,8 +38,10 @@
 
   const mcpPort = computed({
     get: () => settingsStore.settings.mcpPort ?? 3000,
-    set: (value: number) => {
-      settingsStore.settings.mcpPort = value
+    set: (value: string | number) => {
+      const numeric = typeof value === 'number' ? value : Number(value)
+      if (Number.isNaN(numeric) || numeric < 1 || numeric > 65535) return
+      settingsStore.settings.mcpPort = numeric
     },
   })
 
@@ -181,7 +183,7 @@
         v-model="mcpPort"
         type="number"
         :disabled="!mcpEnabled"
-        @change="saveSettings()"
+        @change="() => { saveSettings(); if (mcpEnabled) window.ipcRenderer.send('mcp.settings-changed', true) }"
         placeholder="3000"
       />
     </div>

@@ -58,9 +58,14 @@ const testMCPTool = () => {
   console.log('\n\nTesting MCP Tool: execute_php...\n')
 
   const postData = JSON.stringify({
-    tool: 'execute_php',
-    parameters: {
-      code: '<?php echo "Hello from TweakPHP MCP Server!";',
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: {
+      name: 'execute_php',
+      arguments: {
+        code: '<?php echo "Hello from TweakPHP MCP Server!";',
+      },
     },
   })
 

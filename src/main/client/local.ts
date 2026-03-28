@@ -45,7 +45,7 @@ export const getLocalPharClient = (): string => {
   }
 
   const phpVersion = getPHPVersion(settings.getSettings().php)
-  const baseDir = app.isPackaged ? process.resourcesPath + '/public' : path.join(__dirname, '../public')
+  const baseDir = app.isPackaged ? path.join(process.resourcesPath, 'public') : path.join(__dirname, '../public')
   const exact = path.join(baseDir, `client-${phpVersion}.phar`)
 
   if (fs.existsSync(exact)) {

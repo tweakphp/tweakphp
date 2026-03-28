@@ -209,19 +209,11 @@ export class MCPServerImpl implements MCPServer {
     this.errorCount = 0
 
     this.httpServer = http.createServer((req, res) => {
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'POST, GET, DELETE, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Mcp-Session-Id')
-      res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id')
-
-      if (req.method === 'OPTIONS') {
-        res.writeHead(200)
-        res.end()
-        return
-      }
-
       // Health check — used by the settings UI status polling
       if (req.method === 'GET' && req.url === '/health') {
+        // Allow browser-based polling of the health endpoint from the renderer
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Methods', 'GET')
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(
           JSON.stringify({
@@ -291,21 +283,21 @@ export class MCPServerImpl implements MCPServer {
       const server = this.buildMcpServer()
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
 
+      // Register cleanup before handleRequest to avoid missing a close event
+      res.on('close', () => {
+        transport.close()
+        server.close()
+      })
+
       try {
         await server.connect(transport)
         await transport.handleRequest(req, res, parsedBody)
-        res.on('close', () => {
-          transport.close()
-          server.close()
-        })
       } catch (error) {
         this.logger.logError({ code: 'INTERNAL_ERROR', message: 'Error handling MCP request', details: { error: String(error) } }, 'mcp_request')
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null }))
         }
-        transport.close()
-        server.close()
       }
     })
 
@@ -326,20 +318,26 @@ export class MCPServerImpl implements MCPServer {
 
     await new Promise<void>(resolve => {
       const server = this.httpServer!
+      let settled = false
 
-      server.close(() => {
-        console.log('MCP server stopped')
+      const finish = (fromTimeout: boolean) => {
+        if (settled) return
+        settled = true
+        if (fromTimeout) {
+          this.logger.logWarning('Forcing MCP server shutdown after timeout')
+        } else {
+          console.log('MCP server stopped')
+        }
         resolve()
-      })
+      }
+
+      server.close(() => finish(false))
 
       // Force-close any kept-alive connections so the server actually closes
       ;(server as any).closeAllConnections?.()
 
       // Hard timeout in case close() stalls
-      setTimeout(() => {
-        this.logger.logWarning('Forcing MCP server shutdown after timeout')
-        resolve()
-      }, 5000)
+      setTimeout(() => finish(true), 5000)
     })
 
     this.running = false
