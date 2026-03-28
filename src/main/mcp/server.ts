@@ -5,6 +5,10 @@
  *
  * MCP client config (Claude Desktop, Cursor, VS Code, etc.):
  *   { "url": "http://127.0.0.1:<port>/mcp", "type": "http" }
+ *
+ * Stateless pattern: a fresh McpServer + transport is created per POST /mcp request.
+ * Shared state (ConnectionManager, ExecutionHistoryDB) lives on MCPServerImpl and is
+ * accessed via closure from each per-request server instance.
  */
 
 import * as http from 'http'
@@ -37,33 +41,33 @@ export class MCPServerImpl implements MCPServer {
   private logger = getErrorLogger()
   private httpServer: http.Server | null = null
 
+  // Shared state — created once, reused across every per-request McpServer instance
   private connectionManager: ConnectionManager
   private historyDB: ExecutionHistoryDB
+  private executePhpHandler: ExecutePhpHandler
+  private executeWithLoaderHandler: ExecuteWithLoaderHandler
+  private getExecutionHistoryHandler: GetExecutionHistoryHandler
+  private switchConnectionHandler: SwitchConnectionHandler
+  private getPhpInfoHandler: GetPhpInfoHandler
 
   constructor() {
     this.connectionManager = new ConnectionManager()
     this.historyDB = new ExecutionHistoryDB()
+    this.executePhpHandler = new ExecutePhpHandler(this.connectionManager, this.historyDB)
+    this.executeWithLoaderHandler = new ExecuteWithLoaderHandler(this.connectionManager, this.historyDB)
+    this.getExecutionHistoryHandler = new GetExecutionHistoryHandler(this.historyDB)
+    this.switchConnectionHandler = new SwitchConnectionHandler(this.connectionManager)
+    this.getPhpInfoHandler = new GetPhpInfoHandler(this.connectionManager)
   }
 
-  async start(config: MCPServerConfig): Promise<void> {
-    if (this.running) {
-      throw new Error('MCP server is already running')
-    }
+  /**
+   * Build a fresh McpServer for a single request.
+   * Tool handlers close over the shared state on this instance.
+   */
+  private buildMcpServer(): McpServer {
+    const server = new McpServer({ name: 'tweakphp', version: '0.12.1' })
 
-    this.config = config
-    this.requestCount = 0
-    this.errorCount = 0
-
-    // Build MCP server using the official SDK
-    const mcpServer = new McpServer({ name: 'tweakphp', version: '0.12.1' })
-
-    const executePhpHandler = new ExecutePhpHandler(this.connectionManager, this.historyDB)
-    const executeWithLoaderHandler = new ExecuteWithLoaderHandler(this.connectionManager, this.historyDB)
-    const getExecutionHistoryHandler = new GetExecutionHistoryHandler(this.historyDB)
-    const switchConnectionHandler = new SwitchConnectionHandler(this.connectionManager)
-    const getPhpInfoHandler = new GetPhpInfoHandler(this.connectionManager)
-
-    mcpServer.tool(
+    server.tool(
       'execute_php',
       'Execute PHP code in the active TweakPHP connection (local, Docker, SSH, kubectl, or Vapor)',
       {
@@ -74,7 +78,7 @@ export class MCPServerImpl implements MCPServer {
       async ({ code, connectionId, timeout }) => {
         this.requestCount++
         try {
-          const result = await executePhpHandler.handle({ code, connectionId, timeout })
+          const result = await this.executePhpHandler.handle({ code, connectionId, timeout })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
@@ -86,7 +90,7 @@ export class MCPServerImpl implements MCPServer {
       }
     )
 
-    mcpServer.tool(
+    server.tool(
       'execute_with_loader',
       'Execute PHP code with a Laravel or Symfony framework context loaded',
       {
@@ -99,7 +103,7 @@ export class MCPServerImpl implements MCPServer {
       async ({ code, loader, projectPath, connectionId, timeout }) => {
         this.requestCount++
         try {
-          const result = await executeWithLoaderHandler.handle({ code, loader, projectPath, connectionId, timeout })
+          const result = await this.executeWithLoaderHandler.handle({ code, loader, projectPath, connectionId, timeout })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
@@ -111,7 +115,7 @@ export class MCPServerImpl implements MCPServer {
       }
     )
 
-    mcpServer.tool(
+    server.tool(
       'get_execution_history',
       'Retrieve past PHP execution records from TweakPHP',
       {
@@ -130,7 +134,7 @@ export class MCPServerImpl implements MCPServer {
       async ({ limit, offset, filter }) => {
         this.requestCount++
         try {
-          const result = await getExecutionHistoryHandler.handle({ limit, offset, filter })
+          const result = await this.getExecutionHistoryHandler.handle({ limit, offset, filter })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
@@ -142,7 +146,7 @@ export class MCPServerImpl implements MCPServer {
       }
     )
 
-    mcpServer.tool(
+    server.tool(
       'switch_connection',
       'Switch TweakPHP to a different execution environment (local, Docker, SSH, kubectl, Vapor)',
       {
@@ -156,7 +160,7 @@ export class MCPServerImpl implements MCPServer {
       async ({ connectionId, connectionType, connectionConfig }) => {
         this.requestCount++
         try {
-          const result = await switchConnectionHandler.handle({ connectionId, connectionType, connectionConfig })
+          const result = await this.switchConnectionHandler.handle({ connectionId, connectionType, connectionConfig })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
@@ -168,7 +172,7 @@ export class MCPServerImpl implements MCPServer {
       }
     )
 
-    mcpServer.tool(
+    server.tool(
       'get_php_info',
       'Get PHP version and configuration details from the active connection',
       {
@@ -180,7 +184,7 @@ export class MCPServerImpl implements MCPServer {
       async ({ section }) => {
         this.requestCount++
         try {
-          const result = await getPhpInfoHandler.handle({ section })
+          const result = await this.getPhpInfoHandler.handle({ section })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++
@@ -192,15 +196,23 @@ export class MCPServerImpl implements MCPServer {
       }
     )
 
-    // Stateless transport — no session management needed for a local desktop app
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
-    await mcpServer.connect(transport)
+    return server
+  }
 
-    // HTTP server that routes /mcp to the SDK transport and keeps /health for monitoring
+  async start(config: MCPServerConfig): Promise<void> {
+    if (this.running) {
+      throw new Error('MCP server is already running')
+    }
+
+    this.config = config
+    this.requestCount = 0
+    this.errorCount = 0
+
     this.httpServer = http.createServer((req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+      res.setHeader('Access-Control-Allow-Methods', 'POST, GET, DELETE, OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Mcp-Session-Id')
+      res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id')
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200)
@@ -208,6 +220,7 @@ export class MCPServerImpl implements MCPServer {
         return
       }
 
+      // Health check — used by the settings UI status polling
       if (req.method === 'GET' && req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(
@@ -223,7 +236,14 @@ export class MCPServerImpl implements MCPServer {
       }
 
       if (req.url === '/mcp') {
-        transport.handleRequest(req, res)
+        // Stateless mode: only POST is valid. GET/DELETE have no session to stream or close.
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed' }, id: null }))
+          return
+        }
+
+        this.handleMcpRequest(req, res)
         return
       }
 
@@ -250,6 +270,51 @@ export class MCPServerImpl implements MCPServer {
     })
   }
 
+  /**
+   * Handle a single POST /mcp request using a fresh McpServer + transport per the
+   * stateless pattern documented in the MCP SDK examples.
+   */
+  private handleMcpRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    // Collect body first so we can pass parsedBody to handleRequest
+    let body = ''
+    req.on('data', chunk => { body += chunk.toString() })
+    req.on('end', async () => {
+      let parsedBody: unknown
+      try {
+        parsedBody = JSON.parse(body)
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null }))
+        return
+      }
+
+      const server = this.buildMcpServer()
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+
+      try {
+        await server.connect(transport)
+        await transport.handleRequest(req, res, parsedBody)
+        res.on('close', () => {
+          transport.close()
+          server.close()
+        })
+      } catch (error) {
+        this.logger.logError({ code: 'INTERNAL_ERROR', message: 'Error handling MCP request', details: { error: String(error) } }, 'mcp_request')
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null }))
+        }
+        transport.close()
+        server.close()
+      }
+    })
+
+    req.on('error', () => {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Request error' }, id: null }))
+    })
+  }
+
   async stop(): Promise<void> {
     if (!this.running || !this.httpServer) return
 
@@ -260,12 +325,21 @@ export class MCPServerImpl implements MCPServer {
     })
 
     await new Promise<void>(resolve => {
-      this.httpServer!.close(() => {
+      const server = this.httpServer!
+
+      server.close(() => {
         console.log('MCP server stopped')
         resolve()
       })
-      // Force-close after 5 s if graceful shutdown stalls
-      setTimeout(resolve, 5000)
+
+      // Force-close any kept-alive connections so the server actually closes
+      ;(server as any).closeAllConnections?.()
+
+      // Hard timeout in case close() stalls
+      setTimeout(() => {
+        this.logger.logWarning('Forcing MCP server shutdown after timeout')
+        resolve()
+      }, 5000)
     })
 
     this.running = false
