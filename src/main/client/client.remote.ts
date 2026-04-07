@@ -42,13 +42,13 @@ export abstract class RemoteClient extends BaseClient {
   async execute(code: string, loader?: string): Promise<string> {
     if (!this.connection.php) return 'PHP version not found'
     if (!this.connection.client_path) return 'Client path not found'
-    const cmd = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+    const cmd = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
     return this.remoteExec(cmd)
   }
 
   async info(loader?: string): Promise<string> {
     if (!this.connection.php || !this.connection.client_path) return '{}'
-    const cmd = `${this.command()} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+    const cmd = `${this.command()} info ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
     return this.remoteExec(cmd)
   }
 }

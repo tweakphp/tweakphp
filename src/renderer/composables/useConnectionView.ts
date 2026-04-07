@@ -6,6 +6,7 @@ export function useConnectionView(options: {
   store: { remove: (id: number) => void }
   connectState: string
   emit: (event: 'connected' | 'removed', ...args: any[]) => void
+  onConnectReply?: (reply: ConnectReply) => void
 }) {
   const connectModal = ref()
   const connecting = ref()
@@ -33,6 +34,9 @@ export function useConnectionView(options: {
     if (reply.data?.state === options.connectState) {
       connecting.value = null
       if (reply.connected) {
+        if (options.onConnectReply) {
+          options.onConnectReply(reply)
+        }
         options.emit('connected', reply.connection)
       }
     }
@@ -46,5 +50,5 @@ export function useConnectionView(options: {
     events.removeEventListener('client.connect.reply', connectReply)
   })
 
-  return { connectModal, connecting, editId, add, edit, remove, connectReply }
+  return { connectModal, connecting, editId, add, edit, remove }
 }

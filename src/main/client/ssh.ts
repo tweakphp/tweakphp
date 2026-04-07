@@ -22,7 +22,7 @@ export class SSHClient extends RemoteClient {
 
     const checkPHP = await this.ssh.exec('which php')
     if (!checkPHP.trim()) {
-      return
+      throw new Error('PHP not found on remote server')
     }
   }
 

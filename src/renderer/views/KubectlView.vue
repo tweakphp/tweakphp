@@ -18,23 +18,14 @@
   const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
 
-  const { connectModal, connecting, editId, add, edit, remove, connectReply } = useConnectionView({
+  const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
     store: kubectlStore,
     connectState: 'connect',
     emit,
+    onConnectReply: (reply) => {
+      kubectlStore.updateConnection(reply.connection.id, reply.connection)
+    },
   })
-
-  // Override connectReply to also update connection on success
-  const kubectlConnectReply = (e: any) => {
-    const reply = e.detail
-    if (reply.data?.state === 'connect') {
-      connecting.value = null
-      if (reply.connected) {
-        kubectlStore.updateConnection(reply.connection.id, reply.connection)
-        emit('connected', reply.connection)
-      }
-    }
-  }
 
   const getPods = (con: ConnectionConfig) => {
     loadingPods.value = true
@@ -70,14 +61,10 @@
   }
 
   onMounted(() => {
-    // Override the composable's connectReply with our custom one
-    events.removeEventListener('client.connect.reply', connectReply)
-    events.addEventListener('client.connect.reply', kubectlConnectReply)
     events.addEventListener('client.action.reply', actionReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.connect.reply', kubectlConnectReply)
     events.removeEventListener('client.action.reply', actionReply)
   })
 </script>
