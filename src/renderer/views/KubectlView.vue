@@ -10,35 +10,29 @@
   import DropDown from '../components/DropDown.vue'
   import { ConnectionConfig } from '../../types/kubectl.type'
   import DropDownItem from '../components/DropDownItem.vue'
-  import { ActionReply, ConnectReply } from '../../types/client.type'
+  import { ActionReply } from '../../types/client.type'
+  import { useConnectionView } from '../composables/useConnectionView'
 
   const kubectlStore = useKubectlStore()
-  const kubectlConnectModal = ref()
-  const connecting = ref()
-  const editId = ref()
   const loadingPods = ref(false)
   const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
 
-  onMounted(() => {
-    events.addEventListener('client.connect.reply', connectReply)
-    events.addEventListener('client.action.reply', actionReply)
+  const { connectModal, connecting, editId, add, edit, remove, connectReply } = useConnectionView({
+    store: kubectlStore,
+    connectState: 'connect',
+    emit,
   })
 
-  const add = () => {
-    editId.value = null
-    kubectlConnectModal.value.openModal()
-  }
-
-  const edit = (id: number) => {
-    editId.value = id
-    kubectlConnectModal.value.openModal()
-  }
-
-  const remove = (id: number) => {
-    if (confirm('Are you sure you want to remove it?')) {
-      kubectlStore.remove(id)
-      emit('removed', id)
+  // Override connectReply to also update connection on success
+  const kubectlConnectReply = (e: any) => {
+    const reply = e.detail
+    if (reply.data?.state === 'connect') {
+      connecting.value = null
+      if (reply.connected) {
+        kubectlStore.updateConnection(reply.connection.id, reply.connection)
+        emit('connected', reply.connection)
+      }
     }
   }
 
@@ -62,18 +56,6 @@
     })
   }
 
-  const connectReply = (e: any) => {
-    const reply = e.detail as ConnectReply
-
-    if (reply.data?.state === 'connect') {
-      connecting.value = null
-      if (reply.connected) {
-        kubectlStore.updateConnection(reply.connection.id, reply.connection)
-        emit('connected', reply.connection)
-      }
-    }
-  }
-
   const actionReply = (e: any) => {
     const reply = e.detail as ActionReply
     if (reply.error) {
@@ -87,8 +69,15 @@
     }
   }
 
-  onBeforeUnmount(() => {
+  onMounted(() => {
+    // Override the composable's connectReply with our custom one
     events.removeEventListener('client.connect.reply', connectReply)
+    events.addEventListener('client.connect.reply', kubectlConnectReply)
+    events.addEventListener('client.action.reply', actionReply)
+  })
+
+  onBeforeUnmount(() => {
+    events.removeEventListener('client.connect.reply', kubectlConnectReply)
     events.removeEventListener('client.action.reply', actionReply)
   })
 </script>
@@ -163,8 +152,8 @@
         <div>No connections yet!</div>
       </div>
     </div>
-    <Modal ref="kubectlConnectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
-      <KubectlConnectView @done="kubectlConnectModal.closeModal()" :id="editId" />
+    <Modal ref="connectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
+      <KubectlConnectView @done="connectModal.closeModal()" :id="editId" />
     </Modal>
   </div>
 </template>

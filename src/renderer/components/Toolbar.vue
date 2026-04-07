@@ -14,13 +14,11 @@
   import { Tab } from '../../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
   import SSHView from '../views/SSHView.vue'
-  import { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'
-  import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
   import events from '../events'
   import { useKubectlStore } from '../stores/kubectl'
   import KubectlView from '../views/KubectlView.vue'
   import { ConnectReply } from '../../types/client.type'
-  import { useLodaersStore } from '../stores/loaders'
+  import { useLoadersStore } from '../stores/loaders'
   import { useVaporStore } from '../stores/vapor.ts'
   import Divider from './Divider.vue'
   import { useRouter } from 'vue-router'
@@ -29,7 +27,7 @@
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
   const kubectlStore = useKubectlStore()
-  const loadersStore = useLodaersStore()
+  const loadersStore = useLoadersStore()
   const vaporStore = useVaporStore()
   const router = useRouter()
   const dockerModal = ref()
@@ -86,26 +84,22 @@
     tabStore.updateTab(tabStore.current)
   }
 
-  const sshConnected = (config: SSHConnectionConfig) => {
-    if (!tabStore.current) {
-      return
-    }
+  const modals: Record<string, any> = { ssh: sshModal, kubectl: kubectlModal }
 
-    tabStore.current.execution = 'ssh'
-    tabStore.current.ssh = { id: config.id }
-
+  const remoteConnected = (type: 'ssh' | 'kubectl', config: { id: number }) => {
+    if (!tabStore.current) return
+    tabStore.current.execution = type
+    tabStore.current[type] = { id: config.id }
     tabStore.updateTab(tabStore.current)
-    sshModal.value.closeModal()
+    modals[type].value.closeModal()
   }
 
-  const sshRemoved = (id: number) => {
-    if (!tabStore.current) {
-      return
-    }
-
-    if (tabStore.current.ssh && tabStore.current.ssh.id === id) {
+  const remoteRemoved = (type: 'ssh' | 'kubectl', id: number) => {
+    if (!tabStore.current) return
+    const ref = tabStore.current[type]
+    if (ref && ref.id === id) {
       tabStore.current.execution = 'local'
-      tabStore.current.ssh = undefined
+      tabStore.current[type] = undefined
       tabStore.updateTab(tabStore.current)
     }
   }
@@ -113,10 +107,7 @@
   const vaporConfig = computed(() => vaporStore.getConnectionConfig(tabStore?.current?.id))
 
   const vaporConnected = (environment: string) => {
-    if (!tabStore.current) {
-      return
-    }
-
+    if (!tabStore.current) return
     tabStore.current.execution = 'vapor'
     tabStore.updateTab(tabStore.current)
     if (tab.value?.id) {
@@ -125,10 +116,7 @@
   }
 
   const vaporRemoved = () => {
-    if (!tabStore.current) {
-      return
-    }
-
+    if (!tabStore.current) return
     tabStore.current.execution = 'local'
     vaporStore.removeEnvironment(tabStore.current.id)
     tabStore.updateTab(tabStore.current)
@@ -136,30 +124,6 @@
 
   function capitalize(str: string) {
     return str.charAt(0).toUpperCase() + str.slice(1)
-  }
-
-  const kubectlConnected = (config: KubectlConnectionConfig) => {
-    if (!tabStore.current) {
-      return
-    }
-
-    tabStore.current.execution = 'kubectl'
-    tabStore.current.kubectl = { id: config.id }
-
-    tabStore.updateTab(tabStore.current)
-    kubectlModal.value.closeModal()
-  }
-
-  const kubectlRemoved = (id: number) => {
-    if (!tabStore.current) {
-      return
-    }
-
-    if (tabStore.current.kubectl && tabStore.current.kubectl.id === id) {
-      tabStore.current.execution = 'local'
-      tabStore.current.kubectl = undefined
-      tabStore.updateTab(tabStore.current)
-    }
   }
 
   const updateLoader = (name?: string) => {
@@ -374,10 +338,10 @@
       <DockerView @connected="dockerModal.closeModal()" />
     </Modal>
     <Modal title="Connect to SSH" ref="sshModal" size="2xl">
-      <SSHView @connected="sshConnected($event)" @removed="sshRemoved($event)" />
+      <SSHView @connected="remoteConnected('ssh', $event)" @removed="remoteRemoved('ssh', $event)" />
     </Modal>
     <Modal title="Connect to Kubernetes" ref="kubectlModal" size="2xl">
-      <KubectlView @connected="kubectlConnected($event)" @removed="kubectlRemoved($event)" />
+      <KubectlView @connected="remoteConnected('kubectl', $event)" @removed="remoteRemoved('kubectl', $event)" />
     </Modal>
   </div>
 </template>

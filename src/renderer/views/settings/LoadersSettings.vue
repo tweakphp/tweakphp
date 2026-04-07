@@ -1,14 +1,14 @@
 <script setup lang="ts">
   import Title from '../../components/Title.vue'
   import Divider from '../../components/Divider.vue'
-  import { useLodaersStore } from '../../stores/loaders'
+  import { useLoadersStore } from '../../stores/loaders'
   import { ref } from 'vue'
   import PrimaryButton from '../../components/PrimaryButton.vue'
   import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
   import Modal from '../../components/Modal.vue'
   import Loader from '../../components/Loader.vue'
 
-  const loadersStore = useLodaersStore()
+  const loadersStore = useLoadersStore()
   const editName = ref('')
   const loaderModal = ref()
 
