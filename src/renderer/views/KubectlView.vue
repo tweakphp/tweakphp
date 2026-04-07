@@ -22,7 +22,7 @@
     store: kubectlStore,
     connectState: 'connect',
     emit,
-    onConnectReply: (reply) => {
+    onConnectReply: reply => {
       kubectlStore.updateConnection(reply.connection.id, reply.connection)
     },
   })

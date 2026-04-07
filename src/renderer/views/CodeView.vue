@@ -249,13 +249,10 @@
     }
   )
 
-  watch(
-    [() => tab.value.execution, () => tab.value.loader, () => tab.value.type],
-    async () => {
-      await nextTick()
-      getInfo()
-    }
-  )
+  watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type], async () => {
+    await nextTick()
+    getInfo()
+  })
 
   const setCurrentTab = async (t: Tab) => {
     tabsStore.setCurrent(t)
