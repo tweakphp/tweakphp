@@ -8,14 +8,14 @@ import { isWindows } from './system/platform.ts'
 
 const homeDir = os.homedir()
 
-const laravelPath = app.isPackaged
-  ? path.join(process.resourcesPath, 'public/laravel')
-  : path.join(__dirname, 'laravel')
-
 const settingsDir = path.join(homeDir, '.tweakphp')
 if (app.isPackaged && !fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
+
+const laravelPath = app.isPackaged
+  ? path.join(settingsDir, 'laravel')
+  : path.join(__dirname, 'laravel')
 
 const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
 
@@ -84,7 +84,7 @@ export const getSettings = () => {
     let settingsJson = JSON.parse(settingsRaw)
     settings = {
       version: defaultSettings.version,
-      laravelPath: settingsJson.laravelPath || defaultSettings.laravelPath,
+      laravelPath: defaultSettings.laravelPath,
       php: settingsJson.php || defaultSettings.php,
       theme: settingsJson.theme || defaultSettings.theme,
       editorFontSize: settingsJson.editorFontSize || defaultSettings.editorFontSize,
