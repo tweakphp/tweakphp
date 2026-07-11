@@ -7,8 +7,6 @@ import AdmZip from 'adm-zip'
 import os from 'os'
 
 export const init = async (window: BrowserWindow) => {
-  const settings: Settings = getSettings()
-
   let forceExtract = false
   const settingsDir = path.join(os.homedir(), '.tweakphp')
   const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
@@ -22,6 +20,8 @@ export const init = async (window: BrowserWindow) => {
   } catch (e) {
     // Ignore error
   }
+
+  const settings: Settings = getSettings()
 
   if (fs.existsSync(settings.laravelPath)) {
     if (forceExtract) {
