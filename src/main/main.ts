@@ -62,8 +62,6 @@ const createMainWindow = async () => {
         settings: settings.getSettings(),
       })
 
-      window.show()
-
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
@@ -71,6 +69,8 @@ const createMainWindow = async () => {
           await updater.checkForUpdates()
         }, 1500)
       })
+
+      window.show()
     } catch (error) {
     } finally {
       window.setProgressBar(-1)

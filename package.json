@@ -6,7 +6,7 @@
     "name": "Saeed Vaziry",
     "email": "mr.saeedvaziry@gmail.com"
   },
-  "version": "0.13.2",
+  "version": "0.13.3",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",

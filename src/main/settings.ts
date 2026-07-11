@@ -13,9 +13,7 @@ if (app.isPackaged && !fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
 
-const laravelPath = app.isPackaged
-  ? path.join(settingsDir, 'laravel')
-  : path.join(__dirname, 'laravel')
+const laravelPath = app.isPackaged ? path.join(settingsDir, 'laravel') : path.join(__dirname, 'laravel')
 
 const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
 
@@ -109,6 +107,9 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+    }
+    if (settingsJson.version !== defaultSettings.version) {
+      setSettings(settings)
     }
   } else {
     settings = defaultSettings

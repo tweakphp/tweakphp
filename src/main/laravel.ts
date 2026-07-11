@@ -4,12 +4,32 @@ import { getSettings } from './settings'
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import AdmZip from 'adm-zip'
+import os from 'os'
 
 export const init = async (window: BrowserWindow) => {
   const settings: Settings = getSettings()
 
+  let forceExtract = false
+  const settingsDir = path.join(os.homedir(), '.tweakphp')
+  const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const settingsJson = JSON.parse(fs.readFileSync(settingsPath).toString())
+      if (settingsJson.version && settingsJson.version !== app.getVersion()) {
+        forceExtract = true
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+
   if (fs.existsSync(settings.laravelPath)) {
-    return
+    if (forceExtract) {
+      console.log('App version changed. Clearing old default laravel directory...')
+      fs.rmSync(settings.laravelPath, { recursive: true, force: true })
+    } else {
+      return
+    }
   }
 
   const zipPath = app.isPackaged
@@ -25,13 +45,12 @@ export const init = async (window: BrowserWindow) => {
   const zipEntries = zip.getEntries()
   const totalFiles = zipEntries.length
 
-  const outputDir = path.resolve(settings.laravelPath, '..')
-
   let lastProgressEvent = 0
   for (let i = 0; i < totalFiles; i++) {
     const entry = zipEntries[i]
     if (!entry.isDirectory) {
-      const entryPath = path.join(outputDir, entry.entryName)
+      const relativePath = entry.entryName.replace(/^laravel\//, '')
+      const entryPath = path.join(settings.laravelPath, relativePath)
 
       fs.mkdirSync(path.dirname(entryPath), { recursive: true })
 
