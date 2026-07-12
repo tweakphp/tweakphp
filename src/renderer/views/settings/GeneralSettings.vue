@@ -19,10 +19,6 @@
 
   onMounted(() => {
     window.ipcRenderer.on('settings.php-located', updatePhpSetting)
-    window.ipcRenderer.on('settings.detect-php.reply', (paths: string[]) => {
-      detecting.value = false
-      detectedPaths.value = paths || []
-    })
   })
 
   const updatePhpSetting = (newPhpSetting: string) => {
@@ -42,6 +38,10 @@
   const detectPhp = () => {
     detecting.value = true
     window.ipcRenderer.send('settings.detect-php')
+    window.ipcRenderer.once('settings.detect-php.reply', (paths: string[]) => {
+      detecting.value = false
+      detectedPaths.value = paths || []
+    })
   }
 
   const selectDetectedPhp = (p: string) => {

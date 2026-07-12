@@ -23,7 +23,7 @@ export class LocalClient extends BaseClient {
         const pharPathWsl = translateWindowsToWslPath(pharPathWin, distro)
         const projectPathWsl = translateWindowsToWslPath(this.connection.path, distro)
 
-        command = `wsl -d ${distro} ${phpExe} "${pharPathWsl}" "${projectPathWsl}" execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+        command = `wsl -d "${distro}" ${phpExe} "${pharPathWsl}" "${projectPathWsl}" execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       } else {
         const phpPath = `"${this.connection.php}"`
         const path = `"${this.connection.path}"`
@@ -48,7 +48,7 @@ export class LocalClient extends BaseClient {
         const pharPathWsl = translateWindowsToWslPath(pharPathWin, distro)
         const projectPathWsl = translateWindowsToWslPath(this.connection.path, distro)
 
-        command = `wsl -d ${distro} ${phpExe} "${pharPathWsl}" "${projectPathWsl}" info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+        command = `wsl -d "${distro}" ${phpExe} "${pharPathWsl}" "${projectPathWsl}" info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       } else {
         command = `"${this.connection.php}" "${getLocalPharClient(this.connection)}" "${this.connection.path}" info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       }
@@ -157,7 +157,7 @@ export const getPHPVersion = (connection?: ConnectionConfig | string) => {
     let command: string
     if (wsl.isWsl) {
       const phpExe = getWslPhpExecutable(phpPath, wsl.distro!)
-      command = `wsl -d ${wsl.distro} ${phpExe} -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
+      command = `wsl -d "${wsl.distro}" ${phpExe} -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
     } else {
       command = `"${phpPath}" -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
     }

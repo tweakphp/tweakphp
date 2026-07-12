@@ -128,7 +128,7 @@ describe('LocalClient WSL Support', () => {
       const version = getPHPVersion({ type: 'local', php: 'php', path: '\\\\wsl.localhost\\Ubuntu\\project' })
       expect(version).toBe('8.3.0')
       expect(execSync).toHaveBeenCalledWith(
-        'wsl -d Ubuntu php -r "echo PHP_MAJOR_VERSION . \'.\' . PHP_MINOR_VERSION . PHP_EOL;"',
+        'wsl -d "Ubuntu" php -r "echo PHP_MAJOR_VERSION . \'.\' . PHP_MINOR_VERSION . PHP_EOL;"',
         expect.any(Object)
       )
     })
@@ -226,7 +226,7 @@ describe('LocalClient WSL Support', () => {
       expect(exec).toHaveBeenCalled()
       const commandRun = vi.mocked(exec).mock.calls[0][0] as string
 
-      expect(commandRun).toContain('wsl -d Ubuntu php')
+      expect(commandRun).toContain('wsl -d "Ubuntu" php')
       expect(commandRun).not.toContain('C:\\php\\php.exe "/')
       expect(commandRun).toContain('"/home/david/project"')
     })
@@ -310,7 +310,7 @@ describe('LocalClient WSL Support', () => {
       expect(info).toBe('Laravel Framework 10.0.0')
       expect(exec).toHaveBeenCalled()
       const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).toContain('wsl -d Ubuntu php')
+      expect(commandRun).toContain('wsl -d "Ubuntu" php')
       expect(commandRun).toContain('info')
     })
 
