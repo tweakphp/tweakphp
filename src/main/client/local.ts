@@ -81,7 +81,8 @@ export const translateWindowsToWslPath = (winPath: string, distro: string): stri
   let normalized = winPath.replace(/\//g, '\\')
 
   const escapedDistro = distro.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const wslRegex = new RegExp(`^\\\\(wsl\\.localhost|wsl\\$)\\${escapedDistro}`, 'i')
+  const wslRegex = new RegExp(`^\\\\\\\\(wsl\\.localhost|wsl\\$)\\\\${escapedDistro}`, 'i')
+  if (wslRegex.test(normalized)) {
     let relativePath = normalized.replace(wslRegex, '')
     relativePath = relativePath.replace(/\\/g, '/')
     if (!relativePath.startsWith('/')) {
