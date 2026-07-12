@@ -53,12 +53,10 @@ export const useTabsStore = defineStore('tabs', () => {
       data.id = Date.now()
     }
 
-    const pathSplitter = window.platformInfo.getPlatform() === 'win32' ? '\\' : '/'
-
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.path.split(pathSplitter).pop() as string,
+      name: data.path.split(/[/\\]/).pop() as string,
       path: data.path,
       execution: 'local',
       code: '<?php\n\n',
