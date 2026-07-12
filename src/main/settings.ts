@@ -138,8 +138,7 @@ export const detectPhpPaths = (): string[] => {
         }
       })
     }
-  } catch (e) {
-  }
+  } catch (e) {}
 
   if (isWindows()) {
     const userHome = os.homedir()
@@ -193,8 +192,7 @@ export const detectPhpPaths = (): string[] => {
           }
         } catch (e) {}
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   } else {
     const commonPaths = ['/usr/bin/php', '/usr/local/bin/php', '/opt/homebrew/bin/php']
     commonPaths.forEach(p => {

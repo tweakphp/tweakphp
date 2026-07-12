@@ -109,7 +109,10 @@ describe('Settings Management (settings.ts)', () => {
       expect(fs.writeFileSync).toHaveBeenCalled()
       const savedData = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string)
       expect(savedData.php.replace(/\\/g, '/')).toBe('C:/php-folder/php.exe')
-      expect(mockEvent.sender.send).toHaveBeenCalledWith('settings.php-located', expect.stringMatching(/C:[/\\]php-folder[/\\]php\.exe/))
+      expect(mockEvent.sender.send).toHaveBeenCalledWith(
+        'settings.php-located',
+        expect.stringMatching(/C:[/\\]php-folder[/\\]php\.exe/)
+      )
     })
   })
 
