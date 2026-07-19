@@ -13,9 +13,9 @@ if (app.isPackaged && !fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
 
-const laravelPath = app.isPackaged ? path.join(settingsDir, 'laravel') : path.join(__dirname, 'laravel')
+const laravelPath = app.isPackaged ? path.join(settingsDir, 'laravel') : path.join(os.homedir(), '.tweakphp_dev', 'laravel')
 
-const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
+const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(os.homedir(), '.tweakphp_dev', 'settings.json')
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
