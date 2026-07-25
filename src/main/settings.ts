@@ -8,9 +8,7 @@ import { isWindows } from './system/platform.ts'
 
 const homeDir = os.homedir()
 
-const settingsDir = app.isPackaged
-  ? path.join(homeDir, '.tweakphp')
-  : path.join(homeDir, '.tweakphp_dev')
+const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
 
 if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
