@@ -1,17 +1,12 @@
 import fs from 'fs'
 import { Settings } from '../types/settings.type'
-import { getSettings } from './settings'
+import { getSettings, settingsPath } from './settings'
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import AdmZip from 'adm-zip'
-import os from 'os'
 
 export const init = async (window: BrowserWindow) => {
   let forceExtract = false
-  const settingsDir = path.join(os.homedir(), '.tweakphp')
-  const settingsPath = app.isPackaged
-    ? path.join(settingsDir, 'settings.json')
-    : path.join(os.homedir(), '.tweakphp_dev', 'settings.json')
   try {
     if (fs.existsSync(settingsPath)) {
       const settingsJson = JSON.parse(fs.readFileSync(settingsPath).toString())

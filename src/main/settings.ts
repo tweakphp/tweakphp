@@ -14,7 +14,7 @@ if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
 const laravelPath = path.join(settingsDir, 'laravel')
-const settingsPath = path.join(settingsDir, 'settings.json')
+export const settingsPath = path.join(settingsDir, 'settings.json')
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
