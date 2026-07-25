@@ -163,7 +163,7 @@
           <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
           <span
             v-if="tab.queries && tab.queries.length > 0"
-            class="ml-1 text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded-full"
+            class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
           >
             {{ tab.queries.length }}
           </span>
