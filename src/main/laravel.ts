@@ -54,6 +54,12 @@ export const init = async (window: BrowserWindow) => {
       const relativePath = entry.entryName.replace(/^laravel\//, '')
       const entryPath = path.join(settings.laravelPath, relativePath)
 
+      const targetDir = path.resolve(settings.laravelPath)
+      const resolvedPath = path.resolve(entryPath)
+      if (!resolvedPath.startsWith(targetDir + path.sep) && resolvedPath !== targetDir) {
+        continue
+      }
+
       fs.mkdirSync(path.dirname(entryPath), { recursive: true })
 
       fs.writeFileSync(entryPath, entry.getData())

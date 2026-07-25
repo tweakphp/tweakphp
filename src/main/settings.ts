@@ -65,7 +65,7 @@ const handlePhpExecutable = (_event: any, phpPath: string) => {
   return phpPath
 }
 
-export const setSettings = async (data: Settings) => {
+export const setSettings = (data: Settings) => {
   fs.writeFileSync(settingsPath, JSON.stringify(data))
 }
 
@@ -107,7 +107,7 @@ export const getSettings = () => {
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
     }
-    if (settingsJson.version !== defaultSettings.version) {
+    if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {
       setSettings(settings)
     }
   } else {

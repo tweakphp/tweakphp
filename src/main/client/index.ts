@@ -50,7 +50,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     let output: any = null
 
     if (result.includes('TWEAKPHP_ERROR:')) {
-      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() ?? ''
+      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() || result
       let parsedError: any = null
       try {
         parsedError = JSON.parse(errorContent)
@@ -102,11 +102,11 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       }
     } else {
       let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-      if (outputStr) {
+      if (outputStr !== undefined) {
         try {
           output = JSON.parse(outputStr)
         } catch (error: any) {
-          //
+          output = outputStr
         }
       }
     }
