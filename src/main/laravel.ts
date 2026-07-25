@@ -46,6 +46,7 @@ export const init = async (window: BrowserWindow) => {
   const zip = new AdmZip(zipPath)
   const zipEntries = zip.getEntries()
   const totalFiles = zipEntries.length
+  const targetDir = path.resolve(settings.laravelPath)
 
   let lastProgressEvent = 0
   for (let i = 0; i < totalFiles; i++) {
@@ -54,9 +55,8 @@ export const init = async (window: BrowserWindow) => {
       const relativePath = entry.entryName.replace(/^laravel\//, '')
       const entryPath = path.join(settings.laravelPath, relativePath)
 
-      const targetDir = path.resolve(settings.laravelPath)
-      const resolvedPath = path.resolve(entryPath)
-      if (!resolvedPath.startsWith(targetDir + path.sep) && resolvedPath !== targetDir) {
+      const containmentPath = path.relative(targetDir, path.resolve(entryPath))
+      if (containmentPath.startsWith('..') || path.isAbsolute(containmentPath)) {
         continue
       }
 

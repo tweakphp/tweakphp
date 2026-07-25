@@ -5,6 +5,7 @@ import { Client } from './client.interface'
 import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
+import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -50,55 +51,8 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     let output: any = null
 
     if (result.includes('TWEAKPHP_ERROR:')) {
-      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() || result
-      let parsedError: any = null
-      try {
-        parsedError = JSON.parse(errorContent)
-      } catch (e) {
-        parsedError = errorContent
-      }
-
-      let message = ''
-      let line = 0
-
-      if (typeof parsedError === 'object' && parsedError !== null) {
-        const errorClass = parsedError.class || ''
-        const errorMsg = parsedError.message || ''
-        message =
-          errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
-
-        if (parsedError.line) {
-          line = Number(parsedError.line)
-        } else {
-          const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
-          if (lineMatch) {
-            line = parseInt(lineMatch[1], 10)
-          }
-        }
-      } else {
-        message = String(parsedError || errorContent || result)
-        const lineMatch = message.match(/on line (\d+)/i)
-        if (lineMatch) {
-          line = parseInt(lineMatch[1], 10)
-        }
-      }
-
-      const escapedMessage = message
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-
       output = {
-        output: [
-          {
-            line: line,
-            code: '',
-            output: message,
-            html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-          },
-        ],
+        output: [parseTweakPhpError(result)],
       }
     } else {
       let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
