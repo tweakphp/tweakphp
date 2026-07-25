@@ -123,6 +123,7 @@
 
     let message = ''
     let line = 0
+    let queries: any[] = []
 
     if (typeof parsedError === 'object' && parsedError !== null) {
       const errorClass = parsedError.class || ''
@@ -137,6 +138,10 @@
         if (lineMatch) {
           line = parseInt(lineMatch[1], 10)
         }
+      }
+
+      if (Array.isArray(parsedError.queries)) {
+        queries = parsedError.queries
       }
     } else {
       message = String(parsedError || errorContent || raw)
@@ -153,14 +158,17 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;')
 
-    return [
-      {
-        line,
-        code: '',
-        output: message,
-        html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-      },
-    ]
+    return {
+      output: [
+        {
+          line,
+          code: '',
+          output: message,
+          html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
+        },
+      ],
+      queries,
+    }
   }
 
   const executeReplyListener = (e: any) => {
@@ -169,8 +177,9 @@
       tab.value.result = e.detail.output
       tab.value.queries = e.detail.queries ?? e.detail.sql_queries ?? e.detail.query_log ?? []
     } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
-      tab.value.result = parseTweakPhpError(result)
-      tab.value.queries = []
+      const errorData = parseTweakPhpError(result)
+      tab.value.result = errorData.output
+      tab.value.queries = errorData.queries
     } else {
       tab.value.result = [
         {

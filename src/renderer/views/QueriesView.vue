@@ -73,7 +73,10 @@
       const rawSql = getSql(item).toLowerCase()
       const interpSql = interpolateSql(item).toLowerCase()
       const connStr = (item.connection || item.connection_name || '').toLowerCase()
-      const bindingsStr = (item.bindings || []).map(b => String(b)).join(' ').toLowerCase()
+      const bindingsStr = (item.bindings || [])
+        .map(b => String(b))
+        .join(' ')
+        .toLowerCase()
 
       return rawSql.includes(q) || interpSql.includes(q) || connStr.includes(q) || bindingsStr.includes(q)
     })
@@ -149,19 +152,27 @@
 <template>
   <div class="flex flex-col space-y-4 max-h-[70vh] overflow-hidden">
     <!-- Header Stats & Search Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b" :style="{ borderColor: settingsStore.colors.border }">
+    <div
+      class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b"
+      :style="{ borderColor: settingsStore.colors.border }"
+    >
       <div class="flex items-center space-x-3 text-xs">
         <div class="px-2.5 py-1 rounded-md border font-medium bg-blue-500/10 text-blue-400 border-blue-500/20">
           Total Queries: <span class="font-bold">{{ queries.length }}</span>
         </div>
-        <div class="px-2.5 py-1 rounded-md border font-medium bg-purple-500/10 text-purple-400 border-purple-500/20" v-if="queries.length > 0">
+        <div
+          class="px-2.5 py-1 rounded-md border font-medium bg-purple-500/10 text-purple-400 border-purple-500/20"
+          v-if="queries.length > 0"
+        >
           Total Time: <span class="font-bold">{{ totalTime.toFixed(2) }} ms</span>
         </div>
       </div>
 
       <div class="flex items-center flex-1 max-w-sm" v-if="queries.length > 0">
         <div class="relative w-full">
-          <MagnifyingGlassIcon class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <MagnifyingGlassIcon
+            class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
           <input
             v-model="searchQuery"
             type="text"
@@ -178,17 +189,19 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="queries.length === 0" class="flex flex-col items-center justify-center py-12 text-center text-gray-400 space-y-3">
+    <div
+      v-if="queries.length === 0"
+      class="flex flex-col items-center justify-center py-12 text-center text-gray-400 space-y-3"
+    >
       <CircleStackIcon class="w-12 h-12 stroke-1 text-gray-500" />
       <div class="text-sm font-medium">No queries executed</div>
-      <div class="text-xs max-w-sm text-gray-500">
-        Run PHP code that performs database queries to view them here.
-      </div>
+      <div class="text-xs max-w-sm text-gray-500">Run PHP code that performs database queries to view them here.</div>
     </div>
 
     <!-- No Match State -->
     <div v-else-if="filteredQueries.length === 0" class="py-8 text-center text-xs text-gray-400">
-      No queries matching "<span class="text-gray-200">{{ searchQuery }}</span>"
+      No queries matching "<span class="text-gray-200">{{ searchQuery }}</span
+      >"
     </div>
 
     <!-- Query List -->
@@ -236,12 +249,17 @@
         </div>
 
         <!-- SQL Code Block -->
-        <div class="bg-black/30 p-2.5 rounded border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed text-gray-200">
+        <div
+          class="bg-black/30 p-2.5 rounded border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed text-gray-200"
+        >
           <span v-html="highlightSql(item)"></span>
         </div>
 
         <!-- Bindings Section (if available) -->
-        <div v-if="typeof item !== 'string' && item.bindings && Array.isArray(item.bindings) && item.bindings.length > 0" class="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap">
+        <div
+          v-if="typeof item !== 'string' && item.bindings && Array.isArray(item.bindings) && item.bindings.length > 0"
+          class="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap"
+        >
           <span class="text-gray-500 font-sans text-[10px]">Bindings:</span>
           <span
             v-for="(binding, bIdx) in item.bindings"

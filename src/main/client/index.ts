@@ -60,6 +60,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
 
       let message = ''
       let line = 0
+      let queries: any[] = []
 
       if (typeof parsedError === 'object' && parsedError !== null) {
         const errorClass = parsedError.class || ''
@@ -74,6 +75,10 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
           if (lineMatch) {
             line = parseInt(lineMatch[1], 10)
           }
+        }
+
+        if (Array.isArray(parsedError.queries)) {
+          queries = parsedError.queries
         }
       } else {
         message = String(parsedError || errorContent || result)
@@ -99,6 +104,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
             html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
           },
         ],
+        queries: queries,
       }
     } else {
       let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
