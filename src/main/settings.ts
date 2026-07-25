@@ -8,14 +8,15 @@ import { isWindows } from './system/platform.ts'
 
 const homeDir = os.homedir()
 
-const settingsDir = path.join(homeDir, '.tweakphp')
-if (app.isPackaged && !fs.existsSync(settingsDir)) {
+const settingsDir = app.isPackaged
+  ? path.join(homeDir, '.tweakphp')
+  : path.join(homeDir, '.tweakphp_dev')
+
+if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
-
-const laravelPath = app.isPackaged ? path.join(settingsDir, 'laravel') : path.join(os.homedir(), '.tweakphp_dev', 'laravel')
-
-const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(os.homedir(), '.tweakphp_dev', 'settings.json')
+const laravelPath = path.join(settingsDir, 'laravel')
+const settingsPath = path.join(settingsDir, 'settings.json')
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
