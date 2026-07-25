@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { detectPhpPaths, getSettings, setSettings, init } from './settings'
+import { detectPhpPaths, getSettings, setSettings, init, settingsPath } from './settings'
 import { execSync } from 'child_process'
 import * as fs from 'node:fs'
 
@@ -9,6 +9,7 @@ vi.mock('child_process', () => ({
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
   readdirSync: vi.fn(),
   writeFileSync: vi.fn(),
   readFileSync: vi.fn(),
@@ -60,6 +61,7 @@ describe('Settings Management (settings.ts)', () => {
       const settings = getSettings()
       expect(settings.version).toBe('0.13.1')
       expect(settings.theme).toBe('dracula')
+      expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
       expect(fs.writeFileSync).toHaveBeenCalled()
     })
 
@@ -74,6 +76,35 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.theme).toBe('monokai')
       expect(settings.editorFontSize).toBe(18)
       expect(settings.editorWordWrap).toBe('on')
+    })
+
+    it('ignores stored laravelPath and re-persists settings when stored version or laravelPath differ', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(JSON.stringify({ version: '0.0.1', laravelPath: '/old/custom/laravel', theme: 'monokai' }))
+      )
+
+      const settings = getSettings()
+      expect(settings.version).toBe('0.13.1')
+      expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
+      expect(fs.writeFileSync).toHaveBeenCalledWith(settingsPath, JSON.stringify(settings))
+    })
+
+    it('does not re-persist settings when stored version and laravelPath already match defaults', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(
+          JSON.stringify({
+            version: '0.13.1',
+            laravelPath: '/mocked/home/.tweakphp_dev/laravel',
+            theme: 'monokai',
+          })
+        )
+      )
+
+      const settings = getSettings()
+      expect(settings.theme).toBe('monokai')
+      expect(fs.writeFileSync).not.toHaveBeenCalled()
     })
 
     it('writes settings to disk via setSettings', () => {

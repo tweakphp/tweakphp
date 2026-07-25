@@ -201,6 +201,62 @@ describe('IPC Router (index.ts)', () => {
       expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'Raw output')
     })
 
+    it('replies with raw string payload when TWEAKPHP_RESULT is not valid JSON', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockExecute.mockResolvedValue('TWEAKPHP_RESULT:not-json-payload\n')
+
+      await ipcHandlers['client.execute'](mockEvent, payload)
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'not-json-payload')
+    })
+
+    it('parses TWEAKPHP_ERROR JSON payload and replies with structured error result', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockExecute.mockResolvedValue(
+        'TWEAKPHP_ERROR:{"class":"ParseError","message":"syntax error, unexpected end of file","line":3}\n'
+      )
+
+      await ipcHandlers['client.execute'](mockEvent, payload)
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
+        output: [
+          {
+            line: 3,
+            code: '',
+            output: 'ParseError: syntax error, unexpected end of file',
+            html: '<div class="text-red-500 font-semibold">ParseError: syntax error, unexpected end of file</div>',
+          },
+        ],
+      })
+    })
+
+    it('parses TWEAKPHP_ERROR plain-text payload and extracts the line number', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockExecute.mockResolvedValue('TWEAKPHP_ERROR:PHP Fatal error: something bad on line 7\n')
+
+      await ipcHandlers['client.execute'](mockEvent, payload)
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
+        output: [
+          {
+            line: 7,
+            code: '',
+            output: 'PHP Fatal error: something bad on line 7',
+            html: '<div class="text-red-500 font-semibold">PHP Fatal error: something bad on line 7</div>',
+          },
+        ],
+      })
+    })
+
     it('replies with error on failure', async () => {
       const mockEvent = { reply: vi.fn() }
       const payload = { connection: { type: 'local' }, code: 'echo 1;' }
