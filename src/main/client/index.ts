@@ -64,7 +64,8 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       if (typeof parsedError === 'object' && parsedError !== null) {
         const errorClass = parsedError.class || ''
         const errorMsg = parsedError.message || ''
-        message = errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : (errorMsg || errorClass || JSON.stringify(parsedError))
+        message =
+          errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
 
         if (parsedError.line) {
           line = Number(parsedError.line)
