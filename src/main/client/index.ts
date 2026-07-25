@@ -47,14 +47,69 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     await client.connect()
     let result = await client.execute(payload.code, payload.loader)
     result = result.trim()
-    let output = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-    if (output) {
+    let output: any = null
+
+    if (result.includes('TWEAKPHP_ERROR:')) {
+      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() ?? ''
+      let parsedError: any = null
       try {
-        output = JSON.parse(output)
-      } catch (error: any) {
-        //
+        parsedError = JSON.parse(errorContent)
+      } catch (e) {
+        parsedError = errorContent
+      }
+
+      let message = ''
+      let line = 0
+
+      if (typeof parsedError === 'object' && parsedError !== null) {
+        const errorClass = parsedError.class || ''
+        const errorMsg = parsedError.message || ''
+        message = errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : (errorMsg || errorClass || JSON.stringify(parsedError))
+
+        if (parsedError.line) {
+          line = Number(parsedError.line)
+        } else {
+          const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
+          if (lineMatch) {
+            line = parseInt(lineMatch[1], 10)
+          }
+        }
+      } else {
+        message = String(parsedError || errorContent || result)
+        const lineMatch = message.match(/on line (\d+)/i)
+        if (lineMatch) {
+          line = parseInt(lineMatch[1], 10)
+        }
+      }
+
+      const escapedMessage = message
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+
+      output = {
+        output: [
+          {
+            line: line,
+            code: '',
+            output: message,
+            html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
+          },
+        ],
+      }
+    } else {
+      let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
+      if (outputStr) {
+        try {
+          output = JSON.parse(outputStr)
+        } catch (error: any) {
+          //
+        }
       }
     }
+
     event.reply('client.execute.reply', output ?? result)
   } catch (error: any) {
     event.reply('client.execute.reply', error)

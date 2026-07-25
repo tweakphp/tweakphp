@@ -112,16 +112,68 @@
     }
   }
 
+  const parseTweakPhpError = (raw: string) => {
+    const errorContent = raw.split('TWEAKPHP_ERROR:')[1]?.trim() ?? raw
+    let parsedError: any = null
+    try {
+      parsedError = JSON.parse(errorContent)
+    } catch (e) {
+      parsedError = errorContent
+    }
+
+    let message = ''
+    let line = 0
+
+    if (typeof parsedError === 'object' && parsedError !== null) {
+      const errorClass = parsedError.class || ''
+      const errorMsg = parsedError.message || ''
+      message = errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : (errorMsg || errorClass || JSON.stringify(parsedError))
+
+      if (parsedError.line) {
+        line = Number(parsedError.line)
+      } else {
+        const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
+        if (lineMatch) {
+          line = parseInt(lineMatch[1], 10)
+        }
+      }
+    } else {
+      message = String(parsedError || errorContent || raw)
+      const lineMatch = message.match(/on line (\d+)/i)
+      if (lineMatch) {
+        line = parseInt(lineMatch[1], 10)
+      }
+    }
+
+    const escapedMessage = message
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+
+    return [
+      {
+        line,
+        code: '',
+        output: message,
+        html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
+      },
+    ]
+  }
+
   const executeReplyListener = (e: any) => {
     let result = e.detail ?? ''
     if (e.detail && e.detail.output !== undefined) {
       tab.value.result = e.detail.output
+    } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
+      tab.value.result = parseTweakPhpError(result)
     } else {
       tab.value.result = [
         {
           code: '',
           line: 0,
-          output: result,
+          output: typeof result === 'object' ? JSON.stringify(result) : result,
           html: '',
         },
       ]
