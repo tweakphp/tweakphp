@@ -5,6 +5,7 @@ import { Client } from './client.interface'
 import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
+import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -47,14 +48,23 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     await client.connect()
     let result = await client.execute(payload.code, payload.loader)
     result = result.trim()
-    let output = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-    if (output) {
-      try {
-        output = JSON.parse(output)
-      } catch (error: any) {
-        //
+    let output: any = null
+
+    if (result.includes('TWEAKPHP_RESULT:')) {
+      let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
+      if (outputStr !== undefined) {
+        try {
+          output = JSON.parse(outputStr)
+        } catch (error: any) {
+          output = outputStr
+        }
+      }
+    } else if (result.includes('TWEAKPHP_ERROR:')) {
+      output = {
+        output: [parseTweakPhpError(result)],
       }
     }
+
     event.reply('client.execute.reply', output ?? result)
   } catch (error: any) {
     event.reply('client.execute.reply', error)
