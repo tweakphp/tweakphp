@@ -20,4 +20,5 @@ export interface Settings {
   aiPromptTemplateCompleteComment: string
   aiPromptTemplateCompleteCode: string
   navigationDisplay?: string
+  streaming?: boolean
 }

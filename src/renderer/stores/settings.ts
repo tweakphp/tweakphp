@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore('settings', () => {
     aiPromptTemplateCompleteComment: '',
     aiPromptTemplateCompleteCode: '',
     navigationDisplay: 'collapsed',
+    streaming: true,
   }
 
   const settings = ref<Settings>(defaultSettings)

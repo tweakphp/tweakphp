@@ -5,6 +5,8 @@ export interface Result {
   code: string
   output: string
   html: string
+  queries?: any[]
+  query_errors?: any[]
 }
 
 export interface Tab {

@@ -16,10 +16,12 @@
   onMounted(() => {
     applyDump()
     eventBus.addEventListener('client.execute.reply', applyDump)
+    eventBus.addEventListener('client.execute.stream', applyDump)
   })
 
   onBeforeUnmount(() => {
     eventBus.removeEventListener('client.execute.reply', applyDump)
+    eventBus.removeEventListener('client.execute.stream', applyDump)
   })
 
   const applyDump = async () => {
@@ -44,7 +46,7 @@
     }"
   >
     <div
-      v-for="item in props.output.filter(item => item.output !== '')"
+      v-for="item in props.output.filter(item => (item.output && item.output !== '') || (item.html && item.html !== ''))"
       :key="`stack-${item.line}`"
       class="w-full rounded-md relative p-3 border"
       :style="{
@@ -59,7 +61,7 @@
       <div
         :id="`dump-${item.line}`"
         class="text-sm"
-        v-html="item.html ?? item.output"
+        v-html="item.html || item.output"
         :style="{
           // fontSize: settingsStore.settings.editorFontSize + 'px !important',
         }"
