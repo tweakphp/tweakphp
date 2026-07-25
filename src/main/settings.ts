@@ -9,16 +9,13 @@ import { execSync } from 'child_process'
 
 const homeDir = os.homedir()
 
-const laravelPath = app.isPackaged
-  ? path.join(process.resourcesPath, 'public/laravel')
-  : path.join(__dirname, 'laravel')
+const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
 
-const settingsDir = path.join(homeDir, '.tweakphp')
-if (app.isPackaged && !fs.existsSync(settingsDir)) {
+if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
-
-const settingsPath = app.isPackaged ? path.join(settingsDir, 'settings.json') : path.join(__dirname, 'settings.json')
+const laravelPath = path.join(settingsDir, 'laravel')
+export const settingsPath = path.join(settingsDir, 'settings.json')
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
@@ -74,7 +71,7 @@ const handlePhpExecutable = (_event: any, phpPath: string) => {
   return phpPath
 }
 
-export const setSettings = async (data: Settings) => {
+export const setSettings = (data: Settings) => {
   fs.writeFileSync(settingsPath, JSON.stringify(data))
 }
 
@@ -90,7 +87,7 @@ export const getSettings = () => {
     let settingsJson = JSON.parse(settingsRaw)
     settings = {
       version: defaultSettings.version,
-      laravelPath: settingsJson.laravelPath || defaultSettings.laravelPath,
+      laravelPath: defaultSettings.laravelPath,
       php: settingsJson.php || defaultSettings.php,
       theme: settingsJson.theme || defaultSettings.theme,
       editorFontSize: settingsJson.editorFontSize || defaultSettings.editorFontSize,
@@ -115,6 +112,9 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+    }
+    if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {
+      setSettings(settings)
     }
   } else {
     settings = defaultSettings
