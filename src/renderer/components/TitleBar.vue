@@ -150,7 +150,10 @@
           <SecondaryButton
             v-if="isStreamingSupported"
             class="!px-2"
-            v-tippy="{ content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`, placement: 'bottom' }"
+            v-tippy="{
+              content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`,
+              placement: 'bottom',
+            }"
             @click="toggleStreaming"
           >
             <BoltIcon

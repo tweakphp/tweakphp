@@ -127,7 +127,8 @@
     if (typeof parsedError === 'object' && parsedError !== null) {
       const errorClass = parsedError.class || ''
       const errorMsg = parsedError.message || ''
-      message = errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : (errorMsg || errorClass || JSON.stringify(parsedError))
+      message =
+        errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
 
       if (parsedError.line) {
         line = Number(parsedError.line)
@@ -233,7 +234,10 @@
       }
     } else if (event.type === 'error') {
       const errorObj = event.error || {}
-      const msg = typeof errorObj === 'string' ? errorObj : `${errorObj.class ? errorObj.class + ': ' : ''}${errorObj.message || 'Error'}`
+      const msg =
+        typeof errorObj === 'string'
+          ? errorObj
+          : `${errorObj.class ? errorObj.class + ': ' : ''}${errorObj.message || 'Error'}`
       const escapedMessage = msg
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

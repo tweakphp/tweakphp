@@ -46,7 +46,9 @@
     }"
   >
     <div
-      v-for="item in props.output.filter(item => (item.output && item.output !== '') || (item.html && item.html !== ''))"
+      v-for="item in props.output.filter(
+        item => (item.output && item.output !== '') || (item.html && item.html !== '')
+      )"
       :key="`stack-${item.line}`"
       class="w-full rounded-md relative p-3 border"
       :style="{
