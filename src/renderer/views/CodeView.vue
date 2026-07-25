@@ -167,8 +167,10 @@
     let result = e.detail ?? ''
     if (e.detail && e.detail.output !== undefined) {
       tab.value.result = e.detail.output
+      tab.value.queries = e.detail.queries ?? e.detail.sql_queries ?? e.detail.query_log ?? []
     } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
       tab.value.result = parseTweakPhpError(result)
+      tab.value.queries = []
     } else {
       tab.value.result = [
         {
@@ -178,6 +180,7 @@
           html: '',
         },
       ]
+      tab.value.queries = e.detail?.queries ?? e.detail?.sql_queries ?? e.detail?.query_log ?? []
     }
     if (resultEditor.value) {
       resultEditor.value.updateValue(rawOutput.value)

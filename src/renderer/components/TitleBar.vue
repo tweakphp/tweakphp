@@ -6,6 +6,7 @@
     CodeBracketIcon,
     RectangleStackIcon,
     HeartIcon,
+    CircleStackIcon,
   } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
@@ -18,7 +19,9 @@
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import { computed, ComputedRef, watch } from 'vue'
+  import Modal from './Modal.vue'
+  import QueriesView from '../views/QueriesView.vue'
+  import { computed, ComputedRef, ref, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
 
   const settingsStore = useSettingsStore()
@@ -28,6 +31,7 @@
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
+  const queriesModal = ref()
 
   const showOutputType = computed(() => {
     return tab.value?.execution !== 'vapor'
@@ -68,6 +72,10 @@
 
   const sponsor = () => {
     window.ipcRenderer.send('link.open', 'https://github.com/sponsors/saeedvaziry')
+  }
+
+  const openQueriesModal = () => {
+    queriesModal.value?.openModal()
   }
 </script>
 
@@ -147,6 +155,20 @@
           </SecondaryButton>
         </template>
         <SecondaryButton
+          v-if="router.currentRoute.value.name === 'code' && tab"
+          class="!px-2 relative"
+          v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
+          @click="openQueriesModal()"
+        >
+          <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
+          <span
+            v-if="tab.queries && tab.queries.length > 0"
+            class="ml-1 text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded-full"
+          >
+            {{ tab.queries.length }}
+          </span>
+        </SecondaryButton>
+        <SecondaryButton
           class="!px-2"
           v-tippy="{ content: 'Sponsor this project', placement: 'bottom' }"
           @click="sponsor()"
@@ -155,5 +177,8 @@
         </SecondaryButton>
       </div>
     </div>
+    <Modal title="Executed Queries" ref="queriesModal" size="4xl">
+      <QueriesView />
+    </Modal>
   </div>
 </template>

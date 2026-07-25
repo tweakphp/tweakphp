@@ -46,7 +46,7 @@
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto no-scrollbar">
-          <div class="flex min-h-full items-start justify-center p-4 text-center mt-20">
+          <div class="flex min-h-full items-center justify-center p-4 text-center">
             <TransitionChild
               as="template"
               enter="duration-300 ease-out"
@@ -57,7 +57,7 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full transform rounded-lg p-6 text-left align-middle transition-all border"
+                class="w-full transform rounded-lg p-6 text-left align-middle transition-all border my-8"
                 :class="{
                   'max-w-md': props.size === 'md',
                   'max-w-lg': props.size === 'lg',
