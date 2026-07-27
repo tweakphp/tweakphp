@@ -174,28 +174,36 @@
           code: event.code,
           output: '',
           html: '',
+          htmlReady: false,
           queries: [],
           query_errors: [],
         })
       }
     } else if (event.type === 'output') {
       const idx = event.index ?? 0
-      console.log('executeStreamListener output', event.data, 'index', idx, 'tab.result', tab.value.result)
       if (!tab.value.result[idx]) {
         tab.value.result[idx] = {
           line: 0,
           code: '',
           output: '',
           html: '',
+          htmlReady: false,
           queries: [],
         }
       }
       tab.value.result[idx].output += event.data
+      if (typeof event.html === 'string') {
+        tab.value.result[idx].html += event.html
+      }
     } else if (event.type === 'statement.completed') {
       const idx = event.index ?? 0
       if (tab.value.result[idx]) {
         if (event.queries) tab.value.result[idx].queries = event.queries
         if (event.query_errors) tab.value.result[idx].query_errors = event.query_errors
+        if (typeof event.html === 'string' && !tab.value.result[idx].html) {
+          tab.value.result[idx].html = event.html
+        }
+        tab.value.result[idx].htmlReady = true
       }
     } else if (event.type === 'error') {
       const errorObj = event.error || {}
@@ -221,6 +229,9 @@
     if (resultEditor.value) {
       resultEditor.value.updateValue(rawOutput.value)
     }
+
+    console.log(tab.value)
+
     tabsStore.updateTab(tab.value)
   }
 

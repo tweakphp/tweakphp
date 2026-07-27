@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-  import { nextTick, onBeforeUnmount, onMounted, PropType } from 'vue'
+  import { nextTick, PropType, watch } from 'vue'
   import { Result } from '../../types/tab.type'
   import { useSettingsStore } from '../stores/settings'
-  import eventBus from '../events'
 
   const props = defineProps({
     output: {
@@ -12,30 +11,37 @@
   })
 
   const settingsStore = useSettingsStore()
-
-  onMounted(() => {
-    applyDump()
-    eventBus.addEventListener('client.execute.reply', applyDump)
-    eventBus.addEventListener('client.execute.stream', applyDump)
-  })
-
-  onBeforeUnmount(() => {
-    eventBus.removeEventListener('client.execute.reply', applyDump)
-    eventBus.removeEventListener('client.execute.stream', applyDump)
-  })
+  const initializedDumps = new WeakSet<HTMLElement>()
 
   const applyDump = async () => {
     await nextTick()
     props.output.forEach(item => {
-      const el = document.getElementById(`dump-${item.line}`)?.querySelector('.sf-dump')
-      if (el) {
+      if (item.htmlReady === false) return
+
+      const el = document.getElementById(`dump-${item.line}`)?.querySelector<HTMLElement>('.sf-dump')
+      if (el && !initializedDumps.has(el)) {
         window.Sfdump(el.id)
+        initializedDumps.add(el)
         if (settingsStore.settings.stackedDump === 'compact') {
-          el.querySelector('samp')?.classList.replace('sf-dump-expanded', 'sf-dump-compact')
+          const dump = el.querySelector<HTMLElement>('samp')
+          const toggle = dump?.previousElementSibling
+
+          if (
+            dump?.classList.contains('sf-dump-expanded') &&
+            toggle instanceof HTMLElement &&
+            toggle.matches('a.sf-dump-toggle')
+          ) {
+            toggle.click()
+          }
         }
       }
     })
   }
+
+  watch(() => props.output.map(item => `${item.line}:${item.htmlReady}:${item.html}`), applyDump, {
+    flush: 'post',
+    immediate: true,
+  })
 </script>
 
 <template>
@@ -63,7 +69,7 @@
       <div
         :id="`dump-${item.line}`"
         class="text-sm"
-        v-html="item.html || item.output"
+        v-html="item.htmlReady === false ? item.output : item.html || item.output"
         :style="{
           // fontSize: settingsStore.settings.editorFontSize + 'px !important',
         }"
