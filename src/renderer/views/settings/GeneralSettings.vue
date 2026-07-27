@@ -179,6 +179,19 @@
         <option value="expanded">Expanded</option>
       </SelectInput>
     </div>
+    <Divider class="mt-3" />
+    <div class="mt-3 grid grid-cols-2 items-center">
+      <div>Streaming Output</div>
+      <SelectInput
+        id="streaming-output"
+        v-model="settingsStore.settings.streaming"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option :value="true">Enabled</option>
+        <option :value="false">Disabled</option>
+      </SelectInput>
+    </div>
   </div>
 </template>
 

@@ -4,7 +4,7 @@
 
   // Define props
   const props = defineProps({
-    modelValue: [String, Number],
+    modelValue: [String, Number, Boolean],
     placeholder: [String],
   })
 

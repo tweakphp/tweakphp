@@ -39,6 +39,7 @@ const defaultSettings: Settings = {
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
   navigationDisplay: 'collapsed',
+  streaming: true,
 }
 
 export const init = async () => {
@@ -112,6 +113,7 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+      streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,
     }
     if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {
       setSettings(settings)
