@@ -22,6 +22,7 @@
     "preview": "vite preview",
     "lint": "prettier --check ./",
     "lint:fix": "prettier --write ./",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run --root ."
   },
   "build": {

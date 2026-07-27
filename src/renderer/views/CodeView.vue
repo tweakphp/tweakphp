@@ -16,7 +16,7 @@
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
-  import { parseTweakPhpError } from '../../shared/tweakphp-error'
+  import { useCodeExecution } from '../composables/useCodeExecution'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -65,12 +65,29 @@
     }
   })
 
+  const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
+    tab,
+    rawOutput,
+    resultEditor,
+    settingsStore,
+    executeStore,
+    tabsStore,
+    loadersStore,
+  })
+
   const handleLspReconnect = () => {
     window.ipcRenderer.send('lsp.restart')
     try {
       // @ts-ignore - template ref typed at runtime
       codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
     } catch (e) {}
+  }
+
+  const lspRestartSuccessListener = () => {
+    console.log('LSP restart success, reconnecting editors...')
+    if (codeEditor.value) {
+      codeEditor.value.reconnectLsp()
+    }
   }
 
   const vaporRequestEnvironmentTab = () => {
@@ -113,151 +130,9 @@
     }
   }
 
-  const stringifyReply = (value: any): string => {
-    if (typeof value === 'string') {
-      return value
-    }
-    if (value instanceof Error) {
-      return value.message
-    }
-    try {
-      return JSON.stringify(value) ?? String(value)
-    } catch (e) {
-      return String(value)
-    }
-  }
-
-  const executeReplyListener = (e: any) => {
-    let result = e.detail ?? ''
-    if (e.detail && e.detail.streamingDone) {
-      executeStore.setExecuting(false)
-      return
-    }
-    if (e.detail && e.detail.output !== undefined) {
-      tab.value.result = e.detail.output
-    } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
-      tab.value.result = [parseTweakPhpError(result)]
-    } else {
-      tab.value.result = [
-        {
-          code: '',
-          line: 0,
-          output: stringifyReply(result),
-          html: '',
-        },
-      ]
-    }
-    if (resultEditor.value) {
-      resultEditor.value.updateValue(rawOutput.value)
-    }
-    tabsStore.updateTab(tab.value)
-    executeStore.setExecuting(false)
-  }
-
-  const executeStreamListener = (e: any) => {
-    const detail = e.detail
-    if (!detail || detail.tabId !== tab.value.id) return
-
-    const event = detail.event
-    if (!event) return
-
-    if (event.type === 'started') {
-      tab.value.result = []
-      return
-    }
-
-    if (event.type === 'statement.started') {
-      const existingIndex = tab.value.result.findIndex((_r: any, idx: number) => idx === event.index)
-      if (existingIndex === -1) {
-        tab.value.result.push({
-          line: event.line,
-          code: event.code,
-          output: '',
-          html: '',
-          htmlReady: false,
-          queries: [],
-          query_errors: [],
-        })
-      }
-    } else if (event.type === 'output') {
-      const idx = event.index ?? 0
-      if (!tab.value.result[idx]) {
-        tab.value.result[idx] = {
-          line: 0,
-          code: '',
-          output: '',
-          html: '',
-          htmlReady: false,
-          queries: [],
-        }
-      }
-      tab.value.result[idx].output += event.data
-      if (typeof event.html === 'string') {
-        tab.value.result[idx].html += event.html
-      }
-    } else if (event.type === 'statement.completed') {
-      const idx = event.index ?? 0
-      if (tab.value.result[idx]) {
-        if (event.queries) tab.value.result[idx].queries = event.queries
-        if (event.query_errors) tab.value.result[idx].query_errors = event.query_errors
-        if (typeof event.html === 'string' && !tab.value.result[idx].html) {
-          tab.value.result[idx].html = event.html
-        }
-        tab.value.result[idx].htmlReady = true
-      }
-    } else if (event.type === 'error') {
-      const errorObj = event.error || {}
-      const msg =
-        typeof errorObj === 'string'
-          ? errorObj
-          : `${errorObj.class ? errorObj.class + ': ' : ''}${errorObj.message || 'Error'}`
-      const escapedMessage = msg
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-
-      tab.value.result.push({
-        line: 0,
-        code: '',
-        output: msg,
-        html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-      })
-    }
-
-    if (resultEditor.value) {
-      resultEditor.value.updateValue(rawOutput.value)
-    }
-
-    console.log(tab.value)
-
-    tabsStore.updateTab(tab.value)
-  }
-
   const infoReplyListener = (e: any) => {
     tab.value.info = JSON.parse(e.detail)
     tabsStore.updateTab(tab.value)
-  }
-
-  const executeHandler = () => {
-    let connection = tabsStore.getConnectionConfig(tab.value)
-    const { code, loader } = tab.value
-    const loaderCode = getLoader(loader ?? '')
-
-    executeStore.setExecuting(true)
-
-    if (settingsStore.settings.streaming) {
-      tab.value.result = []
-    }
-
-    window.ipcRenderer.send('client.execute', {
-      connection: JSON.parse(JSON.stringify(connection)),
-      code,
-      loader: loaderCode,
-      tabId: tab.value.id,
-      streaming: !!settingsStore.settings.streaming,
-    })
   }
 
   const getInfo = () => {
@@ -272,10 +147,6 @@
         loader: loaderCode,
       })
     }
-  }
-
-  const getLoader = (name: string) => {
-    return loadersStore.get(name)?.code ?? ''
   }
 
   const tabsContainerWheelListener = (event: WheelEvent) => {
@@ -295,12 +166,7 @@
   }
 
   onMounted(async () => {
-    window.ipcRenderer.on('lsp.restart.success', () => {
-      console.log('LSP restart success, reconnecting editors...')
-      if (codeEditor.value) {
-        codeEditor.value.reconnectLsp()
-      }
-    })
+    window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
     if (settingsStore.settings.php === '') {
       await router.push({ name: 'settings' })
@@ -341,6 +207,7 @@
   })
 
   onBeforeUnmount(async () => {
+    window.ipcRenderer.removeListener('lsp.restart.success', lspRestartSuccessListener)
     window.removeEventListener('keydown', keydownListener)
     events.removeEventListener('client.execute.reply', executeReplyListener)
     events.removeEventListener('client.execute.stream', executeStreamListener)
