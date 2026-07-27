@@ -21,7 +21,8 @@
     "publish-win": "npm run build && electron-builder --publish always --win",
     "preview": "vite preview",
     "lint": "prettier --check ./",
-    "lint:fix": "prettier --write ./"
+    "lint:fix": "prettier --write ./",
+    "test": "vitest run --root ."
   },
   "build": {
     "appId": "com.tweakphp.app",
@@ -193,6 +194,7 @@
     "typescript": "^5.2.2",
     "utf-8-validate": "^5.0.10",
     "vite": "^6.4.1",
+    "vitest": "^4.1.10",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",

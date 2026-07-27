@@ -5,6 +5,7 @@ import { Client } from './client.interface'
 import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
+import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -46,6 +47,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   try {
     await client.connect()
 
+
     if (payload.streaming && typeof client.executeStreaming === 'function') {
       event.reply('client.execute.stream', {
         tabId: payload.tabId,
@@ -67,65 +69,18 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     result = result.trim()
     let output: any = null
 
-    if (result.includes('TWEAKPHP_ERROR:')) {
-      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() ?? ''
-      let parsedError: any = null
-      try {
-        parsedError = JSON.parse(errorContent)
-      } catch (e) {
-        parsedError = errorContent
-      }
-
-      let message = ''
-      let line = 0
-
-      if (typeof parsedError === 'object' && parsedError !== null) {
-        const errorClass = parsedError.class || ''
-        const errorMsg = parsedError.message || ''
-        message =
-          errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
-
-        if (parsedError.line) {
-          line = Number(parsedError.line)
-        } else {
-          const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
-          if (lineMatch) {
-            line = parseInt(lineMatch[1], 10)
-          }
-        }
-      } else {
-        message = String(parsedError || errorContent || result)
-        const lineMatch = message.match(/on line (\d+)/i)
-        if (lineMatch) {
-          line = parseInt(lineMatch[1], 10)
-        }
-      }
-
-      const escapedMessage = message
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-
-      output = {
-        output: [
-          {
-            line: line,
-            code: '',
-            output: message,
-            html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-          },
-        ],
-      }
-    } else {
+    if (result.includes('TWEAKPHP_RESULT:')) {
       let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-      if (outputStr) {
+      if (outputStr !== undefined) {
         try {
           output = JSON.parse(outputStr)
         } catch (error: any) {
-          //
+          output = outputStr
         }
+      }
+    } else if (result.includes('TWEAKPHP_ERROR:')) {
+      output = {
+        output: [parseTweakPhpError(result)],
       }
     }
 

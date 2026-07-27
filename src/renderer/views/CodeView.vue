@@ -16,6 +16,7 @@
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
+  import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -112,55 +113,18 @@
     }
   }
 
-  const parseTweakPhpError = (raw: string) => {
-    const errorContent = raw.split('TWEAKPHP_ERROR:')[1]?.trim() ?? raw
-    let parsedError: any = null
+  const stringifyReply = (value: any): string => {
+    if (typeof value === 'string') {
+      return value
+    }
+    if (value instanceof Error) {
+      return value.message
+    }
     try {
-      parsedError = JSON.parse(errorContent)
+      return JSON.stringify(value) ?? String(value)
     } catch (e) {
-      parsedError = errorContent
+      return String(value)
     }
-
-    let message = ''
-    let line = 0
-
-    if (typeof parsedError === 'object' && parsedError !== null) {
-      const errorClass = parsedError.class || ''
-      const errorMsg = parsedError.message || ''
-      message =
-        errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
-
-      if (parsedError.line) {
-        line = Number(parsedError.line)
-      } else {
-        const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
-        if (lineMatch) {
-          line = parseInt(lineMatch[1], 10)
-        }
-      }
-    } else {
-      message = String(parsedError || errorContent || raw)
-      const lineMatch = message.match(/on line (\d+)/i)
-      if (lineMatch) {
-        line = parseInt(lineMatch[1], 10)
-      }
-    }
-
-    const escapedMessage = message
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
-
-    return [
-      {
-        line,
-        code: '',
-        output: message,
-        html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-      },
-    ]
   }
 
   const executeReplyListener = (e: any) => {
@@ -172,13 +136,13 @@
     if (e.detail && e.detail.output !== undefined) {
       tab.value.result = e.detail.output
     } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
-      tab.value.result = parseTweakPhpError(result)
+      tab.value.result = [parseTweakPhpError(result)]
     } else {
       tab.value.result = [
         {
           code: '',
           line: 0,
-          output: typeof result === 'object' ? JSON.stringify(result) : result,
+          output: stringifyReply(result),
           html: '',
         },
       ]
@@ -216,6 +180,7 @@
       }
     } else if (event.type === 'output') {
       const idx = event.index ?? 0
+      console.log('executeStreamListener output', event.data, 'index', idx, 'tab.result', tab.value.result)
       if (!tab.value.result[idx]) {
         tab.value.result[idx] = {
           line: 0,
