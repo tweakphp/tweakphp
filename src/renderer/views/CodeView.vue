@@ -16,6 +16,7 @@
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
+  import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -112,16 +113,32 @@
     }
   }
 
+  const stringifyReply = (value: any): string => {
+    if (typeof value === 'string') {
+      return value
+    }
+    if (value instanceof Error) {
+      return value.message
+    }
+    try {
+      return JSON.stringify(value) ?? String(value)
+    } catch (e) {
+      return String(value)
+    }
+  }
+
   const executeReplyListener = (e: any) => {
     let result = e.detail ?? ''
     if (e.detail && e.detail.output !== undefined) {
       tab.value.result = e.detail.output
+    } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
+      tab.value.result = [parseTweakPhpError(result)]
     } else {
       tab.value.result = [
         {
           code: '',
           line: 0,
-          output: result,
+          output: stringifyReply(result),
           html: '',
         },
       ]

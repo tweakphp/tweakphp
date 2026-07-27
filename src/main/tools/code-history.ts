@@ -29,8 +29,7 @@ export async function initCodeHistory() {
 
       const runAdd = db.transaction(() => {
         const currentState = db.prepare('SELECT current_history_id FROM tab_states WHERE tab_id = ?').get(tabId) as
-          | { current_history_id: number | null }
-          | undefined
+          { current_history_id: number | null } | undefined
 
         if (currentState?.current_history_id) {
           const lastHistory = db
@@ -86,8 +85,7 @@ export async function initCodeHistory() {
 
       const runUndo = db.transaction(() => {
         const currentState = db.prepare('SELECT current_history_id FROM tab_states WHERE tab_id = ?').get(tabId) as
-          | { current_history_id: number }
-          | undefined
+          { current_history_id: number } | undefined
 
         if (!currentState) {
           return
@@ -96,8 +94,7 @@ export async function initCodeHistory() {
         const selectSql =
           'SELECT id, code, cursor_line, cursor_column FROM code_histories WHERE tab_id = ? AND id < ? ORDER BY id DESC LIMIT 1'
         const previousState = db.prepare(selectSql).get(tabId, currentState.current_history_id) as
-          | { id: number; code: string; cursor_line: number; cursor_column: number }
-          | undefined
+          { id: number; code: string; cursor_line: number; cursor_column: number } | undefined
 
         if (previousState) {
           db.prepare('UPDATE tab_states SET current_history_id = ? WHERE tab_id = ?').run(previousState.id, tabId)
@@ -136,8 +133,7 @@ export async function initCodeHistory() {
 
       const runRedo = db.transaction(() => {
         const currentState = db.prepare('SELECT current_history_id FROM tab_states WHERE tab_id = ?').get(tabId) as
-          | { current_history_id: number }
-          | undefined
+          { current_history_id: number } | undefined
 
         if (!currentState) {
           return
@@ -146,8 +142,7 @@ export async function initCodeHistory() {
         const selectSql =
           'SELECT id, code, cursor_line, cursor_column FROM code_histories WHERE tab_id = ? AND id > ? ORDER BY id ASC LIMIT 1'
         const nextState = db.prepare(selectSql).get(tabId, currentState.current_history_id) as
-          | { id: number; code: string; cursor_line: number; cursor_column: number }
-          | undefined
+          { id: number; code: string; cursor_line: number; cursor_column: number } | undefined
 
         if (nextState) {
           db.prepare('UPDATE tab_states SET current_history_id = ? WHERE tab_id = ?').run(nextState.id, tabId)

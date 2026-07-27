@@ -5,12 +5,15 @@
   import { useUpdateStore } from '../../stores/update'
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
+  import SecondaryButton from '../../components/SecondaryButton.vue'
   import { ref, onMounted } from 'vue'
   import UpdateApp from '../../components/UpdateApp.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
 
   const saved = ref(false)
   const showToast = ref(false)
+  const detecting = ref(false)
+  const detectedPaths = ref<string[]>([])
   const settingsStore = useSettingsStore()
   const updateStore = useUpdateStore()
 
@@ -31,6 +34,20 @@
       showToast.value = false
     }, 2000)
   }
+
+  const detectPhp = () => {
+    detecting.value = true
+    window.ipcRenderer.send('settings.detect-php')
+    window.ipcRenderer.once('settings.detect-php.reply', (paths: string[]) => {
+      detecting.value = false
+      detectedPaths.value = paths || []
+    })
+  }
+
+  const selectDetectedPhp = (p: string) => {
+    settingsStore.settings.php = p
+    saveSettings()
+  }
 </script>
 
 <template>
@@ -48,9 +65,31 @@
       </div>
     </div>
     <Divider class="mt-3" />
-    <div class="mt-3 grid grid-cols-2 items-center">
-      <div>PHP path</div>
-      <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" />
+    <div class="mt-3 grid grid-cols-2 items-start">
+      <div class="pt-2">PHP path</div>
+      <div class="flex flex-col w-full">
+        <div class="flex items-center space-x-2 w-full">
+          <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" class="flex-1" />
+          <SecondaryButton @click="detectPhp()" :disabled="detecting" class="whitespace-nowrap select-none">
+            {{ detecting ? 'Scanning...' : 'Detect' }}
+          </SecondaryButton>
+        </div>
+        <div v-if="detectedPaths.length > 0" class="mt-2 text-xs flex flex-col items-start w-full">
+          <span class="opacity-50 mb-1">Detected paths:</span>
+          <div class="flex flex-wrap gap-1 w-full max-h-24 overflow-y-auto pr-1">
+            <button
+              v-for="p in detectedPaths"
+              :key="p"
+              type="button"
+              @click="selectDetectedPhp(p)"
+              class="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] text-left truncate max-w-[280px]"
+              :title="p"
+            >
+              {{ p }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     <Divider class="mt-3" />
     <div class="mt-3 grid grid-cols-2 items-center">
