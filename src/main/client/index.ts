@@ -47,7 +47,6 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   try {
     await client.connect()
 
-
     if (payload.streaming && typeof client.executeStreaming === 'function') {
       event.reply('client.execute.stream', {
         tabId: payload.tabId,

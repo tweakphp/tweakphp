@@ -239,20 +239,6 @@
         class="relative pl-4 border-l-2 border-blue-500/30 space-y-2"
       >
         <div
-          v-if="group.result"
-          class="rounded-lg border p-3 font-mono text-xs"
-          :style="{
-            backgroundColor: settingsStore.colors.backgroundLight,
-            borderColor: settingsStore.colors.border,
-          }"
-        >
-          <div class="flex items-center justify-between mb-2 font-sans">
-            <span class="text-[10px] text-gray-500">Line {{ group.result.line }}</span>
-          </div>
-          <pre class="whitespace-pre-wrap break-words leading-relaxed text-gray-300">{{ group.result.code }}</pre>
-        </div>
-
-        <div
           v-for="(item, queryIndex) in group.queries"
           :key="`${group.index}-query-${queryIndex}`"
           class="rounded-lg border p-3 font-mono text-xs relative group"
@@ -263,6 +249,9 @@
         >
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center space-x-2">
+              <span v-if="group.result" class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
+                Line {{ group.result.line }}
+              </span>
               <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
                 Query {{ queryIndex + 1 }}
               </span>
