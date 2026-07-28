@@ -222,7 +222,9 @@
   })
 
   onBeforeUnmount(async () => {
-    lspStore.setDisconnected()
+    if (props.language === 'php' && !props.readonly) {
+      lspStore.setDisconnected()
+    }
 
     if (props.enableHistory) {
       window.historyApi.removeAllListeners()
