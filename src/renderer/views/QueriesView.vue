@@ -2,18 +2,38 @@
   import { computed, ref } from 'vue'
   import { useTabsStore } from '../stores/tabs'
   import { useSettingsStore } from '../stores/settings'
-  import { QueryItem } from '../../types/tab.type'
+  import { QueryItem, Result } from '../../types/tab.type'
   import { MagnifyingGlassIcon, ClipboardDocumentIcon, CheckIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
+
+  type StatementGroup = {
+    result: Result | null
+    index: number
+    queries: QueryItem[]
+  }
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
   const searchQuery = ref('')
-  const copiedIndex = ref<number | null>(null)
+  const copiedIndex = ref<string | null>(null)
 
-  const queries = computed<QueryItem[]>(() => {
+  const statementGroups = computed<StatementGroup[]>(() => {
     const currentTab = tabStore.getCurrent()
-    return currentTab?.queries ?? []
+    const results = currentTab?.result ?? []
+    const groups = results.map((result, index) => ({
+      result,
+      index,
+      queries: Array.isArray(result.queries) ? (result.queries as QueryItem[]) : [],
+    }))
+
+    // Keep displaying queries saved by older tabs that have no per-result data.
+    if (groups.some(group => group.queries.length > 0) || !currentTab?.queries?.length) {
+      return groups.filter(group => group.queries.length > 0)
+    }
+
+    return [{ result: null, index: 0, queries: currentTab.queries }]
   })
+
+  const queries = computed<QueryItem[]>(() => statementGroups.value.flatMap(group => group.queries))
 
   function getSql(item: QueryItem): string {
     if (typeof item === 'string') return item
@@ -61,38 +81,43 @@
     })
   }
 
-  const filteredQueries = computed(() => {
-    if (!searchQuery.value.trim()) {
-      return queries.value
-    }
-    const q = searchQuery.value.trim().toLowerCase()
-    return queries.value.filter(item => {
-      if (typeof item === 'string') {
-        return (item as string).toLowerCase().includes(q)
-      }
-      const rawSql = getSql(item).toLowerCase()
-      const interpSql = interpolateSql(item).toLowerCase()
-      const connStr = (item.connection || item.connection_name || '').toLowerCase()
-      const bindingsStr = (item.bindings || [])
-        .map(b => String(b))
-        .join(' ')
-        .toLowerCase()
+  function queryMatches(item: QueryItem, query: string): boolean {
+    const queryItem = item as QueryItem | string
+    if (typeof queryItem === 'string') return queryItem.toLowerCase().includes(query)
+    const rawSql = getSql(item).toLowerCase()
+    const interpSql = interpolateSql(item).toLowerCase()
+    const connStr = (item.connection || item.connection_name || '').toLowerCase()
+    const bindingsStr = (item.bindings || [])
+      .map(binding => String(binding))
+      .join(' ')
+      .toLowerCase()
 
-      return rawSql.includes(q) || interpSql.includes(q) || connStr.includes(q) || bindingsStr.includes(q)
-    })
+    return rawSql.includes(query) || interpSql.includes(query) || connStr.includes(query) || bindingsStr.includes(query)
+  }
+
+  const filteredGroups = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase()
+    if (!query) return statementGroups.value
+
+    return statementGroups.value
+      .map(group => {
+        const codeMatches = group.result?.code?.toLowerCase().includes(query)
+        const matchingQueries = codeMatches ? group.queries : group.queries.filter(item => queryMatches(item, query))
+        return { ...group, queries: matchingQueries }
+      })
+      .filter(group => group.queries.length > 0 || group.result?.code?.toLowerCase().includes(query))
   })
 
-  const totalTime = computed(() => {
-    return queries.value.reduce((acc, q) => {
-      return acc + getTimeNumber(q)
-    }, 0)
-  })
+  const totalTime = computed(() => queries.value.reduce((acc, query) => acc + getTimeNumber(query), 0))
+
+  function escapeHtml(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
 
   function highlightSql(item: QueryItem): string {
     const sql = interpolateSql(item)
     if (!sql) return ''
-    const escaped = sql.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
+    const escaped = escapeHtml(sql)
     const keywords = [
       'SELECT',
       'FROM',
@@ -137,21 +162,26 @@
     return escaped.replace(regex, '<span class="text-pink-400 font-semibold">$1</span>')
   }
 
-  const copyQuery = (item: QueryItem, index: number) => {
-    const sql = interpolateSql(item)
-    navigator.clipboard.writeText(sql)
-    copiedIndex.value = index
+  function getErrorMessage(error: unknown): string {
+    if (typeof error === 'string') return error
+    if (error && typeof error === 'object') {
+      const value = error as Record<string, unknown>
+      return String(value.message || value.error || JSON.stringify(error))
+    }
+    return String(error)
+  }
+
+  const copyQuery = (item: QueryItem, key: string) => {
+    navigator.clipboard.writeText(interpolateSql(item))
+    copiedIndex.value = key
     setTimeout(() => {
-      if (copiedIndex.value === index) {
-        copiedIndex.value = null
-      }
+      if (copiedIndex.value === key) copiedIndex.value = null
     }, 2000)
   }
 </script>
 
 <template>
   <div class="flex flex-col space-y-4 max-h-[70vh] overflow-hidden">
-    <!-- Header Stats & Search Bar -->
     <div
       class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b"
       :style="{ borderColor: settingsStore.colors.border }"
@@ -161,14 +191,14 @@
           Total Queries: <span class="font-bold">{{ queries.length }}</span>
         </div>
         <div
-          class="px-2.5 py-1 rounded-md border font-medium bg-purple-500/10 text-purple-400 border-purple-500/20"
           v-if="queries.length > 0"
+          class="px-2.5 py-1 rounded-md border font-medium bg-purple-500/10 text-purple-400 border-purple-500/20"
         >
           Total Time: <span class="font-bold">{{ totalTime.toFixed(2) }} ms</span>
         </div>
       </div>
 
-      <div class="flex items-center flex-1 max-w-sm" v-if="queries.length > 0">
+      <div v-if="queries.length > 0" class="flex items-center flex-1 max-w-sm">
         <div class="relative w-full">
           <MagnifyingGlassIcon
             class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -188,7 +218,6 @@
       </div>
     </div>
 
-    <!-- Empty State -->
     <div
       v-if="queries.length === 0"
       class="flex flex-col items-center justify-center py-12 text-center text-gray-400 space-y-3"
@@ -198,78 +227,101 @@
       <div class="text-xs max-w-sm text-gray-500">Run PHP code that performs database queries to view them here.</div>
     </div>
 
-    <!-- No Match State -->
-    <div v-else-if="filteredQueries.length === 0" class="py-8 text-center text-xs text-gray-400">
+    <div v-else-if="filteredGroups.length === 0" class="py-8 text-center text-xs text-gray-400">
       No queries matching "<span class="text-gray-200">{{ searchQuery }}</span
       >"
     </div>
 
-    <!-- Query List -->
-    <div v-else class="space-y-3 overflow-y-auto pr-2 custom-scrollbar max-h-[55vh]">
-      <div
-        v-for="(item, index) in filteredQueries"
-        :key="index"
-        class="rounded-lg border p-3 font-mono text-xs relative group transition-all"
-        :style="{
-          backgroundColor: settingsStore.colors.backgroundLight,
-          borderColor: settingsStore.colors.border,
-        }"
+    <div v-else class="space-y-4 overflow-y-auto pr-2 custom-scrollbar max-h-[55vh]">
+      <section
+        v-for="group in filteredGroups"
+        :key="`statement-${group.index}`"
+        class="relative pl-4 border-l-2 border-blue-500/30 space-y-2"
       >
-        <!-- Header / Metadata -->
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center space-x-2">
-            <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
-              #{{ index + 1 }}
-            </span>
-            <span
-              v-if="typeof item !== 'string' && (item.connection || item.connection_name)"
-              class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-blue-500/20 text-blue-300"
-            >
-              {{ item.connection || item.connection_name }}
-            </span>
+        <div
+          v-if="group.result"
+          class="rounded-lg border p-3 font-mono text-xs"
+          :style="{
+            backgroundColor: settingsStore.colors.backgroundLight,
+            borderColor: settingsStore.colors.border,
+          }"
+        >
+          <div class="flex items-center justify-between mb-2 font-sans">
+            <span class="text-[10px] text-gray-500">Line {{ group.result.line }}</span>
           </div>
-
-          <div class="flex items-center space-x-2">
-            <span
-              v-if="formatTime(item)"
-              class="text-[10px] px-2 py-0.5 rounded-full border font-semibold"
-              :class="getTimeBadgeClass(item)"
-            >
-              {{ formatTime(item) }}
-            </span>
-            <button
-              @click="copyQuery(item, index)"
-              class="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              v-tippy="{ content: 'Copy query', placement: 'top' }"
-            >
-              <CheckIcon v-if="copiedIndex === index" class="w-3.5 h-3.5 text-green-400" />
-              <ClipboardDocumentIcon v-else class="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <pre class="whitespace-pre-wrap break-words leading-relaxed text-gray-300">{{ group.result.code }}</pre>
         </div>
 
-        <!-- SQL Code Block -->
         <div
-          class="bg-black/30 p-2.5 rounded border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed text-gray-200"
+          v-for="(item, queryIndex) in group.queries"
+          :key="`${group.index}-query-${queryIndex}`"
+          class="rounded-lg border p-3 font-mono text-xs relative group"
+          :style="{
+            backgroundColor: settingsStore.colors.backgroundLight,
+            borderColor: settingsStore.colors.border,
+          }"
         >
-          <span v-html="highlightSql(item)"></span>
-        </div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
+                Query {{ queryIndex + 1 }}
+              </span>
+              <span
+                v-if="typeof item !== 'string' && (item.connection || item.connection_name)"
+                class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-blue-500/20 text-blue-300"
+              >
+                {{ item.connection || item.connection_name }}
+              </span>
+            </div>
 
-        <!-- Bindings Section (if available) -->
-        <div
-          v-if="typeof item !== 'string' && item.bindings && Array.isArray(item.bindings) && item.bindings.length > 0"
-          class="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap"
-        >
-          <span class="text-gray-500 font-sans text-[10px]">Bindings:</span>
-          <span
-            v-for="(binding, bIdx) in item.bindings"
-            :key="bIdx"
-            class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300 font-mono text-[10px]"
+            <div class="flex items-center space-x-2">
+              <span
+                v-if="formatTime(item)"
+                class="text-[10px] px-2 py-0.5 rounded-full border font-semibold"
+                :class="getTimeBadgeClass(item)"
+              >
+                {{ formatTime(item) }}
+              </span>
+              <button
+                @click="copyQuery(item, `${group.index}-${queryIndex}`)"
+                class="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                v-tippy="{ content: 'Copy query', placement: 'top' }"
+              >
+                <CheckIcon v-if="copiedIndex === `${group.index}-${queryIndex}`" class="w-3.5 h-3.5 text-green-400" />
+                <ClipboardDocumentIcon v-else class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="bg-black/30 p-2.5 rounded border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed text-gray-200"
           >
-            {{ binding === null ? 'null' : String(binding) }}
-          </span>
+            <span v-html="highlightSql(item)"></span>
+          </div>
+
+          <div
+            v-if="typeof item !== 'string' && item.bindings && Array.isArray(item.bindings) && item.bindings.length > 0"
+            class="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap"
+          >
+            <span class="text-gray-500 font-sans text-[10px]">Bindings:</span>
+            <span
+              v-for="(binding, bindingIndex) in item.bindings"
+              :key="bindingIndex"
+              class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300 font-mono text-[10px]"
+            >
+              {{ binding === null ? 'null' : String(binding) }}
+            </span>
+          </div>
         </div>
-      </div>
+
+        <div
+          v-for="(error, errorIndex) in group.result?.query_errors || []"
+          :key="`${group.index}-error-${errorIndex}`"
+          class="rounded border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+        >
+          Query error: {{ getErrorMessage(error) }}
+        </div>
+      </section>
     </div>
   </div>
 </template>

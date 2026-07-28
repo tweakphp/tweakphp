@@ -131,6 +131,12 @@ export function useCodeExecution(options: {
     }
   }
 
+  const syncTabQueries = () => {
+    options.tab.value.queries = options.tab.value.result.flatMap(result =>
+      Array.isArray(result.queries) ? result.queries : []
+    )
+  }
+
   const executeReplyListener = (event: Event) => {
     const detail = isDetailEvent(event) ? event.detail : undefined
     if (isRecord(detail) && detail.streamingDone === true) {
@@ -141,8 +147,10 @@ export function useCodeExecution(options: {
     const results = isRecord(detail) ? parseResults(detail.output) : null
     if (results) {
       options.tab.value.result = results
+      syncTabQueries()
     } else if (typeof detail === 'string' && detail.includes('TWEAKPHP_ERROR:')) {
       options.tab.value.result = [parseTweakPhpError(detail)]
+      options.tab.value.queries = []
     } else {
       options.tab.value.result = [
         {
@@ -152,6 +160,7 @@ export function useCodeExecution(options: {
           html: '',
         },
       ]
+      options.tab.value.queries = []
     }
 
     updateResultEditor()
@@ -168,6 +177,7 @@ export function useCodeExecution(options: {
 
     if (streamEvent.type === 'started') {
       options.tab.value.result = []
+      options.tab.value.queries = []
       return
     }
 
@@ -215,6 +225,7 @@ export function useCodeExecution(options: {
       options.tab.value.result.push(parseTweakPhpError(streamEvent.error ?? 'Error'))
     }
 
+    syncTabQueries()
     updateResultEditor()
     options.tabsStore.updateTab(options.tab.value)
   }
@@ -224,10 +235,13 @@ export function useCodeExecution(options: {
     const { code, loader } = options.tab.value
 
     options.executeStore.setExecuting(true)
+    options.tab.value.queries = []
 
     if (options.settingsStore.settings.streaming) {
       options.tab.value.result = []
     }
+
+    options.tabsStore.updateTab(options.tab.value)
 
     window.ipcRenderer.send('client.execute', {
       connection: JSON.parse(JSON.stringify(connection)),
