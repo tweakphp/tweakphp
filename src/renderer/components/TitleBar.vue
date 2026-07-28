@@ -179,7 +179,7 @@
           </SecondaryButton>
         </template>
         <SecondaryButton
-          v-if="router.currentRoute.value.name === 'code' && tab"
+          v-if="router.currentRoute.value.name === 'code' && tab && isStreamingSupported"
           class="!px-2 relative"
           v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
           @click="openQueriesModal()"
