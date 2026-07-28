@@ -4,7 +4,7 @@
   import SecondaryButton from '../components/SecondaryButton.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import { Tab } from '../../types/tab.type.ts'
-  import { useTabsStore } from '@/stores/tabs.ts'
+  import { useTabsStore } from '../stores/tabs.ts'
 
   const tabsStore = useTabsStore()
   const emit = defineEmits(['opened'])

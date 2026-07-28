@@ -1,17 +1,12 @@
 import fs from 'fs'
 import { Settings } from '../types/settings.type'
-import { getSettings } from './settings'
+import { getSettings, settingsPath } from './settings'
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import AdmZip from 'adm-zip'
-import os from 'os'
 
 export const init = async (window: BrowserWindow) => {
   let forceExtract = false
-  const settingsDir = path.join(os.homedir(), '.tweakphp')
-  const settingsPath = app.isPackaged
-    ? path.join(settingsDir, 'settings.json')
-    : path.join(os.homedir(), '.tweakphp_dev', 'settings.json')
   try {
     if (fs.existsSync(settingsPath)) {
       const settingsJson = JSON.parse(fs.readFileSync(settingsPath).toString())
@@ -46,6 +41,7 @@ export const init = async (window: BrowserWindow) => {
   const zip = new AdmZip(zipPath)
   const zipEntries = zip.getEntries()
   const totalFiles = zipEntries.length
+  const targetDir = path.resolve(settings.laravelPath)
 
   let lastProgressEvent = 0
   for (let i = 0; i < totalFiles; i++) {
@@ -53,6 +49,11 @@ export const init = async (window: BrowserWindow) => {
     if (!entry.isDirectory) {
       const relativePath = entry.entryName.replace(/^laravel\//, '')
       const entryPath = path.join(settings.laravelPath, relativePath)
+
+      const containmentPath = path.relative(targetDir, path.resolve(entryPath))
+      if (containmentPath.startsWith('..') || path.isAbsolute(containmentPath)) {
+        continue
+      }
 
       fs.mkdirSync(path.dirname(entryPath), { recursive: true })
 

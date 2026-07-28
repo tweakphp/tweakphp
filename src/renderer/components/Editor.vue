@@ -290,7 +290,7 @@
         languageClient = createLanguageClient(messageTransports)
 
         messageTransports.reader.onClose(async () => {
-          if (languageClient) {
+          if (languageClient && languageClient.isRunning()) {
             await languageClient.stop()
           }
         })

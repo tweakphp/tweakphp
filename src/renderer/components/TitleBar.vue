@@ -7,6 +7,7 @@
     RectangleStackIcon,
     HeartIcon,
     CircleStackIcon,
+    BoltIcon,
   } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
@@ -37,6 +38,10 @@
     return tab.value?.execution !== 'vapor'
   })
 
+  const isStreamingSupported = computed(() => {
+    return tab.value?.execution !== 'vapor'
+  })
+
   watch(
     () => tab.value?.execution,
     value => {
@@ -62,6 +67,11 @@
 
   const updateOutput = (output: 'code' | 'stack') => {
     settingsStore.settings.output = output
+    settingsStore.update()
+  }
+
+  const toggleStreaming = () => {
+    settingsStore.settings.streaming = !settingsStore.settings.streaming
     settingsStore.update()
   }
 
@@ -144,6 +154,20 @@
           >
             <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />
             <PlayIcon v-else class="size-4 cursor-pointer hover:text-primary-500" />
+          </SecondaryButton>
+          <SecondaryButton
+            v-if="isStreamingSupported"
+            class="!px-2"
+            v-tippy="{
+              content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`,
+              placement: 'bottom',
+            }"
+            @click="toggleStreaming"
+          >
+            <BoltIcon
+              class="size-4 cursor-pointer"
+              :class="settingsStore.settings.streaming ? 'text-yellow-500 fill-yellow-500/20' : 'opacity-40'"
+            />
           </SecondaryButton>
           <SecondaryButton
             v-if="tab"

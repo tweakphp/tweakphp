@@ -139,7 +139,7 @@ ipcMain.on('lsp.restart', async event => {
     event.sender.send('lsp.restart.success')
   } catch (error) {
     console.error('Failed to restart LSP server:', error)
-    event.sender.send('lsp.restart.error', error?.message)
+    event.sender.send('lsp.restart.error', error)
   }
 })
 
@@ -147,7 +147,7 @@ initCodeHistory()
 
 const aiService = new AiCompletion()
 
-ipcMain.handle('ai:get-completion', async (event, { context, tab }) => {
+ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
   try {
     return await aiService.getCompletions(context, tab as Tab)
   } catch (error: any) {

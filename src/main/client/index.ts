@@ -5,6 +5,7 @@ import { Client } from './client.interface'
 import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
+import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -45,75 +46,41 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   const client = getClient(payload)
   try {
     await client.connect()
+
+
+    if (payload.streaming && typeof client.executeStreaming === 'function') {
+      event.reply('client.execute.stream', {
+        tabId: payload.tabId,
+        event: { type: 'started' },
+      })
+
+      await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
+        event.reply('client.execute.stream', {
+          tabId: payload.tabId,
+          event: streamEvent,
+        })
+      })
+
+      event.reply('client.execute.reply', { streamingDone: true })
+      return
+    }
+
     let result = await client.execute(payload.code, payload.loader)
     result = result.trim()
     let output: any = null
 
-    if (result.includes('TWEAKPHP_ERROR:')) {
-      const errorContent = result.split('TWEAKPHP_ERROR:')[1]?.trim() ?? ''
-      let parsedError: any = null
-      try {
-        parsedError = JSON.parse(errorContent)
-      } catch (e) {
-        parsedError = errorContent
-      }
-
-      let message = ''
-      let line = 0
-      let queries: any[] = []
-
-      if (typeof parsedError === 'object' && parsedError !== null) {
-        const errorClass = parsedError.class || ''
-        const errorMsg = parsedError.message || ''
-        message =
-          errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
-
-        if (parsedError.line) {
-          line = Number(parsedError.line)
-        } else {
-          const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
-          if (lineMatch) {
-            line = parseInt(lineMatch[1], 10)
-          }
-        }
-
-        if (Array.isArray(parsedError.queries)) {
-          queries = parsedError.queries
-        }
-      } else {
-        message = String(parsedError || errorContent || result)
-        const lineMatch = message.match(/on line (\d+)/i)
-        if (lineMatch) {
-          line = parseInt(lineMatch[1], 10)
-        }
-      }
-
-      const escapedMessage = message
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-
-      output = {
-        output: [
-          {
-            line: line,
-            code: '',
-            output: message,
-            html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-          },
-        ],
-        queries: queries,
-      }
-    } else {
+    if (result.includes('TWEAKPHP_RESULT:')) {
       let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-      if (outputStr) {
+      if (outputStr !== undefined) {
         try {
           output = JSON.parse(outputStr)
         } catch (error: any) {
-          //
+          output = outputStr
         }
+      }
+    } else if (result.includes('TWEAKPHP_ERROR:')) {
+      output = {
+        output: [parseTweakPhpError(result)],
       }
     }
 

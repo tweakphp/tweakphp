@@ -30,6 +30,10 @@ export class SSHClient extends RemoteClient {
     return this.ssh.exec(command)
   }
 
+  async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {
+    return this.ssh.execStream(command, onData)
+  }
+
   async remoteUploadFile(localPath: string, remotePath: string): Promise<void> {
     await this.ssh.uploadFile(localPath, remotePath)
   }

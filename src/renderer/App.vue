@@ -105,6 +105,9 @@
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
     })
+    window.ipcRenderer.on('client.execute.stream', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.execute.stream', { detail: e }))
+    })
     window.ipcRenderer.on('client.action.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.action.reply', { detail: e }))
     })

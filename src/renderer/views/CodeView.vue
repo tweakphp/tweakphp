@@ -16,6 +16,7 @@
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
+  import { useCodeExecution } from '../composables/useCodeExecution'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -64,12 +65,29 @@
     }
   })
 
+  const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
+    tab,
+    rawOutput,
+    resultEditor,
+    settingsStore,
+    executeStore,
+    tabsStore,
+    loadersStore,
+  })
+
   const handleLspReconnect = () => {
     window.ipcRenderer.send('lsp.restart')
     try {
       // @ts-ignore - template ref typed at runtime
       codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
     } catch (e) {}
+  }
+
+  const lspRestartSuccessListener = () => {
+    console.log('LSP restart success, reconnecting editors...')
+    if (codeEditor.value) {
+      codeEditor.value.reconnectLsp()
+    }
   }
 
   const vaporRequestEnvironmentTab = () => {
@@ -112,109 +130,9 @@
     }
   }
 
-  const parseTweakPhpError = (raw: string) => {
-    const errorContent = raw.split('TWEAKPHP_ERROR:')[1]?.trim() ?? raw
-    let parsedError: any = null
-    try {
-      parsedError = JSON.parse(errorContent)
-    } catch (e) {
-      parsedError = errorContent
-    }
-
-    let message = ''
-    let line = 0
-    let queries: any[] = []
-
-    if (typeof parsedError === 'object' && parsedError !== null) {
-      const errorClass = parsedError.class || ''
-      const errorMsg = parsedError.message || ''
-      message =
-        errorClass && errorMsg ? `${errorClass}: ${errorMsg}` : errorMsg || errorClass || JSON.stringify(parsedError)
-
-      if (parsedError.line) {
-        line = Number(parsedError.line)
-      } else {
-        const lineMatch = message.match(/on line (\d+)/i) || errorContent.match(/on line (\d+)/i)
-        if (lineMatch) {
-          line = parseInt(lineMatch[1], 10)
-        }
-      }
-
-      if (Array.isArray(parsedError.queries)) {
-        queries = parsedError.queries
-      }
-    } else {
-      message = String(parsedError || errorContent || raw)
-      const lineMatch = message.match(/on line (\d+)/i)
-      if (lineMatch) {
-        line = parseInt(lineMatch[1], 10)
-      }
-    }
-
-    const escapedMessage = message
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
-
-    return {
-      output: [
-        {
-          line,
-          code: '',
-          output: message,
-          html: `<div class="text-red-500 font-semibold">${escapedMessage}</div>`,
-        },
-      ],
-      queries,
-    }
-  }
-
-  const executeReplyListener = (e: any) => {
-    let result = e.detail ?? ''
-    if (e.detail && e.detail.output !== undefined) {
-      tab.value.result = e.detail.output
-      tab.value.queries = e.detail.queries ?? e.detail.sql_queries ?? e.detail.query_log ?? []
-    } else if (typeof result === 'string' && result.includes('TWEAKPHP_ERROR:')) {
-      const errorData = parseTweakPhpError(result)
-      tab.value.result = errorData.output
-      tab.value.queries = errorData.queries
-    } else {
-      tab.value.result = [
-        {
-          code: '',
-          line: 0,
-          output: typeof result === 'object' ? JSON.stringify(result) : result,
-          html: '',
-        },
-      ]
-      tab.value.queries = e.detail?.queries ?? e.detail?.sql_queries ?? e.detail?.query_log ?? []
-    }
-    if (resultEditor.value) {
-      resultEditor.value.updateValue(rawOutput.value)
-    }
-    tabsStore.updateTab(tab.value)
-    executeStore.setExecuting(false)
-  }
-
   const infoReplyListener = (e: any) => {
     tab.value.info = JSON.parse(e.detail)
     tabsStore.updateTab(tab.value)
-  }
-
-  const executeHandler = () => {
-    let connection = tabsStore.getConnectionConfig(tab.value)
-    const { code, loader } = tab.value
-    const loaderCode = getLoader(loader ?? '')
-
-    executeStore.setExecuting(true)
-
-    window.ipcRenderer.send('client.execute', {
-      connection: JSON.parse(JSON.stringify(connection)),
-      code,
-      loader: loaderCode,
-    })
   }
 
   const getInfo = () => {
@@ -229,10 +147,6 @@
         loader: loaderCode,
       })
     }
-  }
-
-  const getLoader = (name: string) => {
-    return loadersStore.get(name)?.code ?? ''
   }
 
   const tabsContainerWheelListener = (event: WheelEvent) => {
@@ -252,12 +166,7 @@
   }
 
   onMounted(async () => {
-    window.ipcRenderer.on('lsp.restart.success', () => {
-      console.log('LSP restart success, reconnecting editors...')
-      if (codeEditor.value) {
-        codeEditor.value.reconnectLsp()
-      }
-    })
+    window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
     if (settingsStore.settings.php === '') {
       await router.push({ name: 'settings' })
@@ -288,6 +197,7 @@
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
     events.addEventListener('client.execute.reply', executeReplyListener)
+    events.addEventListener('client.execute.stream', executeStreamListener)
     events.addEventListener('client.info.reply', infoReplyListener)
     events.addEventListener('client.action.reply', vaporResponseEnvironmentTab)
     if (tabsContainer.value) {
@@ -297,8 +207,10 @@
   })
 
   onBeforeUnmount(async () => {
+    window.ipcRenderer.removeListener('lsp.restart.success', lspRestartSuccessListener)
     window.removeEventListener('keydown', keydownListener)
     events.removeEventListener('client.execute.reply', executeReplyListener)
+    events.removeEventListener('client.execute.stream', executeStreamListener)
     events.removeEventListener('client.info.reply', infoReplyListener)
     events.removeEventListener('client.action.reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)
