@@ -249,7 +249,10 @@
         >
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center space-x-2">
-              <span v-if="group.result" class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
+              <span
+                v-if="group.result"
+                class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300"
+              >
                 Line {{ group.result.line }}
               </span>
               <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-gray-500/20 text-gray-300">
