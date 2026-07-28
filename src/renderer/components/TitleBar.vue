@@ -170,6 +170,19 @@
             />
           </SecondaryButton>
           <SecondaryButton
+            v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
+            class="!px-2 relative"
+            v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
+            @click="openQueriesModal()"
+          >
+            <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
+            <span
+              class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
+            >
+              {{ tab.queries?.length ?? 0 }}
+            </span>
+          </SecondaryButton>
+          <SecondaryButton
             v-if="tab"
             class="!px-2"
             v-tippy="{ content: 'Remove', placement: 'bottom' }"
@@ -178,19 +191,6 @@
             <XMarkIcon class="size-4" />
           </SecondaryButton>
         </template>
-        <SecondaryButton
-          v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
-          class="!px-2 relative"
-          v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
-          @click="openQueriesModal()"
-        >
-          <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
-          <span
-            class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
-          >
-            {{ tab.queries?.length ?? 0 }}
-          </span>
-        </SecondaryButton>
         <SecondaryButton
           class="!px-2"
           v-tippy="{ content: 'Sponsor this project', placement: 'bottom' }"
