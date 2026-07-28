@@ -38,7 +38,7 @@
     return tab.value?.execution !== 'vapor'
   })
 
-  const isStreamingSupported = computed(() => {
+  const isRealtimeSupported = computed(() => {
     return tab.value?.execution !== 'vapor'
   })
 
@@ -156,7 +156,7 @@
             <PlayIcon v-else class="size-4 cursor-pointer hover:text-primary-500" />
           </SecondaryButton>
           <SecondaryButton
-            v-if="isStreamingSupported"
+            v-if="isRealtimeSupported"
             class="!px-2"
             v-tippy="{
               content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`,
@@ -179,7 +179,7 @@
           </SecondaryButton>
         </template>
         <SecondaryButton
-          v-if="router.currentRoute.value.name === 'code' && tab && isStreamingSupported"
+          v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
           class="!px-2 relative"
           v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
           @click="openQueriesModal()"
