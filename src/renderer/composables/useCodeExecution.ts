@@ -8,6 +8,7 @@ import type { Loader } from '../../types/loader.type'
 import type { Settings } from '../../types/settings.type'
 import type { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'
 import type { ConnectionConfig as VaporConnectionConfig } from '../../types/vapor.type'
+import { normalizeVaporOutput, stripAnsi } from '../utils/output'
 
 type ConnectionConfig =
   LocalConnectionConfig | SSHConnectionConfig | VaporConnectionConfig | DockerConnectionConfig | KubectlConnectionConfig
@@ -66,6 +67,7 @@ const parseResults = (value: unknown): Result[] | null => {
 
   return value.map(result => ({
     ...result,
+    output: stripAnsi(result.output),
     html: result.html ?? '',
   }))
 }
@@ -113,7 +115,7 @@ export function useCodeExecution(options: {
   loadersStore: LoadersStore
 }) {
   const stringifyReply = (value: unknown): string => {
-    if (typeof value === 'string') return value
+    if (typeof value === 'string') return stripAnsi(value)
     if (value instanceof Error) return value.message
 
     try {
@@ -139,6 +141,7 @@ export function useCodeExecution(options: {
 
   const executeReplyListener = (event: Event) => {
     const detail = isDetailEvent(event) ? event.detail : undefined
+    const connection = options.tabsStore.getConnectionConfig(options.tab.value)
     if (isRecord(detail) && detail.streamingDone === true) {
       options.executeStore.setExecuting(false)
       return
@@ -152,11 +155,12 @@ export function useCodeExecution(options: {
       options.tab.value.result = [parseTweakPhpError(detail)]
       options.tab.value.queries = []
     } else {
+      const output = stringifyReply(detail ?? '')
       options.tab.value.result = [
         {
           code: '',
           line: 0,
-          output: stringifyReply(detail ?? ''),
+          output: connection?.type === 'vapor' ? normalizeVaporOutput(output) : output,
           html: '',
         },
       ]
@@ -207,7 +211,7 @@ export function useCodeExecution(options: {
         }
       }
 
-      options.tab.value.result[index].output += streamEvent.data
+       options.tab.value.result[index].output += stripAnsi(streamEvent.data)
       if (streamEvent.html !== undefined) {
         options.tab.value.result[index].html += streamEvent.html
       }
