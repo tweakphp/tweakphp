@@ -8,6 +8,7 @@ import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
 import { ExecutionHistoryDB } from '../execution-history-db'
 import { getErrorHandler } from '../error-handler'
+import { getSettings } from '../../settings'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -226,7 +227,8 @@ export class ExecuteWithLoaderHandler {
   }
 
   private detectFramework(loader: string, connection: any): string {
-    const basePath = connection.path || connection.working_directory || process.cwd()
+    const settings = getSettings()
+    const basePath = connection.path || connection.working_directory || settings.laravelPath || process.cwd()
 
     // Only do local filesystem checks for local connections; remote paths are not accessible here
     if (connection.type !== 'local') {

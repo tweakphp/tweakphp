@@ -7,6 +7,7 @@ import { SwitchConnectionParams } from './schemas'
 import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
 import { getErrorHandler } from '../error-handler'
+import { getSettings } from '../../settings'
 
 interface SwitchConnectionResult {
   success: boolean
@@ -182,6 +183,9 @@ export class SwitchConnectionHandler {
       case 'local':
         if (!connection.php) {
           throw this.errorHandler.createError(MCPErrorCode.INVALID_PARAMETERS, 'Local connection requires "php" path')
+        }
+        if (!connection.path) {
+          connection.path = getSettings().laravelPath || process.cwd()
         }
         break
       case 'docker':
