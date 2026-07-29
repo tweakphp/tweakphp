@@ -42,7 +42,7 @@ export class VaporClient extends BaseClient {
     }
   }
 
-  async info(loader?: string): Promise<string> {
+  async info(_loader?: string): Promise<string> {
     return new Promise(async resolve => {
       resolve('{}')
     })

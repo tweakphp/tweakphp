@@ -61,6 +61,7 @@ export const useTabsStore = defineStore('tabs', () => {
       execution: 'local',
       code: '<?php\n\n',
       result: [],
+      queries: [],
       pane: {
         code: 50,
         result: 50,
@@ -207,6 +208,7 @@ const normalize = (tab: any): Tab => {
     execution: (tab.execution as 'local' | 'ssh' | 'vapor' | 'docker' | 'kubectl') ?? 'local',
     loader: tab.loader as string,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
+    queries: Array.isArray(tab.queries) ? tab.queries : [],
     pane: {
       code: (tab.pane?.code as number) ?? 50,
       result: (tab.pane?.result as number) ?? 50,

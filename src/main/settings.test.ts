@@ -62,6 +62,7 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.version).toBe('0.13.1')
       expect(settings.theme).toBe('dracula')
       expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
+      expect(settings.streaming).toBe(true)
       expect(fs.writeFileSync).toHaveBeenCalled()
     })
 
@@ -76,6 +77,16 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.theme).toBe('monokai')
       expect(settings.editorFontSize).toBe(18)
       expect(settings.editorWordWrap).toBe('on')
+      expect(settings.streaming).toBe(true)
+    })
+
+    it('preserves a disabled streaming setting', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from(JSON.stringify({ streaming: false })))
+
+      const settings = getSettings()
+
+      expect(settings.streaming).toBe(false)
     })
 
     it('ignores stored laravelPath and re-persists settings when stored version or laravelPath differ', () => {

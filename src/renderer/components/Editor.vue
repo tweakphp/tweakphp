@@ -57,7 +57,7 @@
   const errorAiCompletion = ref<string | null>(null)
   const editorContainer = ref(null)
 
-  const vimMode = ref(null)
+  const vimMode = ref<ReturnType<typeof initVimMode> | null>(null)
 
   const isUpdatingFromHistory = ref(false)
   function saveHistoryNow(tabId: number, code: string, cursor: monaco.IPosition) {
@@ -107,7 +107,9 @@
           label: 'History: Undo',
           keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ],
           run: () => {
-            window.historyApi.undo(tabsStore.current?.id)
+            if (tabsStore.current) {
+              window.historyApi.undo(tabsStore.current?.id)
+            }
           },
         })
 
@@ -119,7 +121,9 @@
             monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ,
           ],
           run: () => {
-            window.historyApi.redo(tabsStore.current?.id)
+            if (tabsStore.current) {
+              window.historyApi.redo(tabsStore.current?.id)
+            }
           },
         })
 
@@ -131,7 +135,9 @@
 
           const currentPosition = editor!.getPosition()
           if (currentPosition) {
-            saveHistoryNow(tabsStore.current?.id, currentValue, currentPosition)
+            if (tabsStore.current) {
+              saveHistoryNow(tabsStore.current?.id, currentValue, currentPosition)
+            }
           }
         })
 
@@ -161,7 +167,9 @@
           }
         })
 
-        saveHistoryNow(tabsStore.current?.id, props.value, { lineNumber: 1, column: 1 })
+        if (tabsStore.current) {
+          saveHistoryNow(tabsStore.current?.id, props.value, { lineNumber: 1, column: 1 })
+        }
       } else {
         editor.onDidChangeModelContent(() => {
           emit('update:value', editor!.getValue())
@@ -222,7 +230,9 @@
   })
 
   onBeforeUnmount(async () => {
-    lspStore.setDisconnected()
+    if (props.language === 'php' && !props.readonly) {
+      lspStore.setDisconnected()
+    }
 
     if (props.enableHistory) {
       window.historyApi.removeAllListeners()

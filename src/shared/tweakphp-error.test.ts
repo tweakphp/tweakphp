@@ -45,6 +45,19 @@ describe('parseTweakPhpError (tweakphp-error.ts)', () => {
     )
   })
 
+  it('parses an already parsed streaming error object', () => {
+    const result = parseTweakPhpError({
+      class: 'RuntimeException',
+      message: 'Something failed on line 9',
+    })
+
+    expect(result.output).toBe('RuntimeException: Something failed on line 9')
+    expect(result.line).toBe(9)
+    expect(result.html).toBe(
+      '<div class="text-red-500 font-semibold">RuntimeException: Something failed on line 9</div>'
+    )
+  })
+
   it('falls back to raw input when TWEAKPHP_ERROR marker is missing', () => {
     const raw = 'Some unexpected raw output'
 

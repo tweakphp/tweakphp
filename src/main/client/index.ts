@@ -46,6 +46,24 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   const client = getClient(payload)
   try {
     await client.connect()
+
+    if (payload.streaming && typeof client.executeStreaming === 'function') {
+      event.reply('client.execute.stream', {
+        tabId: payload.tabId,
+        event: { type: 'started' },
+      })
+
+      await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
+        event.reply('client.execute.stream', {
+          tabId: payload.tabId,
+          event: streamEvent,
+        })
+      })
+
+      event.reply('client.execute.reply', { streamingDone: true })
+      return
+    }
+
     let result = await client.execute(payload.code, payload.loader)
     result = result.trim()
     let output: any = null

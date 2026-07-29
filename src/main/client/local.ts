@@ -1,4 +1,4 @@
-import { exec, execSync } from 'child_process'
+import { exec, execSync, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { app } from 'electron'
@@ -32,6 +32,80 @@ export class LocalClient extends BaseClient {
 
       exec(command, (_err, stdout) => {
         resolve(stdout)
+      })
+    })
+  }
+
+  executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+    return new Promise(resolve => {
+      const phpPath = this.connection.php
+      const targetPath = this.connection.path
+      const pharClient = getLocalPharClient()
+
+      const args = [pharClient, targetPath, 'execute-stream', base64Encode(code)]
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
+      }
+
+      const child = spawn(phpPath, args, { windowsHide: true })
+
+      let buffer = ''
+      child.stdout.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8')
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('TWEAKPHP_STREAM:')) {
+            const rawJson = trimmed.substring('TWEAKPHP_STREAM:'.length)
+            try {
+              const eventData = JSON.parse(rawJson)
+              if (onEvent) {
+                onEvent(eventData)
+              }
+            } catch (e) {
+              console.error('Failed to parse stream event:', e, rawJson)
+            }
+          } else if (trimmed.startsWith('TWEAKPHP_ERROR:')) {
+            const errorJson = trimmed.substring('TWEAKPHP_ERROR:'.length)
+            let parsed: any = null
+            try {
+              parsed = JSON.parse(errorJson)
+            } catch (e) {
+              parsed = errorJson
+            }
+            if (onEvent) {
+              onEvent({ type: 'error', error: parsed })
+            }
+          }
+        }
+      })
+
+      child.stderr.on('data', (chunk: Buffer) => {
+        const text = chunk.toString('utf8').trim()
+        if (text && onEvent) {
+          onEvent({ type: 'output', index: 0, data: text })
+        }
+      })
+
+      child.on('close', () => {
+        if (buffer.trim().startsWith('TWEAKPHP_STREAM:')) {
+          try {
+            const eventData = JSON.parse(buffer.trim().substring('TWEAKPHP_STREAM:'.length))
+            if (onEvent) {
+              onEvent(eventData)
+            }
+          } catch (e) {}
+        }
+        resolve()
+      })
+
+      child.on('error', err => {
+        if (onEvent) {
+          onEvent({ type: 'error', error: { message: err.message } })
+        }
+        resolve()
       })
     })
   }

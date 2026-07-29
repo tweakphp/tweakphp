@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { initCodeHistory } from './code-history'
-import { ipcMain } from 'electron'
 
 const mockGet = vi.fn()
 const mockRun = vi.fn()

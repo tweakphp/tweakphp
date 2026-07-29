@@ -1,12 +1,16 @@
 import { Result } from '../types/tab.type'
 
-export const parseTweakPhpError = (raw: string): Result => {
-  const errorContent = raw.split('TWEAKPHP_ERROR:')[1]?.trim() || raw
-  let parsedError: any = null
-  try {
-    parsedError = JSON.parse(errorContent)
-  } catch (e) {
-    parsedError = errorContent
+export const parseTweakPhpError = (raw: unknown): Result => {
+  let parsedError: any = raw
+  let errorContent = typeof raw === 'string' ? raw : ''
+
+  if (typeof raw === 'string') {
+    errorContent = raw.split('TWEAKPHP_ERROR:')[1]?.trim() || raw
+    try {
+      parsedError = JSON.parse(errorContent)
+    } catch (e) {
+      parsedError = errorContent
+    }
   }
 
   let message = ''
