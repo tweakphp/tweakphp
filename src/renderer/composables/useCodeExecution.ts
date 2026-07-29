@@ -211,7 +211,7 @@ export function useCodeExecution(options: {
         }
       }
 
-       options.tab.value.result[index].output += stripAnsi(streamEvent.data)
+      options.tab.value.result[index].output += stripAnsi(streamEvent.data)
       if (streamEvent.html !== undefined) {
         options.tab.value.result[index].html += streamEvent.html
       }
