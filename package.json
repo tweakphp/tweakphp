@@ -210,6 +210,10 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.62.2",
-    "@rollup/rollup-linux-x64-musl": "^4.62.2"
+    "@rollup/rollup-linux-x64-musl": "^4.62.2",
+    "@rollup/rollup-win32-arm64-msvc": "^4.62.2",
+    "@rollup/rollup-win32-ia32-msvc": "^4.62.2",
+    "@rollup/rollup-win32-x64-gnu": "^4.62.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
   }
 }
