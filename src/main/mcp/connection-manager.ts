@@ -73,15 +73,15 @@ export class ConnectionManager {
   getClient(connection: ConnectionConfig): Client {
     switch (connection.type) {
       case 'local':
-        return new LocalClient(connection)
+        return new LocalClient(connection as any)
       case 'docker':
-        return new DockerClient(connection)
+        return new DockerClient(connection as any)
       case 'ssh':
-        return new SSHClient(connection)
+        return new SSHClient(connection as any)
       case 'kubectl':
-        return new KubectlClient(connection)
+        return new KubectlClient(connection as any)
       case 'vapor':
-        return new VaporClient(connection)
+        return new VaporClient(connection as any)
       default:
         throw new Error(`Unsupported connection type: ${connection.type}`)
     }

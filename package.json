@@ -6,7 +6,7 @@
     "name": "Saeed Vaziry",
     "email": "mr.saeedvaziry@gmail.com"
   },
-  "version": "0.13.0",
+  "version": "0.13.3",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
@@ -21,11 +21,17 @@
     "publish-win": "npm run build && electron-builder --publish always --win",
     "preview": "vite preview",
     "lint": "prettier --check ./",
-    "lint:fix": "prettier --write ./"
+    "lint:fix": "prettier --write ./",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run --root ."
   },
   "build": {
     "appId": "com.tweakphp.app",
     "productName": "TweakPHP",
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*"
+    ],
     "files": [
       "**/*"
     ],
@@ -117,7 +123,12 @@
     "afterSign": "scripts/notarize.js"
   },
   "overrides": {
-    "http-proxy-agent": "^7.0.2"
+    "http-proxy-agent": "^7.0.2",
+    "@xmldom/xmldom": "0.8.12",
+    "defu": "^6.1.7",
+    "lodash": "^4.18.1",
+    "protobufjs": "^7.5.9",
+    "@protobufjs/utf8": "^1.1.1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
@@ -159,7 +170,7 @@
     "bufferutil": "^4.0.8",
     "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
-    "electron": "^35.7.5",
+    "electron": "^41.1.1",
     "electron-builder": "^26.8.1",
     "electron-log": "^5.2.4",
     "electron-notarize": "^1.2.2",
@@ -185,6 +196,7 @@
     "typescript": "^5.2.2",
     "utf-8-validate": "^5.0.10",
     "vite": "^6.4.1",
+    "vitest": "^4.1.10",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^9.0.1",
     "vscode-languageserver": "^9.0.1",

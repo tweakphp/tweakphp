@@ -3,12 +3,12 @@
   import { onMounted, Ref, ref } from 'vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
-  import { useLodaersStore } from '../stores/loaders'
+  import { useLoadersStore } from '../stores/loaders'
   import { Loader } from '../../types/loader.type'
   import Editor from './Editor.vue'
   import { useSettingsStore } from '../stores/settings'
 
-  const loadersStore = useLodaersStore()
+  const loadersStore = useLoadersStore()
   const settingsStore = useSettingsStore()
   const emit = defineEmits(['saved'])
   const props = defineProps({

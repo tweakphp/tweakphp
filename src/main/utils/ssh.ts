@@ -71,6 +71,30 @@ export class SSH {
     })
   }
 
+  async execStream(command: string, onData: (data: string) => void): Promise<void> {
+    if (!this.isConnected) {
+      throw new Error('SSH client is not connected')
+    }
+
+    return new Promise((resolve, reject) => {
+      this.conn.exec(command, (error: any, stream: any) => {
+        if (error) {
+          return reject(error)
+        }
+        stream
+          .on('close', () => {
+            resolve()
+          })
+          .on('data', (data: any) => {
+            onData(data.toString())
+          })
+          .on('error', (err: any) => {
+            reject(err)
+          })
+      })
+    })
+  }
+
   async uploadFile(localPath: string, remotePath: string): Promise<void> {
     if (!this.isConnected) {
       throw new Error('SSH client is not connected')

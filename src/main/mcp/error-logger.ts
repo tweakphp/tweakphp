@@ -5,7 +5,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { app } from 'electron'
+import { settingsDir } from '../settings'
 import { MCPError, MCPErrorCode } from './types'
 
 export interface ErrorLogEntry {
@@ -23,9 +23,8 @@ export class ErrorLogger {
   private rotationCount: number = 5
 
   constructor() {
-    // Store logs in user data directory
-    const userDataPath = app.getPath('userData')
-    const logsDir = path.join(userDataPath, 'logs')
+    // Store logs in settings directory
+    const logsDir = path.join(settingsDir, 'logs')
 
     // Ensure logs directory exists
     if (!fs.existsSync(logsDir)) {

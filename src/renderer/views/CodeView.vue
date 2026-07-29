@@ -15,7 +15,8 @@
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
-  import { useLodaersStore } from '../stores/loaders'
+  import { useLoadersStore } from '../stores/loaders'
+  import { useCodeExecution } from '../composables/useCodeExecution'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -24,7 +25,7 @@
   const lspStore = useLspStore()
   const codeEditor = ref<InstanceType<typeof Editor> | null>(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
-  const loadersStore = useLodaersStore()
+  const loadersStore = useLoadersStore()
 
   const tabsContainer = ref<HTMLDivElement | null>(null)
 
@@ -64,12 +65,29 @@
     }
   })
 
+  const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
+    tab,
+    rawOutput,
+    resultEditor,
+    settingsStore,
+    executeStore,
+    tabsStore,
+    loadersStore,
+  })
+
   const handleLspReconnect = () => {
     window.ipcRenderer.send('lsp.restart')
     try {
       // @ts-ignore - template ref typed at runtime
       codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
     } catch (e) {}
+  }
+
+  const lspRestartSuccessListener = () => {
+    console.log('LSP restart success, reconnecting editors...')
+    if (codeEditor.value) {
+      codeEditor.value.reconnectLsp()
+    }
   }
 
   const vaporRequestEnvironmentTab = () => {
@@ -107,49 +125,14 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        tabsStore.removeTab(tab.value.id)
+        events.dispatchEvent(new CustomEvent('tab.close.request', { detail: tab.value.id }))
       }
     }
-  }
-
-  const executeReplyListener = (e: any) => {
-    let result = e.detail ?? ''
-    if (e.detail && e.detail.output !== undefined) {
-      tab.value.result = e.detail.output
-    } else {
-      tab.value.result = [
-        {
-          code: '',
-          line: 0,
-          output: result,
-          html: '',
-        },
-      ]
-    }
-    if (resultEditor.value) {
-      resultEditor.value.updateValue(rawOutput.value)
-    }
-    tabsStore.updateTab(tab.value)
-    executeStore.setExecuting(false)
   }
 
   const infoReplyListener = (e: any) => {
     tab.value.info = JSON.parse(e.detail)
     tabsStore.updateTab(tab.value)
-  }
-
-  const executeHandler = () => {
-    let connection = tabsStore.getConnectionConfig(tab.value)
-    const { code, loader } = tab.value
-    const loaderCode = getLoader(loader ?? '')
-
-    executeStore.setExecuting(true)
-
-    window.ipcRenderer.send('client.execute', {
-      connection: JSON.parse(JSON.stringify(connection)),
-      code,
-      loader: loaderCode,
-    })
   }
 
   const getInfo = () => {
@@ -164,10 +147,6 @@
         loader: loaderCode,
       })
     }
-  }
-
-  const getLoader = (name: string) => {
-    return loadersStore.get(name)?.code ?? ''
   }
 
   const tabsContainerWheelListener = (event: WheelEvent) => {
@@ -187,12 +166,7 @@
   }
 
   onMounted(async () => {
-    window.ipcRenderer.on('lsp.restart.success', () => {
-      console.log('LSP restart success, reconnecting editors...')
-      if (codeEditor.value) {
-        codeEditor.value.reconnectLsp()
-      }
-    })
+    window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
     if (settingsStore.settings.php === '') {
       await router.push({ name: 'settings' })
@@ -223,6 +197,7 @@
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
     events.addEventListener('client.execute.reply', executeReplyListener)
+    events.addEventListener('client.execute.stream', executeStreamListener)
     events.addEventListener('client.info.reply', infoReplyListener)
     events.addEventListener('client.action.reply', vaporResponseEnvironmentTab)
     if (tabsContainer.value) {
@@ -232,8 +207,10 @@
   })
 
   onBeforeUnmount(async () => {
+    window.ipcRenderer.removeListener('lsp.restart.success', lspRestartSuccessListener)
     window.removeEventListener('keydown', keydownListener)
     events.removeEventListener('client.execute.reply', executeReplyListener)
+    events.removeEventListener('client.execute.stream', executeStreamListener)
     events.removeEventListener('client.info.reply', infoReplyListener)
     events.removeEventListener('client.action.reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)
@@ -249,29 +226,10 @@
     }
   )
 
-  watch(
-    () => tab.value.execution,
-    async () => {
-      await nextTick()
-      getInfo()
-    }
-  )
-
-  watch(
-    () => tab.value.loader,
-    async () => {
-      await nextTick()
-      getInfo()
-    }
-  )
-
-  watch(
-    () => tab.value.type,
-    async () => {
-      await nextTick()
-      getInfo()
-    }
-  )
+  watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type], async () => {
+    await nextTick()
+    getInfo()
+  })
 
   const setCurrentTab = async (t: Tab) => {
     tabsStore.setCurrent(t)

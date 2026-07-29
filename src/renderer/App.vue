@@ -15,6 +15,7 @@
   import { UpdateInfo } from 'electron-updater'
   import ProjectTile from './components/ProjectTile.vue'
   import Modal from './components/Modal.vue'
+  import CloseTabModal from './components/CloseTabModal.vue'
   import NewProjectView from './views/NewProjectView.vue'
   import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
 
@@ -105,6 +106,9 @@
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
     })
+    window.ipcRenderer.on('client.execute.stream', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.execute.stream', { detail: e }))
+    })
     window.ipcRenderer.on('client.action.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.action.reply', { detail: e }))
     })
@@ -138,6 +142,10 @@
         newProjectModal.value.openModal()
       }
     }
+  }
+
+  const requestCloseTab = (id: number) => {
+    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
   }
 </script>
 
@@ -174,7 +182,7 @@
           <template v-for="tab in tabStore.tabs" :key="tab.id">
             <button
               @click="router.replace({ name: 'code', params: { id: tab.id } })"
-              @mousedown.middle="tabStore.removeTab(tab.id)"
+              @mousedown.middle="requestCloseTab(tab.id)"
               class="w-full"
             >
               <ProjectMenuContext :tab="tab">
@@ -239,5 +247,6 @@
     <Modal title="Add new project" ref="newProjectModal" size="xl">
       <NewProjectView @opened="newProjectModal.closeModal()" />
     </Modal>
+    <CloseTabModal />
   </div>
 </template>

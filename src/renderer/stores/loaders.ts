@@ -2,7 +2,7 @@ import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { Loader } from '../../types/loader.type'
 
-export const useLodaersStore = defineStore('loaders', () => {
+export const useLoadersStore = defineStore('loaders', () => {
   let storedLoaders: Loader[] = []
   const storedLoadersRaw = localStorage.getItem('loaders')
   if (storedLoadersRaw) {

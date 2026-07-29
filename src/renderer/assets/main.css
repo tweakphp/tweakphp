@@ -89,6 +89,30 @@ body {
   display: none; /* Safari + Chrome */
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 170, 0.45);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(210, 210, 230, 0.75);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 150, 170, 0.45) rgba(0, 0, 0, 0.2);
+}
+
 .react-flow__panel.react-flow__controls {
   @apply mr-2 mb-6 !rounded-sm;
 }

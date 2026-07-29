@@ -28,6 +28,7 @@ runMigrations()
 fixPath()
 
 Object.assign(console, log.functions)
+log.transports.file.resolvePathFn = () => path.join(settings.settingsDir, 'logs', 'main.log')
 
 dotenv.config()
 
@@ -63,8 +64,6 @@ const createMainWindow = async () => {
         settings: settings.getSettings(),
       })
 
-      window.show()
-
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
@@ -72,6 +71,8 @@ const createMainWindow = async () => {
           await updater.checkForUpdates()
         }, 1500)
       })
+
+      window.show()
     } catch (error) {
     } finally {
       window.setProgressBar(-1)
@@ -152,7 +153,7 @@ ipcMain.on('lsp.restart', async event => {
     event.sender.send('lsp.restart.success')
   } catch (error) {
     console.error('Failed to restart LSP server:', error)
-    event.sender.send('lsp.restart.error', error?.message)
+    event.sender.send('lsp.restart.error', error)
   }
 })
 
@@ -160,7 +161,7 @@ initCodeHistory()
 
 const aiService = new AiCompletion()
 
-ipcMain.handle('ai:get-completion', async (event, { context, tab }) => {
+ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
   try {
     return await aiService.getCompletions(context, tab as Tab)
   } catch (error: any) {

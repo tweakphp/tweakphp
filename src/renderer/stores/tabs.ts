@@ -53,16 +53,15 @@ export const useTabsStore = defineStore('tabs', () => {
       data.id = Date.now()
     }
 
-    const pathSplitter = window.platformInfo.getPlatform() === 'win32' ? '\\' : '/'
-
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.path.split(pathSplitter).pop() as string,
+      name: data.path.split(/[/\\]/).pop() as string,
       path: data.path,
       execution: 'local',
       code: '<?php\n\n',
       result: [],
+      queries: [],
       pane: {
         code: 50,
         result: 50,
@@ -209,6 +208,7 @@ const normalize = (tab: any): Tab => {
     execution: (tab.execution as 'local' | 'ssh' | 'vapor' | 'docker' | 'kubectl') ?? 'local',
     loader: tab.loader as string,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
+    queries: Array.isArray(tab.queries) ? tab.queries : [],
     pane: {
       code: (tab.pane?.code as number) ?? 50,
       result: (tab.pane?.result as number) ?? 50,

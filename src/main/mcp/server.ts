@@ -279,7 +279,6 @@ export class MCPServerImpl implements MCPServer {
         this.running = true
         this.startTime = Date.now()
         this.logger.logInfo('MCP server started', { host: config.host, port: config.port })
-        console.log(`MCP server started on ${config.host}:${config.port}`)
         resolve()
       })
 
@@ -380,7 +379,7 @@ export class MCPServerImpl implements MCPServer {
         if (fromTimeout) {
           this.logger.logWarning('Forcing MCP server shutdown after timeout')
         } else {
-          console.log('MCP server stopped')
+          this.logger.logInfo('MCP server stopped')
         }
         resolve()
       }

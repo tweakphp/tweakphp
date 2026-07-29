@@ -36,7 +36,6 @@ const startServerFromSettings = async (): Promise<void> => {
 
     try {
       await server.start(config)
-      console.log(`MCP server started on ${config.host}:${config.port}`)
     } catch (error) {
       console.error('Failed to start MCP server:', error)
     }
@@ -52,7 +51,6 @@ const stopServer = async (): Promise<void> => {
   if (server.isRunning()) {
     try {
       await server.stop()
-      console.log('MCP server stopped')
     } catch (error) {
       console.error('Failed to stop MCP server:', error)
     }

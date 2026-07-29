@@ -6,6 +6,8 @@
     CodeBracketIcon,
     RectangleStackIcon,
     HeartIcon,
+    CircleStackIcon,
+    BoltIcon,
   } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
@@ -14,22 +16,27 @@
   import VerticalSplitIcon from './icons/VerticalSplitIcon.vue'
   import { useSettingsStore } from '../stores/settings'
   import { useExecuteStore } from '../stores/execute'
-  import { useVaporStore } from '../stores/vapor'
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import { computed, ComputedRef, watch } from 'vue'
+  import Modal from './Modal.vue'
+  import QueriesView from '../views/QueriesView.vue'
+  import { computed, ComputedRef, ref, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabStore = useTabsStore()
-  const vaporStore = useVaporStore()
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
+  const queriesModal = ref()
 
   const showOutputType = computed(() => {
+    return tab.value?.execution !== 'vapor'
+  })
+
+  const isRealtimeSupported = computed(() => {
     return tab.value?.execution !== 'vapor'
   })
 
@@ -61,20 +68,28 @@
     settingsStore.update()
   }
 
+  const toggleStreaming = () => {
+    settingsStore.settings.streaming = !settingsStore.settings.streaming
+    settingsStore.update()
+  }
+
   const removeTab = (id: number) => {
-    tabStore.removeTab(id)
-    vaporStore.removeVaporConfig(id)
+    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
   }
 
   const sponsor = () => {
     window.ipcRenderer.send('link.open', 'https://github.com/sponsors/saeedvaziry')
+  }
+
+  const openQueriesModal = () => {
+    queriesModal.value?.openModal()
   }
 </script>
 
 <template>
   <div
     id="title-bar"
-    class="fixed top-0 right-0 h-[38px] z-40 left-0 w-full border-b"
+    class="fixed top-0 right-0 h-[38px] z-50 left-0 w-full border-b"
     :style="{
       backgroundColor: settingsStore.colors.background,
       borderColor: settingsStore.colors.border,
@@ -138,6 +153,33 @@
             <PlayIcon v-else class="size-4 cursor-pointer hover:text-primary-500" />
           </SecondaryButton>
           <SecondaryButton
+            v-if="isRealtimeSupported"
+            class="!px-2"
+            v-tippy="{
+              content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`,
+              placement: 'bottom',
+            }"
+            @click="toggleStreaming"
+          >
+            <BoltIcon
+              class="size-4 cursor-pointer"
+              :class="settingsStore.settings.streaming ? 'text-yellow-500 fill-yellow-500/20' : 'opacity-40'"
+            />
+          </SecondaryButton>
+          <SecondaryButton
+            v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
+            class="!px-2 relative"
+            v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
+            @click="openQueriesModal()"
+          >
+            <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
+            <span
+              class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
+            >
+              {{ tab.queries?.length ?? 0 }}
+            </span>
+          </SecondaryButton>
+          <SecondaryButton
             v-if="tab"
             class="!px-2"
             v-tippy="{ content: 'Remove', placement: 'bottom' }"
@@ -155,5 +197,8 @@
         </SecondaryButton>
       </div>
     </div>
+    <Modal title="Executed Queries" ref="queriesModal" size="4xl">
+      <QueriesView />
+    </Modal>
   </div>
 </template>

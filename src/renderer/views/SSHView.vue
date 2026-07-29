@@ -1,27 +1,20 @@
 <script setup lang="ts">
   import PrimaryButton from '../components/PrimaryButton.vue'
   import { EyeIcon, PlusIcon, TrashIcon, WifiIcon, ArrowPathIcon, PencilIcon } from '@heroicons/vue/24/outline'
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useSSHStore } from '../stores/ssh'
   import Divider from '../components/Divider.vue'
   import Modal from '../components/Modal.vue'
   import SSHConnectView from './SSHConnectView.vue'
-  import events from '../events'
   import { ConnectionConfig } from '../../types/ssh.type'
-  import { ConnectReply } from '../../types/client.type'
+  import { useConnectionView } from '../composables/useConnectionView'
 
   const sshStore = useSSHStore()
-  const sshConnectModal = ref()
-  const connecting = ref()
-  const editId = ref()
   const emit = defineEmits(['connected', 'removed'])
 
-  onMounted(() => {
-    events.addEventListener('client.connect.reply', connectReply)
-  })
-
-  onBeforeUnmount(() => {
-    events.removeEventListener('client.connect.reply', connectReply)
+  const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
+    store: sshStore,
+    connectState: 'connect-ssh',
+    emit,
   })
 
   const connect = (connection: ConnectionConfig) => {
@@ -33,33 +26,6 @@
         setup: true,
       },
     })
-  }
-
-  const add = () => {
-    editId.value = null
-    sshConnectModal.value.openModal()
-  }
-
-  const edit = (id: number) => {
-    editId.value = id
-    sshConnectModal.value.openModal()
-  }
-
-  const connectReply = (e: any) => {
-    const reply = e.detail as ConnectReply
-    if (reply.data?.state === 'connect-ssh') {
-      connecting.value = null
-      if (reply.connected) {
-        emit('connected', reply.connection)
-      }
-    }
-  }
-
-  const remove = (id: number) => {
-    if (confirm('Are you sure you want to remove it?')) {
-      sshStore.remove(id)
-      emit('removed', id)
-    }
   }
 </script>
 
@@ -112,8 +78,8 @@
         <div>No connections yet!</div>
       </div>
     </div>
-    <Modal ref="sshConnectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
-      <SSHConnectView @connected="sshConnectModal.closeModal()" :id="editId" />
+    <Modal ref="connectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
+      <SSHConnectView @connected="connectModal.closeModal()" :id="editId" />
     </Modal>
   </div>
 </template>
