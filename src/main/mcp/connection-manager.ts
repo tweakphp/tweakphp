@@ -42,7 +42,7 @@ export class ConnectionManager {
         type: 'local',
         name: 'Local',
         php: settings.php,
-        path: process.cwd(),
+        path: settings.laravelPath || process.cwd(),
       }
 
       this.activeConnection = localConnection
