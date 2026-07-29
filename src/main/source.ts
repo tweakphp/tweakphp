@@ -15,7 +15,7 @@ export const open = async (event: IpcMainEvent) => {
   })
 }
 
-export const openPath = async (event: IpcMainEvent, path: string) => {
+export const openPath = async (_event: IpcMainEvent, path: string) => {
   if (path) {
     const errorMessage = await shell.openPath(path)
     if (errorMessage) {
