@@ -49,7 +49,9 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
 
   it('throws error if code or loader parameters are invalid', async () => {
     await expect(handler.handle({ code: '', loader: 'laravel' })).rejects.toThrow(/Parameter "code" is required/)
-    await expect(handler.handle({ code: '<?php echo 1;', loader: 'invalid' as any })).rejects.toThrow(/Parameter "loader" must be either/)
+    await expect(handler.handle({ code: '<?php echo 1;', loader: 'invalid' as any })).rejects.toThrow(
+      /Parameter "loader" must be either/
+    )
   })
 
   it('executes code with laravel loader when framework files exist', async () => {

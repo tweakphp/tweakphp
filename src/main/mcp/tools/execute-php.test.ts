@@ -65,13 +65,9 @@ describe('ExecutePhpHandler Unit Tests', () => {
   })
 
   it('handles execution timeout and records failure in history DB', async () => {
-    mockClient.execute.mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve('done'), 200))
-    )
+    mockClient.execute.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve('done'), 200)))
 
-    await expect(
-      handler.handle({ code: '<?php sleep(10);', timeout: 30 })
-    ).rejects.toThrow(/exceeded timeout of 30ms/)
+    await expect(handler.handle({ code: '<?php sleep(10);', timeout: 30 })).rejects.toThrow(/exceeded timeout of 30ms/)
 
     expect(mockHistoryDB.insert).toHaveBeenCalledWith(
       expect.objectContaining({

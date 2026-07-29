@@ -80,9 +80,7 @@ describe('MCPServerImpl Complete Test Suite', () => {
 
     it('throws error when starting an already running server', async () => {
       await mcpServer.start(defaultConfig)
-      await expect(mcpServer.start(defaultConfig)).rejects.toThrow(
-        'MCP server is already running'
-      )
+      await expect(mcpServer.start(defaultConfig)).rejects.toThrow('MCP server is already running')
     })
   })
 

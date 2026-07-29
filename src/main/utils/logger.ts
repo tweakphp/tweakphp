@@ -11,11 +11,7 @@ export const formatDate = (date: Date = new Date()): string => {
 /**
  * Returns the full file path for the log file of a given date and prefix.
  */
-export const getLogPath = (
-  baseDir: string,
-  date: Date = new Date(),
-  prefix: string = 'main'
-): string => {
+export const getLogPath = (baseDir: string, date: Date = new Date(), prefix: string = 'main'): string => {
   const dateStr = formatDate(date)
   return path.join(baseDir, 'logs', `${prefix}-${dateStr}.log`)
 }
@@ -24,11 +20,7 @@ export const getLogPath = (
  * Deletes files matching *.log in the specified directory that are older than maxDays.
  * Returns the list of deleted file paths.
  */
-export const cleanOldLogs = (
-  logsDir: string,
-  maxDays: number = 7,
-  referenceTimeMs: number = Date.now()
-): string[] => {
+export const cleanOldLogs = (logsDir: string, maxDays: number = 7, referenceTimeMs: number = Date.now()): string[] => {
   const deletedFiles: string[] = []
   try {
     if (!fs.existsSync(logsDir)) return deletedFiles

@@ -38,7 +38,7 @@
     vaporStore.removeVaporConfig(id)
   }
 
-  watch(pendingTab, (newTab) => {
+  watch(pendingTab, newTab => {
     if (newTab?.name) {
       nameTab.value = newTab.name
     }
@@ -58,8 +58,7 @@
     <div class="space-y-5">
       <p class="text-sm">
         Are you sure you want to remove
-        <span class="font-semibold">{{ nameTab }}</span
-        > tab?
+        <span class="font-semibold">{{ nameTab }}</span> tab?
       </p>
       <div class="flex justify-end gap-2">
         <SecondaryButton @click="cancelCloseTab">Cancel</SecondaryButton>
