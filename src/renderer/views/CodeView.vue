@@ -125,7 +125,7 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        tabsStore.removeTab(tab.value.id)
+        events.dispatchEvent(new CustomEvent('tab.close.request', { detail: tab.value.id }))
       }
     }
   }
