@@ -22,13 +22,15 @@ import { fixPath } from './utils/fix-path.ts'
 import { isWindows } from './system/platform.ts'
 import { AiCompletion } from './tools/ai-completion.ts'
 import { Tab } from '../types/tab.type.ts'
+import { initLogger } from './utils/logger.ts'
 
 runMigrations()
 
 fixPath()
 
 Object.assign(console, log.functions)
-log.transports.file.resolvePathFn = () => path.join(settings.settingsDir, 'logs', 'main.log')
+
+initLogger(log, settings.settingsDir, 7)
 
 dotenv.config()
 

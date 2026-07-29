@@ -187,6 +187,7 @@ describe('MCPServerImpl Complete Test Suite', () => {
       expect(toolNames).toContain('get_execution_history')
       expect(toolNames).toContain('switch_connection')
       expect(toolNames).toContain('get_php_info')
+      expect(toolNames).toContain('list_connections')
     })
 
     it('executes get_execution_history tool successfully', async () => {
@@ -219,6 +220,38 @@ describe('MCPServerImpl Complete Test Suite', () => {
       const historyResult = JSON.parse(contentText)
       expect(historyResult.records).toBeDefined()
       expect(Array.isArray(historyResult.records)).toBe(true)
+    })
+
+    it('executes list_connections tool successfully', async () => {
+      const reqBody = {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: {
+          name: 'list_connections',
+          arguments: {},
+        },
+      }
+
+      const res = await fetch(`http://${host}:${testPort}/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+        },
+        body: JSON.stringify(reqBody),
+      })
+
+      expect(res.status).toBe(200)
+      const data = await parseMcpResponse(res)
+      expect(data.jsonrpc).toBe('2.0')
+      expect(data.id).toBe(3)
+      expect(data.result?.content).toBeDefined()
+
+      const contentText = data.result.content[0].text
+      const listResult = JSON.parse(contentText)
+      expect(listResult.connections).toBeDefined()
+      expect(Array.isArray(listResult.connections)).toBe(true)
     })
   })
 })

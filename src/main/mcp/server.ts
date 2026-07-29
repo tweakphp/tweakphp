@@ -24,6 +24,7 @@ import { ExecuteWithLoaderHandler } from './tools/execute-with-loader'
 import { GetExecutionHistoryHandler } from './tools/get-execution-history'
 import { SwitchConnectionHandler } from './tools/switch-connection'
 import { GetPhpInfoHandler } from './tools/get-php-info'
+import { ListConnectionsHandler } from './tools/list-connections'
 
 export interface MCPServer {
   start(config: MCPServerConfig): Promise<void>
@@ -49,6 +50,7 @@ export class MCPServerImpl implements MCPServer {
   private getExecutionHistoryHandler: GetExecutionHistoryHandler
   private switchConnectionHandler: SwitchConnectionHandler
   private getPhpInfoHandler: GetPhpInfoHandler
+  private listConnectionsHandler: ListConnectionsHandler
 
   constructor() {
     this.connectionManager = new ConnectionManager()
@@ -58,6 +60,7 @@ export class MCPServerImpl implements MCPServer {
     this.getExecutionHistoryHandler = new GetExecutionHistoryHandler(this.historyDB)
     this.switchConnectionHandler = new SwitchConnectionHandler(this.connectionManager)
     this.getPhpInfoHandler = new GetPhpInfoHandler(this.connectionManager)
+    this.listConnectionsHandler = new ListConnectionsHandler(this.connectionManager)
   }
 
   /**
@@ -211,6 +214,39 @@ export class MCPServerImpl implements MCPServer {
         this.requestCount++
         try {
           const result = await this.getPhpInfoHandler.handle({ section })
+          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
+        } catch (err: any) {
+          this.errorCount++
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+              },
+            ],
+            isError: true,
+          }
+        }
+      }
+    )
+
+    server.tool(
+      'list_connections',
+      'List all currently configured, stored, or active execution environments (local, Docker, SSH, kubectl, Vapor)',
+      {
+        typeFilter: z
+          .enum(['local', 'docker', 'ssh', 'kubectl', 'vapor'])
+          .optional()
+          .describe('Optional filter by connection type'),
+        includeDiscovered: z
+          .boolean()
+          .optional()
+          .describe('Set to true to auto-discover active Docker containers on the host'),
+      },
+      async ({ typeFilter, includeDiscovered }) => {
+        this.requestCount++
+        try {
+          const result = await this.listConnectionsHandler.handle({ typeFilter, includeDiscovered })
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         } catch (err: any) {
           this.errorCount++

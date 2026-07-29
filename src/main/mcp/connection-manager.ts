@@ -17,6 +17,14 @@ export interface ConnectionConfig {
   [key: string]: any
 }
 
+export interface ConnectionSummary {
+  id: string
+  type: string
+  name: string
+  isActive: boolean
+  details: Record<string, any>
+}
+
 export class ConnectionManager {
   private activeConnection: ConnectionConfig | null = null
   private storedConnections: Map<string, ConnectionConfig> = new Map()
@@ -99,5 +107,37 @@ export class ConnectionManager {
     if (connection.container_name) return connection.container_name
     if (connection.type === 'local') return 'Local'
     return connection.type
+  }
+
+  getConnectionsList(): ConnectionSummary[] {
+    const active = this.getActiveConnection()
+    const list: ConnectionSummary[] = []
+
+    for (const [id, conn] of this.storedConnections.entries()) {
+      const activeName = active ? this.getConnectionName(active) : null
+      const connName = this.getConnectionName(conn)
+      const isActive = active !== null && active.type === conn.type && activeName === connName
+
+      list.push({
+        id,
+        type: conn.type,
+        name: connName,
+        isActive,
+        details: this.sanitizeConnectionDetails(conn),
+      })
+    }
+
+    return list
+  }
+
+  private sanitizeConnectionDetails(connection: ConnectionConfig): Record<string, any> {
+    const sanitized = { ...connection }
+
+    delete sanitized.password
+    delete sanitized.privateKey
+    delete sanitized.passphrase
+    delete sanitized.auth_token
+
+    return sanitized
   }
 }

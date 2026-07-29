@@ -37,3 +37,8 @@ export interface SwitchConnectionParams {
 export interface GetPhpInfoParams {
   section?: 'general' | 'modules' | 'environment' | 'variables' | 'all'
 }
+
+export interface ListConnectionsParams {
+  typeFilter?: 'local' | 'docker' | 'ssh' | 'kubectl' | 'vapor'
+  includeDiscovered?: boolean
+}

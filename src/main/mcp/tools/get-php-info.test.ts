@@ -79,4 +79,14 @@ FOO => bar
   it('throws CONNECTION_ERROR if section name is unknown', async () => {
     await expect(handler.handle({ section: 'invalid' as any })).rejects.toThrow(/Failed to retrieve PHP info/)
   })
+
+  it('parses JSON output returned by phar client info command', async () => {
+    mockClient.info.mockResolvedValue(JSON.stringify({ name: 'Laravel', version: '11.0.0', php_version: '8.5.0' }))
+    const result = await handler.handle({ section: 'all' })
+
+    expect(result.phpVersion).toBe('8.5.0')
+    expect(result.sections.general.frameworkName).toBe('Laravel')
+    expect(result.sections.general.frameworkVersion).toBe('11.0.0')
+    expect(result.sections.general.version).toBe('8.5.0')
+  })
 })

@@ -7,6 +7,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { settingsDir } from '../settings'
 import { MCPError, MCPErrorCode } from './types'
+import { getLogPath, cleanOldLogs } from '../utils/logger.ts'
 
 export interface ErrorLogEntry {
   timestamp: string
@@ -18,7 +19,6 @@ export interface ErrorLogEntry {
 }
 
 export class ErrorLogger {
-  private logFilePath: string
   private maxLogSize: number = 10 * 1024 * 1024 // 10MB
   private rotationCount: number = 5
 
@@ -31,7 +31,8 @@ export class ErrorLogger {
       fs.mkdirSync(logsDir, { recursive: true })
     }
 
-    this.logFilePath = path.join(logsDir, 'mcp-server.log')
+    // Clean old logs older than 7 days
+    cleanOldLogs(logsDir, 7)
   }
 
   /**
@@ -83,14 +84,15 @@ export class ErrorLogger {
    */
   private writeLogEntry(entry: any): void {
     try {
+      const filePath = this.getLogFilePath()
       // Check if log rotation is needed
-      this.rotateLogsIfNeeded()
+      this.rotateLogsIfNeeded(filePath)
 
       // Format the log entry as JSON line
       const logLine = JSON.stringify(entry) + '\n'
 
       // Append to log file
-      fs.appendFileSync(this.logFilePath, logLine, 'utf8')
+      fs.appendFileSync(filePath, logLine, 'utf8')
     } catch (err) {
       // If logging fails, write to console as fallback
       console.error('Failed to write to MCP log file:', err)
@@ -101,21 +103,22 @@ export class ErrorLogger {
   /**
    * Rotate logs if the current log file exceeds max size
    */
-  private rotateLogsIfNeeded(): void {
+  private rotateLogsIfNeeded(targetPath?: string): void {
     try {
-      if (!fs.existsSync(this.logFilePath)) {
+      const filePath = targetPath || this.getLogFilePath()
+      if (!fs.existsSync(filePath)) {
         return
       }
 
-      const stats = fs.statSync(this.logFilePath)
+      const stats = fs.statSync(filePath)
       if (stats.size < this.maxLogSize) {
         return
       }
 
       // Rotate existing logs
       for (let i = this.rotationCount - 1; i > 0; i--) {
-        const oldPath = `${this.logFilePath}.${i}`
-        const newPath = `${this.logFilePath}.${i + 1}`
+        const oldPath = `${filePath}.${i}`
+        const newPath = `${filePath}.${i + 1}`
 
         if (fs.existsSync(oldPath)) {
           if (i === this.rotationCount - 1) {
@@ -128,7 +131,7 @@ export class ErrorLogger {
       }
 
       // Rotate current log to .1
-      fs.renameSync(this.logFilePath, `${this.logFilePath}.1`)
+      fs.renameSync(filePath, `${filePath}.1`)
     } catch (err) {
       console.error('Failed to rotate MCP log files:', err)
     }
@@ -186,7 +189,7 @@ export class ErrorLogger {
    * Get the path to the current log file
    */
   getLogFilePath(): string {
-    return this.logFilePath
+    return getLogPath(settingsDir, new Date(), 'mcp-server')
   }
 
   /**
@@ -194,11 +197,12 @@ export class ErrorLogger {
    */
   getRecentLogs(count: number = 100): ErrorLogEntry[] {
     try {
-      if (!fs.existsSync(this.logFilePath)) {
+      const filePath = this.getLogFilePath()
+      if (!fs.existsSync(filePath)) {
         return []
       }
 
-      const content = fs.readFileSync(this.logFilePath, 'utf8')
+      const content = fs.readFileSync(filePath, 'utf8')
       const lines = content.trim().split('\n')
 
       // Get the last N lines
@@ -225,13 +229,14 @@ export class ErrorLogger {
    */
   clearLogs(): void {
     try {
-      if (fs.existsSync(this.logFilePath)) {
-        fs.unlinkSync(this.logFilePath)
+      const filePath = this.getLogFilePath()
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath)
       }
 
       // Remove rotated logs
       for (let i = 1; i <= this.rotationCount; i++) {
-        const rotatedPath = `${this.logFilePath}.${i}`
+        const rotatedPath = `${filePath}.${i}`
         if (fs.existsSync(rotatedPath)) {
           fs.unlinkSync(rotatedPath)
         }

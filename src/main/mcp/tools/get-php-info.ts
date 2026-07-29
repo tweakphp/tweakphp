@@ -82,6 +82,25 @@ export class GetPhpInfoHandler {
       variables: {},
     }
 
+    // Try parsing as JSON first (returned by TweakPHP client phar info command)
+    try {
+      const trimmed = phpInfoRaw.trim()
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const json = JSON.parse(trimmed)
+        if (json && typeof json === 'object') {
+          const phpVersion = json.php_version || json.version || 'Unknown'
+          sections.general = {
+            frameworkName: json.name ?? 'PHP',
+            frameworkVersion: json.version ?? '',
+            version: phpVersion,
+          }
+          return { phpVersion, sections }
+        }
+      }
+    } catch {
+      // Fallback to text phpinfo parsing
+    }
+
     // Extract PHP version
     const versionMatch = phpInfoRaw.match(/PHP Version => ([\d.]+)/)
     const phpVersion = versionMatch ? versionMatch[1] : 'Unknown'
