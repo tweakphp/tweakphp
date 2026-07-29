@@ -207,5 +207,9 @@
     "vue-tsc": "^2.0.26",
     "ws": "^8.17.0",
     "zod": "^3.25.67"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
+    "@rollup/rollup-linux-x64-musl": "^4.62.2"
   }
 }
