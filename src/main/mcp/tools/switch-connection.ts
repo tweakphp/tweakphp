@@ -189,12 +189,19 @@ export class SwitchConnectionHandler {
         }
         break
       case 'docker':
-        if (!connection.container_name) {
+        if (!connection.container_name && !connection.container_id && !connection.name) {
           throw this.errorHandler.createError(
             MCPErrorCode.INVALID_PARAMETERS,
             'Docker connection requires "container_name"'
           )
         }
+        if (!connection.container_name) {
+          connection.container_name = connection.container_id || connection.name
+        }
+        connection.php = connection.php || connection.php_path || 'php'
+        connection.php_path = connection.php_path || connection.php || 'php'
+        connection.path = connection.path || connection.working_directory || '/var/www/html'
+        connection.working_directory = connection.working_directory || connection.path || '/var/www/html'
         break
       case 'ssh':
         if (!connection.host || !connection.username) {

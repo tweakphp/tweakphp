@@ -9,6 +9,13 @@ import { base64Encode } from '../utils/base64-encode'
 
 const dockerPathCache: Record<string, string> = {}
 
+const cleanParam = (val?: any): string | undefined => {
+  if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {
+    return val.trim()
+  }
+  return undefined
+}
+
 export default class DockerClient extends BaseClient {
   private ssh: SSH | undefined
 
@@ -24,52 +31,97 @@ export default class DockerClient extends BaseClient {
   }
 
   async setup(): Promise<void> {
-    if (this.connection.container_name) {
+    if (cleanParam(this.connection.container_name)) {
       this.connection.php_version = await this.getPHPVersion()
       this.connection.php_path = await this.getPHPPath()
       this.connection.client_path = await this.getClientPath()
     }
   }
 
-  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
-    return new Promise(async resolve => {
-      let result = ''
-      const phpPath = `"${this.connection.php_path}"`
-      const path = `"${projectPath || this.connection.working_directory}"`
-      const clientPath = `"${this.connection.client_path}"`
+  private async ensureConnectionConfig(): Promise<void> {
+    const containerName = cleanParam(this.connection.container_name)
+    if (!containerName) {
+      throw new Error('Container is not selected')
+    }
+
+    if (!cleanParam(this.connection.php_path) && !cleanParam(this.connection.php)) {
+      try {
+        this.connection.php_path = await this.getPHPPath()
+      } catch {
+        // Fallback default handled in info()/execute()
+      }
+    }
+
+    if (!cleanParam(this.connection.client_path)) {
+      try {
+        this.connection.client_path = await this.getClientPath()
+      } catch {
+        // Fallback default handled in info()/execute()
+      }
+    }
+  }
+
+  async execute(code: string, loader?: string, projectPath?: string): Promise<string> {
+    try {
+      await this.ensureConnectionConfig()
+
+      const containerName = cleanParam(this.connection.container_name)!
+      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
+      const workingDirVal =
+        cleanParam(projectPath) ||
+        cleanParam(this.connection.working_directory) ||
+        cleanParam(this.connection.path) ||
+        '/var/www/html'
+      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
+
+      const phpPath = `"${phpPathVal}"`
+      const path = `"${workingDirVal}"`
+      const clientPath = `"${clientPathVal}"`
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const command = `${dockerPath} exec ${containerName} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
 
       if (this.ssh) {
-        result = await this.ssh.exec(command)
-        resolve(result)
-        return
+        return await this.ssh.exec(command)
       }
 
-      exec(command, (_err, stdout) => {
-        resolve(stdout)
+      return await new Promise<string>((resolve, reject) => {
+        exec(command, (err, stdout, stderr) => {
+          if (err) {
+            reject(new Error(parseDockerErrorMessage(err.message || stderr || err)))
+          } else {
+            resolve(stdout)
+          }
+        })
       })
-    })
+    } catch (error: unknown) {
+      throw new Error(parseDockerErrorMessage(error))
+    }
   }
 
   async info(loader?: string): Promise<string> {
-    return new Promise(async resolve => {
-      let result = ''
-      const phpPath = `"${this.connection.php_path}"`
-      const path = `"${this.connection.working_directory}"`
-      const clientPath = `"${this.connection.client_path}"`
+    try {
+      await this.ensureConnectionConfig()
+
+      const containerName = cleanParam(this.connection.container_name)!
+      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
+      const workingDirVal =
+        cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
+      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
+
+      const phpPath = `"${phpPathVal}"`
+      const path = `"${workingDirVal}"`
+      const clientPath = `"${clientPathVal}"`
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const command = `${dockerPath} exec ${containerName} ${phpPath} ${clientPath} ${path} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
 
       if (this.ssh) {
-        result = await this.ssh.exec(command)
-        resolve(result)
-        return
+        return await this.ssh.exec(command)
       }
 
-      result = execSync(command).toString()
-      resolve(result)
-    })
+      return execSync(command).toString()
+    } catch (error: unknown) {
+      throw new Error(parseDockerErrorMessage(error))
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -110,12 +162,13 @@ export default class DockerClient extends BaseClient {
   }
 
   private async getPHPVersion(): Promise<string> {
-    if (!this.connection.container_name) {
+    const containerName = cleanParam(this.connection.container_name)
+    if (!containerName) {
       throw new Error('Container is not selected')
     }
     try {
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
+      const command = `${dockerPath} exec ${containerName} php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
       let phpVersion
       if (this.ssh) {
         phpVersion = (await this.ssh.exec(command)).trim()
@@ -156,9 +209,13 @@ export default class DockerClient extends BaseClient {
 
   private async getPHPPath(): Promise<string> {
     try {
+      const containerName = cleanParam(this.connection.container_name)
+      if (!containerName) {
+        throw new Error('Container is not selected')
+      }
       const dockerPath = await this.getDockerPath()
 
-      const command = `${dockerPath} exec ${this.connection.container_name} which php`
+      const command = `${dockerPath} exec ${containerName} which php`
 
       if (this.ssh) {
         return (await this.ssh.exec(command)).trim()
@@ -171,27 +228,32 @@ export default class DockerClient extends BaseClient {
   }
 
   private async getClientPath(): Promise<string> {
+    const phpVersion = this.connection.php_version || '8.2'
     let getClient
     if (!isWindows()) {
       getClient = app.isPackaged
-        ? path.join(process.resourcesPath, `public/client-${this.connection.php_version}.phar`)
-        : path.join(__dirname, `../public/client-${this.connection.php_version}.phar`)
+        ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
+        : path.join(__dirname, `../public/client-${phpVersion}.phar`)
     } else {
-      getClient = path.join(process.cwd(), `public/client-${this.connection.php_version}.phar`).replace(/\\/g, '/')
+      getClient = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
     }
 
     if (this.ssh) {
-      const tmpClientPath = `/tmp/client-${this.connection.php_version}.phar`
+      const tmpClientPath = `/tmp/client-${phpVersion}.phar`
       await this.ssh.uploadFile(getClient, tmpClientPath)
       getClient = tmpClientPath
     }
 
     try {
-      const pharPath = `/tmp/client-${this.connection.php_version}.phar`
+      const pharPath = `/tmp/client-${phpVersion}.phar`
+      const containerName = cleanParam(this.connection.container_name)
+      if (!containerName) {
+        throw new Error('Container is not selected')
+      }
 
       const dockerPath = await this.getDockerPath()
 
-      const command = `${dockerPath} cp ${getClient} ${this.connection.container_name}:'${pharPath}'`
+      const command = `${dockerPath} cp ${getClient} ${containerName}:'${pharPath}'`
 
       if (this.ssh) {
         await this.ssh.exec(command)
@@ -210,6 +272,11 @@ const parseDockerErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     const endIndex = error.message.indexOf("See 'docker")
     return endIndex !== -1 ? error.message.slice(0, endIndex).trim() : error.message
+  }
+
+  if (typeof error === 'string') {
+    const endIndex = error.indexOf("See 'docker")
+    return endIndex !== -1 ? error.slice(0, endIndex).trim() : error
   }
 
   return 'An unknown error occurred'

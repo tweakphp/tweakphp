@@ -257,4 +257,103 @@ describe('DockerClient', () => {
     const command = vi.mocked(exec).mock.calls[0][0] as string
     expect(command.startsWith('docker exec')).toBe(true)
   })
+
+  it('gracefully handles missing or "undefined" connectionConfig properties in info()', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'laravel_demo-laravel.test-1',
+      php_path: 'undefined',
+      client_path: 'undefined',
+      working_directory: 'undefined',
+    } as any)
+
+    vi.mocked(execSync).mockImplementation((command: any) => {
+      const cmdStr = command.toString()
+      if (cmdStr.includes('which docker')) return 'docker\n'
+      if (cmdStr.includes('which php')) throw new Error('which php failed')
+      if (cmdStr.includes('cp')) throw new Error('cp failed')
+      if (cmdStr.includes('info')) return 'PHP Version => 8.2.0\n'
+      return ''
+    })
+
+    const result = await client.info()
+    expect(result).toBe('PHP Version => 8.2.0\n')
+
+    // Find the command executed for info
+    const infoCmdCall = vi.mocked(execSync).mock.calls.find(call => call[0].toString().includes('info'))
+    expect(infoCmdCall).toBeDefined()
+    const infoCmd = infoCmdCall![0].toString()
+    expect(infoCmd).not.toContain('"undefined"')
+    expect(infoCmd).toContain('docker exec laravel_demo-laravel.test-1 "php" "/tmp/client.phar" "/var/www/html" info')
+  })
+
+  it('gracefully handles missing or "undefined" connectionConfig properties in execute()', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'laravel_demo-laravel.test-1',
+      php_path: undefined,
+      client_path: undefined,
+      working_directory: undefined,
+    } as any)
+
+    vi.mocked(execSync).mockImplementation((command: any) => {
+      const cmdStr = command.toString()
+      if (cmdStr.includes('which docker')) return 'docker\n'
+      if (cmdStr.includes('which php')) throw new Error('which php failed')
+      if (cmdStr.includes('cp')) throw new Error('cp failed')
+      return ''
+    })
+
+    vi.mocked(exec).mockImplementation((_cmd, cb) => {
+      // @ts-ignore
+      cb(null, 'executed successfully\n')
+      return {} as any
+    })
+
+    const result = await client.execute('echo "hello";')
+    expect(result).toBe('executed successfully\n')
+
+    expect(exec).toHaveBeenCalled()
+    const command = vi.mocked(exec).mock.calls[0][0] as string
+    expect(command).not.toContain('"undefined"')
+    expect(command).toContain('docker exec laravel_demo-laravel.test-1 "php" "/tmp/client.phar" "/var/www/html" execute')
+  })
+
+  it('rejects with formatted error on execSync failure in info()', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: 'php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    vi.mocked(execSync).mockImplementation((command: any) => {
+      const cmdStr = command.toString()
+      if (cmdStr.includes('which docker')) return 'docker\n'
+      if (cmdStr.includes('info')) throw new Error("Error: Command failed. See 'docker exec --help'")
+      return ''
+    })
+
+    await expect(client.info()).rejects.toThrow('Error: Command failed.')
+  })
+
+  it('rejects with formatted error on exec failure in execute()', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: 'php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    vi.mocked(execSync).mockReturnValue('docker\n')
+    vi.mocked(exec).mockImplementation((_cmd, cb) => {
+      // @ts-ignore
+      cb(new Error("Command failed: docker exec my-container. See 'docker exec --help'"), '', '')
+      return {} as any
+    })
+
+    await expect(client.execute('echo 1;')).rejects.toThrow('Command failed: docker exec my-container.')
+  })
 })
