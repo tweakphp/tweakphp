@@ -18,9 +18,6 @@
   import CloseTabModal from './components/CloseTabModal.vue'
   import NewProjectView from './views/NewProjectView.vue'
   import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
-  import { runLocalStorageMigration } from './utils/migration'
-
-  runLocalStorageMigration()
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -40,14 +37,6 @@
   const newProjectModal = ref()
 
   const isAppReady = ref(false)
-  const initAppInterval = setInterval(() => {
-    if (isAppReady.value) {
-      clearInterval(initAppInterval)
-      return
-    }
-
-    window.ipcRenderer.send('init')
-  }, 500)
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -94,6 +83,7 @@
       settingsStore.setSettings(e.settings)
       isAppReady.value = true
     })
+    window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
       let tab = tabStore.addTab({
         path: e,

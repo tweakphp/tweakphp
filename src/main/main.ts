@@ -63,10 +63,6 @@ const createMainWindow = async () => {
 
   window.webContents.on('did-finish-load', async () => {
     try {
-      window.webContents.send('init.reply', {
-        settings: settings.getSettings(),
-      })
-
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
@@ -77,6 +73,7 @@ const createMainWindow = async () => {
 
       window.show()
     } catch (error) {
+      console.error(error)
     } finally {
       window.setProgressBar(-1)
     }
@@ -113,6 +110,12 @@ const createMainWindow = async () => {
 
   isDev && window.webContents.openDevTools()
 }
+
+ipcMain.on('init', event => {
+  event.sender.send('init.reply', {
+    settings: settings.getSettings(),
+  })
+})
 
 const initializeModules = async () => {
   await Promise.all([
