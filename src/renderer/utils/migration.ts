@@ -87,10 +87,6 @@ export async function runLocalStorageMigration(): Promise<void> {
       }
     }
 
-    for (const key of legacyStorageKeys) {
-      localStorage.removeItem(key)
-    }
-
     console.log('Successfully migrated legacy localStorage data to SQLite database!')
   } catch (error) {
     console.error('Failed to run localStorage migration:', error)
