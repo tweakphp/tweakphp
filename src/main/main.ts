@@ -14,7 +14,7 @@ import * as tray from './system/tray.ts'
 import * as mcp from './mcp/index.ts'
 
 import { runMigrations } from './db/migration.ts'
-import { initCodeHistory } from './tools/code-history.ts'
+import { initStorageIpc } from './ipc/storage-ipc.ts'
 
 import url from 'url'
 
@@ -25,6 +25,7 @@ import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
 
 runMigrations()
+initStorageIpc()
 
 fixPath()
 
@@ -158,8 +159,6 @@ ipcMain.on('lsp.restart', async event => {
     event.sender.send('lsp.restart.error', error)
   }
 })
-
-initCodeHistory()
 
 const aiService = new AiCompletion()
 

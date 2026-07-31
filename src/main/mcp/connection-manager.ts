@@ -10,9 +10,11 @@ import KubectlClient from '../client/kubectl'
 import { VaporClient } from '../client/vapor'
 import { Client } from '../client/client.interface'
 import { getSettings } from '../settings'
+import { ConnectionsRepository } from '../db/repositories/connections-repository'
+import { ConnectionType } from '../../types/connection.type'
 
 export interface ConnectionConfig {
-  type: 'local' | 'docker' | 'ssh' | 'kubectl' | 'vapor'
+  type: ConnectionType
   name?: string
   [key: string]: any
 }
@@ -47,6 +49,20 @@ export class ConnectionManager {
 
       this.activeConnection = localConnection
       this.storedConnections.set('local-default', localConnection)
+    }
+
+    try {
+      const repo = new ConnectionsRepository()
+      const savedConnections = repo.getAllConnections()
+      for (const conn of savedConnections) {
+        this.addConnection(conn.id, conn as any)
+      }
+      const active = repo.getActiveConnection()
+      if (active) {
+        this.setActiveConnection(active as any)
+      }
+    } catch (e) {
+      // Ignore if DB not ready
     }
   }
 

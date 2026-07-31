@@ -18,6 +18,9 @@
   import CloseTabModal from './components/CloseTabModal.vue'
   import NewProjectView from './views/NewProjectView.vue'
   import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
+  import { runLocalStorageMigration } from './utils/migration'
+
+  runLocalStorageMigration()
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {

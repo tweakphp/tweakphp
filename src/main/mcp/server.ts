@@ -25,6 +25,7 @@ import { GetExecutionHistoryHandler } from './tools/get-execution-history'
 import { SwitchConnectionHandler } from './tools/switch-connection'
 import { GetPhpInfoHandler } from './tools/get-php-info'
 import { ListConnectionsHandler } from './tools/list-connections'
+import { connectionTypes } from '../../types/connection.type'
 
 export interface MCPServer {
   start(config: MCPServerConfig): Promise<void>
@@ -175,10 +176,7 @@ export class MCPServerImpl implements MCPServer {
       'Switch TweakPHP to a different execution environment (local, Docker, SSH, kubectl, Vapor)',
       {
         connectionId: z.string().optional().describe('ID of an existing stored connection to switch to'),
-        connectionType: z
-          .enum(['local', 'docker', 'ssh', 'kubectl', 'vapor'])
-          .optional()
-          .describe('Type of new connection to create'),
+        connectionType: z.enum(connectionTypes).optional().describe('Type of new connection to create'),
         connectionConfig: z.record(z.unknown()).optional().describe('Configuration object for the new connection'),
       },
       async ({ connectionId, connectionType, connectionConfig }) => {
@@ -234,10 +232,7 @@ export class MCPServerImpl implements MCPServer {
       'list_connections',
       'List all currently configured, stored, or active execution environments (local, Docker, SSH, kubectl, Vapor)',
       {
-        typeFilter: z
-          .enum(['local', 'docker', 'ssh', 'kubectl', 'vapor'])
-          .optional()
-          .describe('Optional filter by connection type'),
+        typeFilter: z.enum(connectionTypes).optional().describe('Optional filter by connection type'),
         includeDiscovered: z
           .boolean()
           .optional()
