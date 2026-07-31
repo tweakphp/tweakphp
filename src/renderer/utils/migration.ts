@@ -4,7 +4,17 @@ interface MigrationPayload {
   loaders: Record<string, unknown>[]
 }
 
-const legacyStorageKeys = ['ssh-connections', 'kubectl-connections', 'vapor-connections', 'tabs', 'loaders']
+const legacyStorageKeys = [
+  'ssh-connections',
+  'kubectl-connections',
+  'vapor-connections',
+  'tabs',
+  'loaders',
+  'history',
+  'color-scheme',
+  'update',
+  'currentTab',
+]
 
 const readArray = (key: string): unknown[] => {
   const raw = localStorage.getItem(key)
@@ -19,6 +29,17 @@ const readArray = (key: string): unknown[] => {
   }
 }
 
+const readValue = (key: string): unknown => {
+  const raw = localStorage.getItem(key)
+  if (!raw || raw === 'undefined' || raw === 'null') return undefined
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return raw
+  }
+}
+
 const recordsOnly = (items: unknown[]): Record<string, unknown>[] => {
   return items.filter((item): item is Record<string, unknown> => {
     return typeof item === 'object' && item !== null && !Array.isArray(item)
@@ -29,25 +50,41 @@ export async function runLocalStorageMigration(): Promise<void> {
   try {
     const status = (await window.ipcRenderer.invoke('storage:migration:check')) as { migrated?: boolean } | undefined
 
-    if (status?.migrated) {
+    const hasLegacyData = legacyStorageKeys.some(key => localStorage.getItem(key) !== null)
+    if (status?.migrated && !hasLegacyData) {
       return
     }
 
-    const payload: MigrationPayload = {
-      connections: [
-        ...recordsOnly(readArray('ssh-connections')).map(connection => ({ ...connection, type: 'ssh' })),
-        ...recordsOnly(readArray('kubectl-connections')).map(connection => ({ ...connection, type: 'kubectl' })),
-        ...recordsOnly(readArray('vapor-connections')).map(connection => ({ ...connection, type: 'vapor' })),
-      ],
-      tabs: recordsOnly(readArray('tabs')),
-      loaders: recordsOnly(readArray('loaders')),
+    if (!status?.migrated) {
+      const payload: MigrationPayload = {
+        connections: [
+          ...recordsOnly(readArray('ssh-connections')).map(connection => ({ ...connection, type: 'ssh' })),
+          ...recordsOnly(readArray('kubectl-connections')).map(connection => ({ ...connection, type: 'kubectl' })),
+          ...recordsOnly(readArray('vapor-connections')).map(connection => ({ ...connection, type: 'vapor' })),
+        ],
+        tabs: recordsOnly(readArray('tabs')),
+        loaders: recordsOnly(readArray('loaders')),
+      }
+
+      const result = (await window.ipcRenderer.invoke('storage:migration:import', payload)) as
+        { success?: boolean } | undefined
+
+      if (!result?.success) {
+        throw new Error('Storage migration import was not successful')
+      }
     }
 
-    const result = (await window.ipcRenderer.invoke('storage:migration:import', payload)) as
-      { success?: boolean } | undefined
+    const simpleValues = [
+      ['renderer.history', readArray('history')],
+      ['renderer.color-scheme', readValue('color-scheme')],
+      ['renderer.update', readValue('update')],
+      ['renderer.current-tab', readValue('currentTab')],
+    ] as const
 
-    if (!result?.success) {
-      throw new Error('Storage migration import was not successful')
+    for (const [key, value] of simpleValues) {
+      if (value !== undefined) {
+        await window.ipcRenderer.invoke('storage:app:set', key, value)
+      }
     }
 
     for (const key of legacyStorageKeys) {
