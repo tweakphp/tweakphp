@@ -1,16 +1,13 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { Loader } from '../../types/loader.type'
+import { toPlain } from '../storage'
 
 export const useLoadersStore = defineStore('loaders', () => {
-  let storedLoaders: Loader[] = []
-  const storedLoadersRaw = localStorage.getItem('loaders')
-  if (storedLoadersRaw) {
-    storedLoaders = JSON.parse(storedLoadersRaw).map((loader: any) => {
-      return normalize(loader)
-    })
-  }
-  const loaders: Ref<Loader[]> = ref(storedLoaders)
+  const loaders: Ref<Loader[]> = ref([])
+  const ready = window.ipcRenderer.invoke('storage:loaders:list').then((stored: any[]) => {
+    loaders.value = stored.map(normalize)
+  })
 
   const get = (name: string): Loader | undefined => {
     return loaders.value.find(l => l.name === name)
@@ -18,7 +15,7 @@ export const useLoadersStore = defineStore('loaders', () => {
 
   const add = (loader: Loader) => {
     loaders.value.push(loader)
-    localStorage.setItem('loaders', JSON.stringify(loaders.value))
+    void window.ipcRenderer.invoke('storage:loaders:save', toPlain(loader))
   }
 
   const update = (loader: Loader): void => {
@@ -28,18 +25,18 @@ export const useLoadersStore = defineStore('loaders', () => {
     } else {
       loaders.value.push(loader)
     }
-    localStorage.setItem('loaders', JSON.stringify(loaders.value))
+    void window.ipcRenderer.invoke('storage:loaders:save', toPlain(loader))
   }
 
   const remove = (name: string) => {
     const index = loaders.value.findIndex(l => l.name === name)
     if (index !== -1) {
       loaders.value.splice(index, 1)
-      localStorage.setItem('loaders', JSON.stringify(loaders.value))
+      void window.ipcRenderer.invoke('storage:loaders:delete', name)
     }
   }
 
-  return { loaders, get, remove, add, update }
+  return { loaders, get, remove, add, update, ready }
 })
 
 const normalize = (loader: any): any => {

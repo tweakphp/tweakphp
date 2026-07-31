@@ -1,16 +1,14 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { storage, repositoryStorageKeys } from '../storage'
 
 export const useColorSchemeStore = defineStore('color-scheme', () => {
-  let storedScheme = localStorage.getItem('color-scheme') || 'light'
-  if (['light', 'dark'].includes(storedScheme) === false) {
-    storedScheme = 'light'
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      storedScheme = 'dark'
+  const scheme = ref('light')
+  const storedSchemePromise = storage.get<string>(repositoryStorageKeys.colorScheme).then(value => {
+    if (value && ['light', 'dark'].includes(value)) {
+      scheme.value = value
     }
-  }
-  const scheme = ref(storedScheme)
-
+  })
   function change(newScheme: string | null = null) {
     let setStorage = newScheme !== null
     if (newScheme === null) {
@@ -22,11 +20,11 @@ export const useColorSchemeStore = defineStore('color-scheme', () => {
     }
     scheme.value = newScheme
     if (setStorage) {
-      localStorage.setItem('color-scheme', newScheme)
+      void storage.set(repositoryStorageKeys.colorScheme, newScheme)
     }
   }
 
   const isDark = computed(() => scheme.value === 'dark')
 
-  return { scheme, change, isDark }
+  return { scheme, change, isDark, ready: storedSchemePromise }
 })
