@@ -1,9 +1,9 @@
 /**
- * Execution History Database Helper
+ * Execution History Repository
  * Manages execution history records in SQLite
  */
 
-import { db } from '../db/db_manager'
+import { db } from '../db_manager'
 
 export interface ExecutionHistoryRecord {
   id?: number
@@ -18,7 +18,7 @@ export interface ExecutionHistoryRecord {
   createdAt?: string
 }
 
-export class ExecutionHistoryDB {
+export class ExecutionHistoryRepository {
   /**
    * Insert a new execution history record
    */

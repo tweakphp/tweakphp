@@ -6,7 +6,7 @@
 import { ExecuteWithLoaderParams } from './schemas'
 import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
-import { ExecutionHistoryDB } from '../execution-history-db'
+import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
 import { getErrorHandler } from '../error-handler'
 import { getSettings } from '../../settings'
 import * as fs from 'fs'
@@ -24,11 +24,11 @@ interface ExecuteWithLoaderResult {
 
 export class ExecuteWithLoaderHandler {
   private connectionManager: ConnectionManager
-  private historyDB: ExecutionHistoryDB
+  private historyDB: ExecutionHistoryRepository
   private errorHandler = getErrorHandler()
   private defaultTimeout = 60000 // 60 seconds for framework bootstrapping
 
-  constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryDB) {
+  constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryRepository) {
     this.connectionManager = connectionManager
     this.historyDB = historyDB
   }

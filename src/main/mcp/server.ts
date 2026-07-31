@@ -7,7 +7,7 @@
  *   { "url": "http://127.0.0.1:<port>/mcp", "type": "http" }
  *
  * Stateless pattern: a fresh McpServer + transport is created per POST /mcp request.
- * Shared state (ConnectionManager, ExecutionHistoryDB) lives on MCPServerImpl and is
+ * Shared state (ConnectionManager, ExecutionHistoryRepository) lives on MCPServerImpl and is
  * accessed via closure from each per-request server instance.
  */
 
@@ -18,7 +18,7 @@ import { z } from 'zod'
 import { MCPServerConfig, MCPServerStatus } from './types'
 import { getErrorLogger } from './error-logger'
 import { ConnectionManager } from './connection-manager'
-import { ExecutionHistoryDB } from './execution-history-db'
+import { ExecutionHistoryRepository } from '../db/repositories/execution-history-repository'
 import { ExecutePhpHandler } from './tools/execute-php'
 import { ExecuteWithLoaderHandler } from './tools/execute-with-loader'
 import { GetExecutionHistoryHandler } from './tools/get-execution-history'
@@ -45,7 +45,7 @@ export class MCPServerImpl implements MCPServer {
 
   // Shared state — created once, reused across every per-request McpServer instance
   private connectionManager: ConnectionManager
-  private historyDB: ExecutionHistoryDB
+  private historyDB: ExecutionHistoryRepository
   private executePhpHandler: ExecutePhpHandler
   private executeWithLoaderHandler: ExecuteWithLoaderHandler
   private getExecutionHistoryHandler: GetExecutionHistoryHandler
@@ -55,7 +55,7 @@ export class MCPServerImpl implements MCPServer {
 
   constructor() {
     this.connectionManager = new ConnectionManager()
-    this.historyDB = new ExecutionHistoryDB()
+    this.historyDB = new ExecutionHistoryRepository()
     this.executePhpHandler = new ExecutePhpHandler(this.connectionManager, this.historyDB)
     this.executeWithLoaderHandler = new ExecuteWithLoaderHandler(this.connectionManager, this.historyDB)
     this.getExecutionHistoryHandler = new GetExecutionHistoryHandler(this.historyDB)
