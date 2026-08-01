@@ -66,6 +66,11 @@ export default class DockerClient extends BaseClient {
     }
   }
 
+  private getContainerExecArgs(containerName: string, ...commandArgs: string[]): string[] {
+    const user = cleanParam(this.connection.user)
+    return ['exec', ...(user ? ['-u', user] : []), containerName, ...commandArgs]
+  }
+
   async execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     try {
       await this.ensureConnectionConfig()
@@ -79,7 +84,14 @@ export default class DockerClient extends BaseClient {
         '/var/www/html'
       const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
 
-      const args = ['exec', containerName, phpPathVal, clientPathVal, workingDirVal, 'execute', base64Encode(code)]
+      const args = this.getContainerExecArgs(
+        containerName,
+        phpPathVal,
+        clientPathVal,
+        workingDirVal,
+        'execute',
+        base64Encode(code)
+      )
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
@@ -103,15 +115,14 @@ export default class DockerClient extends BaseClient {
       const workingDirVal =
         cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
       const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
-      const args = [
-        'exec',
+      const args = this.getContainerExecArgs(
         containerName,
         phpPathVal,
         clientPathVal,
         workingDirVal,
         'execute-stream',
-        base64Encode(code),
-      ]
+        base64Encode(code)
+      )
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
@@ -146,7 +157,7 @@ export default class DockerClient extends BaseClient {
         cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
       const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
 
-      const args = ['exec', containerName, phpPathVal, clientPathVal, workingDirVal, 'info']
+      const args = this.getContainerExecArgs(containerName, phpPathVal, clientPathVal, workingDirVal, 'info')
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
@@ -207,26 +218,17 @@ export default class DockerClient extends BaseClient {
       throw new Error('Container is not selected')
     }
     try {
+      const args = this.getContainerExecArgs(
+        containerName,
+        'php',
+        '-r',
+        "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"
+      )
       let phpVersion
       if (this.ssh) {
-        phpVersion = (
-          await this.ssh.exec(
-            buildPosixCommand(await this.getDockerPath(), [
-              'exec',
-              containerName,
-              'php',
-              '-r',
-              "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;",
-            ])
-          )
-        ).trim()
+        phpVersion = (await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args))).trim()
       } else {
-        phpVersion = (
-          await this.runLocalDocker(
-            ['exec', containerName, 'php', '-r', "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"],
-            DOCKER_SETUP_TIMEOUT
-          )
-        ).trim()
+        phpVersion = (await this.runLocalDocker(args, DOCKER_SETUP_TIMEOUT)).trim()
       }
       if (parseFloat(phpVersion) < 7.4) {
         throw new Error('PHP version must be 7.4 or higher')
@@ -266,13 +268,12 @@ export default class DockerClient extends BaseClient {
       if (!containerName) {
         throw new Error('Container is not selected')
       }
+      const args = this.getContainerExecArgs(containerName, 'which', 'php')
       if (this.ssh) {
-        return (
-          await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), ['exec', containerName, 'which', 'php']))
-        ).trim()
+        return (await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args))).trim()
       }
 
-      return (await this.runLocalDocker(['exec', containerName, 'which', 'php'], DOCKER_SETUP_TIMEOUT)).trim()
+      return (await this.runLocalDocker(args, DOCKER_SETUP_TIMEOUT)).trim()
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }

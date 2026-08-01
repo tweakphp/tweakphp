@@ -67,14 +67,14 @@ describe('DockerClient', () => {
     expect(sshInstance.connect).toHaveBeenCalledOnce()
   })
 
-  it('sets up a Docker connection with separate CLI arguments', async () => {
+  it('sets up a Docker connection with separate CLI arguments and configured user', async () => {
     mockExecFile(args => {
       if (args.some(arg => arg.includes('PHP_MAJOR_VERSION'))) return '8.3\n'
       if (args.includes('which')) return '/usr/local/bin/php\n'
       return ''
     })
 
-    const client = new DockerClient({ type: 'docker', container_name: 'my-container' } as any)
+    const client = new DockerClient({ type: 'docker', container_name: 'my-container', user: 'sail' } as any)
     await client.setup()
 
     expect(client.connection.php_version).toBe('8.3')
@@ -83,7 +83,22 @@ describe('DockerClient', () => {
     expect(execFile).toHaveBeenNthCalledWith(
       1,
       'docker',
-      ['exec', 'my-container', 'php', '-r', "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"],
+      [
+        'exec',
+        '-u',
+        'sail',
+        'my-container',
+        'php',
+        '-r',
+        "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;",
+      ],
+      expect.objectContaining({ shell: false, timeout: 30_000 }),
+      expect.any(Function)
+    )
+    expect(execFile).toHaveBeenNthCalledWith(
+      2,
+      'docker',
+      ['exec', '-u', 'sail', 'my-container', 'which', 'php'],
       expect.objectContaining({ shell: false, timeout: 30_000 }),
       expect.any(Function)
     )
@@ -121,12 +136,43 @@ describe('DockerClient', () => {
       php_path: '/usr/bin/php',
       client_path: '/tmp/client.phar',
       working_directory: '/var/www',
+      user: 'sail',
     } as any)
 
     await expect(client.execute('echo "test";')).resolves.toBe('output\n')
     expect(execFile).toHaveBeenCalledWith(
       'docker',
-      ['exec', 'my-container', '/usr/bin/php', '/tmp/client.phar', '/var/www', 'execute', expect.any(String)],
+      [
+        'exec',
+        '-u',
+        'sail',
+        'my-container',
+        '/usr/bin/php',
+        '/tmp/client.phar',
+        '/var/www',
+        'execute',
+        expect.any(String),
+      ],
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('gets PHP info as the configured Docker user', async () => {
+    mockExecFile(() => 'PHP 8.3\n')
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      user: 'sail',
+    } as any)
+
+    await expect(client.info()).resolves.toBe('PHP 8.3\n')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      ['exec', '-u', 'sail', 'my-container', '/usr/bin/php', '/tmp/client.phar', '/var/www', 'info'],
       expect.objectContaining({ shell: false, timeout: 60_000 }),
       expect.any(Function)
     )
@@ -142,6 +188,7 @@ describe('DockerClient', () => {
       php_path: '/usr/bin/php',
       client_path: '/tmp/client.phar',
       working_directory: '/var/www',
+      user: 'sail',
     } as any)
 
     const streaming = client.executeStreaming('echo "test";', undefined, event => events.push(event))
@@ -154,7 +201,17 @@ describe('DockerClient', () => {
 
     expect(spawn).toHaveBeenCalledWith(
       'docker',
-      ['exec', 'my-container', '/usr/bin/php', '/tmp/client.phar', '/var/www', 'execute-stream', expect.any(String)],
+      [
+        'exec',
+        '-u',
+        'sail',
+        'my-container',
+        '/usr/bin/php',
+        '/tmp/client.phar',
+        '/var/www',
+        'execute-stream',
+        expect.any(String),
+      ],
       { shell: false, windowsHide: true }
     )
     expect(events).toEqual([{ type: 'output', index: 0, data: 'test' }])

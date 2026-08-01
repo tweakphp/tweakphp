@@ -69,6 +69,7 @@
     tab,
     rawOutput,
     resultEditor,
+    codeEditor,
     settingsStore,
     executeStore,
     tabsStore,

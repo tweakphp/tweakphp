@@ -33,6 +33,7 @@
     client_path: '',
     working_directory: '/var/www/html',
     ssh_id: 0,
+    user: '',
   })
   const sshConnectModal = ref()
   const connecting = ref(false)
@@ -230,6 +231,12 @@
           <div class="grid grid-cols-2 items-center">
             <div>Working directory</div>
             <TextInput placeholder="/var/www/html" id="work_directory" v-model="form.working_directory" />
+          </div>
+
+          <Divider />
+          <div class="grid grid-cols-2 items-center">
+            <div>User <span class="text-xs text-gray-400">(optional)</span></div>
+            <TextInput placeholder="e.g. sail" id="docker_user" v-model="form.user" />
           </div>
 
           <Divider />

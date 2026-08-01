@@ -105,10 +105,15 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
   }
 }
 
+interface CodeEditor {
+  getSelectedText: () => string
+}
+
 export function useCodeExecution(options: {
   tab: Ref<Tab>
   rawOutput: ComputedRef<string>
   resultEditor: Ref<ResultEditor | null>
+  codeEditor?: Ref<CodeEditor | null>
   settingsStore: SettingsStore
   executeStore: ExecuteStore
   tabsStore: TabsStore
@@ -236,7 +241,9 @@ export function useCodeExecution(options: {
 
   const executeHandler = () => {
     const connection = options.tabsStore.getConnectionConfig(options.tab.value)
-    const { code, loader } = options.tab.value
+    const { loader } = options.tab.value
+    const selected = options.codeEditor?.value?.getSelectedText() ?? ''
+    const code = selected !== '' ? selected : options.tab.value.code
 
     options.executeStore.setExecuting(true)
     options.tab.value.queries = []
