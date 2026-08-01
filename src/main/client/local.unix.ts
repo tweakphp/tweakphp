@@ -90,7 +90,7 @@ export const executeStreamingUnix = (
           if (onEvent) {
             onEvent(eventData)
           }
-        } catch (e) { }
+        } catch (e) {}
       }
       resolve()
     })
@@ -104,11 +104,7 @@ export const executeStreamingUnix = (
   })
 }
 
-export const infoUnix = (
-  connection: ConnectionConfig,
-  pharPath: string,
-  loader?: string
-): Promise<string> => {
+export const infoUnix = (connection: ConnectionConfig, pharPath: string, loader?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const phpPath = connection.php || 'php'
     const args = [pharPath, connection.path, 'info']

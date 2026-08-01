@@ -14,20 +14,9 @@ import {
   translateWindowsToWslPath,
   getWslPhpExecutable,
 } from './local.windows'
-import {
-  executeUnix,
-  executeStreamingUnix,
-  infoUnix,
-  getPHPVersionUnix,
-} from './local.unix'
+import { executeUnix, executeStreamingUnix, infoUnix, getPHPVersionUnix } from './local.unix'
 
-export {
-  getWslDistros,
-  resolveWslDistro,
-  getWslDetails,
-  translateWindowsToWslPath,
-  getWslPhpExecutable,
-}
+export { getWslDistros, resolveWslDistro, getWslDetails, translateWindowsToWslPath, getWslPhpExecutable }
 
 const isWindowsOrWsl = (projectPath?: string): boolean => {
   if (process.platform === 'win32') return true
@@ -94,7 +83,7 @@ export const getLocalPharClient = (connection?: ConnectionConfig): string => {
         return path.join(baseDir, available[0])
       }
     }
-  } catch (e) { }
+  } catch (e) {}
 
   return exact
 }

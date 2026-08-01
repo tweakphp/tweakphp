@@ -141,22 +141,14 @@ describe('LocalClient WSL Support', () => {
       vi.mocked(execFileSync).mockReturnValue('PHP 8.2.0 (cli) (built: ...)\n' as any)
       const version = getPHPVersion({ type: 'local', php: 'C:\\php\\php.exe', path: 'C:\\project' })
       expect(version).toBe('8.2')
-      expect(execFileSync).toHaveBeenCalledWith(
-        'C:\\php\\php.exe',
-        ['-v'],
-        expect.any(Object)
-      )
+      expect(execFileSync).toHaveBeenCalledWith('C:\\php\\php.exe', ['-v'], expect.any(Object))
     })
 
     it('returns the PHP version for WSL PHP', () => {
       vi.mocked(execFileSync).mockReturnValue('PHP 8.3.0 (cli) (built: ...)\n' as any)
       const version = getPHPVersion({ type: 'local', php: 'php', path: '\\\\wsl.localhost\\Ubuntu\\project' })
       expect(version).toBe('8.3')
-      expect(execFileSync).toHaveBeenCalledWith(
-        'wsl',
-        ['-d', 'Ubuntu', 'php', '-v'],
-        expect.any(Object)
-      )
+      expect(execFileSync).toHaveBeenCalledWith('wsl', ['-d', 'Ubuntu', 'php', '-v'], expect.any(Object))
     })
 
     it('returns null on execution error', () => {

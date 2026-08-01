@@ -57,7 +57,9 @@ export const resolveWslDistro = (requestedDistro?: string | null): string | null
 
   // 3. Prefix match
   const prefixMatch = distros.find(
-    d => d.toLowerCase().startsWith(cleanRequested.toLowerCase()) || cleanRequested.toLowerCase().startsWith(d.toLowerCase())
+    d =>
+      d.toLowerCase().startsWith(cleanRequested.toLowerCase()) ||
+      cleanRequested.toLowerCase().startsWith(d.toLowerCase())
   )
   if (prefixMatch) return prefixMatch
 
@@ -303,7 +305,7 @@ export const executeStreamingWindows = (
           if (onEvent) {
             onEvent(eventData)
           }
-        } catch (e) { }
+        } catch (e) {}
       }
       resolve()
     })
@@ -317,11 +319,7 @@ export const executeStreamingWindows = (
   })
 }
 
-export const infoWindows = (
-  connection: ConnectionConfig,
-  pharPath: string,
-  loader?: string
-): Promise<string> => {
+export const infoWindows = (connection: ConnectionConfig, pharPath: string, loader?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const wsl = getWslDetails(connection.path)
 
