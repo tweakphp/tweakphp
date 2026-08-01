@@ -49,7 +49,7 @@ export class SSH {
     })
   }
 
-  async exec(command: string): Promise<string> {
+  async exec(command: string, timeout?: number): Promise<string> {
     if (!this.isConnected) {
       throw new Error('SSH client is not connected')
     }
@@ -60,18 +60,29 @@ export class SSH {
           return reject(error)
         }
         let output = ''
+        const timer = timeout
+          ? setTimeout(() => {
+              stream.close()
+              reject(new Error(`SSH command timed out after ${timeout / 1000} seconds`))
+            }, timeout)
+          : undefined
         stream
           .on('close', () => {
+            if (timer) clearTimeout(timer)
             resolve(output)
           })
           .on('data', (data: any) => {
             output += data.toString()
           })
+          .on('error', (streamError: any) => {
+            if (timer) clearTimeout(timer)
+            reject(streamError)
+          })
       })
     })
   }
 
-  async execStream(command: string, onData: (data: string) => void): Promise<void> {
+  async execStream(command: string, onData: (data: string) => void, timeout?: number): Promise<void> {
     if (!this.isConnected) {
       throw new Error('SSH client is not connected')
     }
@@ -81,14 +92,22 @@ export class SSH {
         if (error) {
           return reject(error)
         }
+        const timer = timeout
+          ? setTimeout(() => {
+              stream.close()
+              reject(new Error(`SSH command timed out after ${timeout / 1000} seconds`))
+            }, timeout)
+          : undefined
         stream
           .on('close', () => {
+            if (timer) clearTimeout(timer)
             resolve()
           })
           .on('data', (data: any) => {
             onData(data.toString())
           })
           .on('error', (err: any) => {
+            if (timer) clearTimeout(timer)
             reject(err)
           })
       })

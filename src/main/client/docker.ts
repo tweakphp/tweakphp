@@ -6,10 +6,13 @@ import { app } from 'electron'
 import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser } from './stream-output'
+import { buildPosixCommand } from '../utils/shell'
+import { getSettings } from '../settings'
 
 const dockerPathCache: Record<string, string> = {}
 const DOCKER_SETUP_TIMEOUT = 30_000
-const DOCKER_EXECUTION_TIMEOUT = 60_000
+
+const getExecutionTimeout = () => getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
 
 const cleanParam = (val?: any): string | undefined => {
   if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {
@@ -82,10 +85,10 @@ export default class DockerClient extends BaseClient {
       }
 
       if (this.ssh) {
-        return await this.ssh.exec(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`)
+        return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
       }
 
-      return await this.runLocalDocker(args, DOCKER_EXECUTION_TIMEOUT)
+      return await this.runLocalDocker(args, getExecutionTimeout())
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -115,11 +118,15 @@ export default class DockerClient extends BaseClient {
 
       const parser = createStreamOutputParser(onEvent)
       if (this.ssh) {
-        await this.ssh.execStream(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`, chunk => {
-          parser.push(chunk)
-        })
+        await this.ssh.execStream(
+          buildPosixCommand(await this.getDockerPath(), args),
+          chunk => {
+            parser.push(chunk)
+          },
+          getExecutionTimeout()
+        )
       } else {
-        await this.runLocalDockerStream(args, chunk => {
+        await this.runLocalDockerStream(args, getExecutionTimeout(), chunk => {
           parser.push(chunk)
         })
       }
@@ -145,10 +152,10 @@ export default class DockerClient extends BaseClient {
       }
 
       if (this.ssh) {
-        return await this.ssh.exec(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`)
+        return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
       }
 
-      return await this.runLocalDocker(args, DOCKER_EXECUTION_TIMEOUT)
+      return await this.runLocalDocker(args, getExecutionTimeout())
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -166,7 +173,9 @@ export default class DockerClient extends BaseClient {
       let result
       if (this.ssh) {
         result = (
-          await this.ssh.exec(`${await this.getDockerPath()} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`)
+          await this.ssh.exec(
+            buildPosixCommand(await this.getDockerPath(), ['ps', '--format', '{{.ID}}|{{.Names}}|{{.Image}}'])
+          )
         ).trim()
       } else {
         result = (
@@ -202,7 +211,13 @@ export default class DockerClient extends BaseClient {
       if (this.ssh) {
         phpVersion = (
           await this.ssh.exec(
-            `${await this.getDockerPath()} exec ${quoteShellArg(containerName)} php -r ${quoteShellArg("echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;")}`
+            buildPosixCommand(await this.getDockerPath(), [
+              'exec',
+              containerName,
+              'php',
+              '-r',
+              "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;",
+            ])
           )
         ).trim()
       } else {
@@ -253,7 +268,7 @@ export default class DockerClient extends BaseClient {
       }
       if (this.ssh) {
         return (
-          await this.ssh.exec(`${await this.getDockerPath()} exec ${quoteShellArg(containerName)} which php`)
+          await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), ['exec', containerName, 'which', 'php']))
         ).trim()
       }
 
@@ -285,7 +300,7 @@ export default class DockerClient extends BaseClient {
 
       if (this.ssh) {
         await this.ssh.exec(
-          `${await this.getDockerPath()} cp ${quoteShellArg(getClient)} ${quoteShellArg(`${containerName}:${pharPath}`)}`
+          buildPosixCommand(await this.getDockerPath(), ['cp', getClient, `${containerName}:${pharPath}`])
         )
       } else {
         await this.runLocalDocker(['cp', getClient, `${containerName}:${pharPath}`], DOCKER_SETUP_TIMEOUT)
@@ -311,7 +326,11 @@ export default class DockerClient extends BaseClient {
     })
   }
 
-  private async runLocalDockerStream(args: string[], onData: (chunk: string) => void): Promise<void> {
+  private async runLocalDockerStream(
+    args: string[],
+    timeoutMs: number,
+    onData: (chunk: string) => void
+  ): Promise<void> {
     return await new Promise((resolve, reject) => {
       let stderr = ''
       let settled = false
@@ -327,8 +346,8 @@ export default class DockerClient extends BaseClient {
       }
       timeout = setTimeout(() => {
         child.kill()
-        fail(new Error(`Docker command timed out after ${DOCKER_EXECUTION_TIMEOUT / 1000} seconds`))
-      }, DOCKER_EXECUTION_TIMEOUT)
+        fail(new Error(`Docker command timed out after ${timeoutMs / 1000} seconds`))
+      }, timeoutMs)
 
       child.stdout.on('data', chunk => onData(chunk.toString()))
       child.stderr.on('data', chunk => {
@@ -352,8 +371,6 @@ export default class DockerClient extends BaseClient {
     })
   }
 }
-
-const quoteShellArg = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`
 
 const parseDockerErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {

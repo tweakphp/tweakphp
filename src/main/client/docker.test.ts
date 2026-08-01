@@ -14,6 +14,10 @@ vi.mock('../utils/ssh', () => ({
   },
 }))
 
+vi.mock('../settings', () => ({
+  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+}))
+
 vi.mock('child_process', () => ({
   execFile: vi.fn(),
   spawn: vi.fn(),
@@ -171,7 +175,7 @@ describe('DockerClient', () => {
     )
 
     await expect(client.execute('echo "test";')).resolves.toBe('ssh output\n')
-    expect(sshInstance.exec).toHaveBeenLastCalledWith(expect.stringContaining("docker 'exec' 'my-container'"))
+    expect(sshInstance.exec).toHaveBeenLastCalledWith(expect.stringContaining("'docker' 'exec' 'my-container'"), 60_000)
   })
 
   it('lists local Docker containers', async () => {

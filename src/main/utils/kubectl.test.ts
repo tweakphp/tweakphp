@@ -49,6 +49,17 @@ describe('Kubectl', () => {
     )
   })
 
+  it('uses a caller-provided execution timeout', async () => {
+    await new Kubectl().exec('printf ready', { pod: 'app', context: 'local', namespace: 'default' }, 12_000)
+
+    expect(execFile).toHaveBeenCalledWith(
+      'kubectl',
+      expect.any(Array),
+      expect.objectContaining({ timeout: 12_000 }),
+      expect.any(Function)
+    )
+  })
+
   it('streams kubectl stdout before the command closes', async () => {
     const child = createChildProcess()
     vi.mocked(spawn).mockReturnValue(child)

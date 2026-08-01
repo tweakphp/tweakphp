@@ -2,6 +2,8 @@ import { ConnectionConfig } from '../../types/kubectl.type'
 import { base64Encode } from '../utils/base64-encode'
 import { Kubectl } from '../utils/kubectl'
 import { RemoteClient } from './client.remote'
+import { buildPosixCommand } from '../utils/shell'
+import { getSettings } from '../settings'
 
 export default class KubectlClient extends RemoteClient {
   private kubectl: Kubectl
@@ -16,13 +18,13 @@ export default class KubectlClient extends RemoteClient {
   }
 
   async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {
-    await this.kubectl.execStream(command, this.connection, onData)
+    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout)
   }
 
   execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(async resolve => {
       const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-      const result = await this.kubectl.exec(command, this.connection)
+      const result = await this.kubectl.exec(command, this.connection, this.executionTimeout)
       resolve(result)
     })
   }
@@ -30,7 +32,7 @@ export default class KubectlClient extends RemoteClient {
   async info(loader?: string): Promise<string> {
     return new Promise(async resolve => {
       const command = `${this.command()} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-      const result = await this.kubectl.exec(command, this.connection)
+      const result = await this.kubectl.exec(command, this.connection, this.executionTimeout)
       resolve(result)
     })
   }
@@ -39,7 +41,11 @@ export default class KubectlClient extends RemoteClient {
     const phpPath = 'php'
     const path = projectPath || this.connection.path
     const clientPath = this.connection.client_path
-    return `${phpPath} ${clientPath} ${path}`
+    return buildPosixCommand(phpPath, [clientPath || '', path || ''])
+  }
+
+  private get executionTimeout(): number {
+    return getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
   }
 
   async remoteUploadFile(localPath: string, remotePath: string): Promise<void> {
@@ -48,6 +54,14 @@ export default class KubectlClient extends RemoteClient {
 
   async getHomePath(): Promise<string> {
     return (await this.kubectl.exec('printf %s "$HOME"', this.connection)).trim()
+  }
+
+  protected getPharClientPathCandidates(homePath: string, phpVersion: string): string[] {
+    const clientFileName = `client-${phpVersion}.phar`
+    return [
+      ...(homePath && homePath !== '/' ? [`${homePath}/.tweakphp/${clientFileName}`] : []),
+      `/tmp/.tweakphp/${clientFileName}`,
+    ]
   }
 
   // @ts-ignore

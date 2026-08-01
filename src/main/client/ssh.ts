@@ -2,6 +2,7 @@ import { ConnectionConfig } from '../../types/ssh.type'
 import { base64Encode } from '../utils/base64-encode'
 import { SSH } from '../utils/ssh'
 import { RemoteClient } from './client.remote'
+import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 
 export class SSHClient extends RemoteClient {
   private ssh: SSH
@@ -16,7 +17,9 @@ export class SSHClient extends RemoteClient {
   }
 
   protected async preSetupChecks(): Promise<void> {
-    const checkPath = await this.ssh.exec(`[ -d "${this.connection.path}" ] || echo "not_found"`)
+    const checkPath = await this.ssh.exec(
+      `[ -d ${quotePosixShellArg(this.connection.path)} ] || printf '%s\\n' not_found`
+    )
     if (checkPath.trim() === 'not_found') {
       throw new Error('Path not found')
     }
@@ -63,7 +66,7 @@ export class SSHClient extends RemoteClient {
     const phpPath = 'php'
     const path = projectPath || this.connection.path
     const clientPath = this.connection.client_path
-    return `${phpPath} ${clientPath} ${path}`
+    return buildPosixCommand(phpPath, [clientPath || '', path || ''])
   }
 
   async disconnect(): Promise<void> {

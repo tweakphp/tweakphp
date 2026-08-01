@@ -75,9 +75,13 @@ export class Kubectl {
     }
   }
 
-  async exec(command: string, params: { pod: string; context: string; namespace: string }): Promise<string> {
+  async exec(
+    command: string,
+    params: { pod: string; context: string; namespace: string },
+    timeout = KUBECTL_EXECUTION_TIMEOUT
+  ): Promise<string> {
     try {
-      return (await this.run(this.getExecArgs(command, params), KUBECTL_EXECUTION_TIMEOUT)).trim()
+      return (await this.run(this.getExecArgs(command, params), timeout)).trim()
     } catch (error: any) {
       throw new Error(error)
     }
@@ -86,7 +90,8 @@ export class Kubectl {
   async execStream(
     command: string,
     params: { pod: string; context: string; namespace: string },
-    onData: (chunk: string) => void
+    onData: (chunk: string) => void,
+    timeoutMs = KUBECTL_EXECUTION_TIMEOUT
   ): Promise<void> {
     const args = this.getExecArgs(command, params)
     return await new Promise((resolve, reject) => {
@@ -104,8 +109,8 @@ export class Kubectl {
       }
       timeout = setTimeout(() => {
         child.kill()
-        fail(new Error(`kubectl command timed out after ${KUBECTL_EXECUTION_TIMEOUT / 1000} seconds`))
-      }, KUBECTL_EXECUTION_TIMEOUT)
+        fail(new Error(`kubectl command timed out after ${timeoutMs / 1000} seconds`))
+      }, timeoutMs)
 
       child.stdout.on('data', chunk => onData(chunk.toString()))
       child.stderr.on('data', chunk => {

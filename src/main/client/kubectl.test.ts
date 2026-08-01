@@ -14,6 +14,16 @@ vi.mock('../utils/kubectl', () => {
   }
 })
 
+vi.mock('../settings', () => ({
+  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+}))
+
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+  },
+}))
+
 describe('KubectlClient', () => {
   let mockKubectlInstance: any
 
@@ -56,7 +66,8 @@ describe('KubectlClient', () => {
     expect(mockKubectlInstance.execStream).toHaveBeenCalledWith(
       expect.stringContaining('execute-stream'),
       conn,
-      expect.any(Function)
+      expect.any(Function),
+      60_000
     )
     expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
   })
@@ -79,6 +90,28 @@ describe('KubectlClient', () => {
     const home = await client.getHomePath()
     expect(home).toBe('/root')
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith('printf %s "$HOME"', conn)
+  })
+
+  it('falls back to /tmp when the Kubernetes home directory is not writable', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec
+      .mockResolvedValueOnce('8.3\n')
+      .mockResolvedValueOnce('/readonly\n')
+      .mockResolvedValueOnce('not_found\n')
+      .mockRejectedValueOnce(new Error('Read-only file system'))
+      .mockResolvedValueOnce('not_found\n')
+      .mockResolvedValueOnce('')
+
+    await client.setup()
+
+    expect(client.connection.client_path).toBe('/tmp/.tweakphp/client-8.3.phar')
+    expect(mockKubectlInstance.uploadFile).toHaveBeenCalledWith(
+      expect.any(String),
+      '/tmp/.tweakphp/client-8.3.phar',
+      conn
+    )
   })
 
   it('getContextsAction retrieves contexts from Kubectl utility', async () => {
