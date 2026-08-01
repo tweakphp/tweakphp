@@ -253,7 +253,7 @@ export default class DockerClient extends BaseClient {
 
       const dockerPath = await this.getDockerPath()
 
-      const command = `${dockerPath} cp ${getClient} ${containerName}:'${pharPath}'`
+      const command = `${dockerPath} cp "${getClient}" ${containerName}:${pharPath}`
 
       if (this.ssh) {
         await this.ssh.exec(command)
