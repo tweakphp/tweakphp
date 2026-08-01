@@ -42,7 +42,7 @@ describe('KubectlClient', () => {
     expect(mockKubectlInstance.uploadFile).toHaveBeenCalledWith('/local/path', '/remote/path', conn)
   })
 
-  it('getHomePath executes echo $HOME', async () => {
+  it('getHomePath executes a POSIX command without host-shell quoting', async () => {
     const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
     const client = new KubectlClient(conn)
     mockKubectlInstance = (client as any).kubectl
@@ -50,7 +50,7 @@ describe('KubectlClient', () => {
 
     const home = await client.getHomePath()
     expect(home).toBe('/root')
-    expect(mockKubectlInstance.exec).toHaveBeenCalledWith("sh -c 'echo $HOME'", conn)
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith('printf %s "$HOME"', conn)
   })
 
   it('getContextsAction retrieves contexts from Kubectl utility', async () => {

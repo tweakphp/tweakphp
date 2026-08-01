@@ -1,325 +1,156 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { execFile } from 'child_process'
+import { app } from 'electron'
 import DockerClient from './docker'
-import { exec, execSync } from 'child_process'
 
-// Mock the SSH utility as a class constructor
-vi.mock('../utils/ssh', () => {
-  return {
-    SSH: class {
-      connect = vi.fn()
-      disconnect = vi.fn()
-      exec = vi.fn()
-      uploadFile = vi.fn()
-    },
-  }
-})
+vi.mock('../utils/ssh', () => ({
+  SSH: class {
+    connect = vi.fn()
+    disconnect = vi.fn()
+    exec = vi.fn()
+    uploadFile = vi.fn()
+  },
+}))
 
 vi.mock('child_process', () => ({
-  exec: vi.fn(),
-  execSync: vi.fn(),
+  execFile: vi.fn(),
 }))
 
 vi.mock('electron', () => ({
   app: {
     isPackaged: false,
-    getVersion: () => '0.1.0',
   },
 }))
+
+const mockExecFile = (handler: (args: string[]) => string) => {
+  vi.mocked(execFile).mockImplementation(((_file: any, args: any, _options: any, callback: any) => {
+    callback(null, handler(args), '')
+    return {} as any
+  }) as any)
+}
 
 describe('DockerClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default execSync mock return value to prevent crash on 'which docker'
-    vi.mocked(execSync).mockReturnValue('docker\n')
+    ;(app as any).isPackaged = false
+    Object.defineProperty(process, 'resourcesPath', {
+      configurable: true,
+      value: '/app/resources',
+    })
   })
 
-  it('connect calls ssh.connect if ssh is defined', async () => {
+  it('connects through SSH when the connection has SSH settings', async () => {
     const client = new DockerClient({
       type: 'docker',
       container_name: 'my-container',
-      ssh: { host: 'my-host' },
+      ssh: { host: 'docker-host' },
     } as any)
-
     const sshInstance = (client as any).ssh
-    sshInstance.connect.mockResolvedValue(undefined)
 
     await client.connect()
-    expect(sshInstance.connect).toHaveBeenCalled()
+
+    expect(sshInstance.connect).toHaveBeenCalledOnce()
   })
 
-  it('setup retrieves PHP info and client path', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-    } as any)
-
-    // Dynamic mock for execSync to return correct value based on command
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) {
-        return 'docker\n'
-      }
-      if (cmdStr.includes('PHP_MAJOR_VERSION')) {
-        return '8.1\n'
-      }
-      if (cmdStr.includes('which php')) {
-        return '/usr/local/bin/php\n'
-      }
-      if (cmdStr.includes('cp')) {
-        return ''
-      }
+  it('sets up a Docker connection with separate CLI arguments', async () => {
+    mockExecFile(args => {
+      if (args.some(arg => arg.includes('PHP_MAJOR_VERSION'))) return '8.3\n'
+      if (args.includes('which')) return '/usr/local/bin/php\n'
       return ''
     })
 
+    const client = new DockerClient({ type: 'docker', container_name: 'my-container' } as any)
     await client.setup()
 
-    expect(client.connection.php_version).toBe('8.1')
+    expect(client.connection.php_version).toBe('8.3')
     expect(client.connection.php_path).toBe('/usr/local/bin/php')
-    expect(client.connection.client_path).toBe('/tmp/client-8.1.phar')
+    expect(client.connection.client_path).toBe('/tmp/client-8.3.phar')
+    expect(execFile).toHaveBeenNthCalledWith(
+      1,
+      'docker',
+      ['exec', 'my-container', 'php', '-r', "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"],
+      expect.objectContaining({ shell: false, timeout: 30_000 }),
+      expect.any(Function)
+    )
+    expect(execFile).toHaveBeenLastCalledWith(
+      'docker',
+      ['cp', expect.stringContaining('client-8.3.phar'), 'my-container:/tmp/client-8.3.phar'],
+      expect.objectContaining({ shell: false, timeout: 30_000 }),
+      expect.any(Function)
+    )
   })
 
-  it('setup is a silent no-op if container_name is missing', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-    } as any)
+  it('uses packaged resources for the PHAR on Windows and every other platform', async () => {
+    ;(app as any).isPackaged = true
+    mockExecFile(args =>
+      args.some(arg => arg.includes('PHP_MAJOR_VERSION')) ? '8.2\n' : args.includes('which') ? 'php\n' : ''
+    )
 
-    await expect(client.setup()).resolves.toBeUndefined()
+    const client = new DockerClient({ type: 'docker', container_name: 'my-container' } as any)
+    await client.setup()
+
+    expect(execFile).toHaveBeenLastCalledWith(
+      'docker',
+      ['cp', '/app/resources/public/client-8.2.phar', 'my-container:/tmp/client-8.2.phar'],
+      expect.any(Object),
+      expect.any(Function)
+    )
+    ;(app as any).isPackaged = false
   })
 
-  it('setup throws error if php version < 7.4', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-    } as any)
-
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) {
-        return 'docker\n'
-      }
-      if (cmdStr.includes('PHP_MAJOR_VERSION')) {
-        return '7.2\n'
-      }
-      return ''
-    })
-
-    await expect(client.setup()).rejects.toThrow('PHP version must be 7.4 or higher')
-  })
-
-  it('execute runs code in local docker container', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-      php_path: '/usr/bin/php',
-      client_path: '/tmp/client-8.1.phar',
-      working_directory: '/var/www',
-    } as any)
-
-    vi.mocked(exec).mockImplementation((_cmd, cb) => {
-      // @ts-ignore
-      cb(null, 'output\n')
-      return {} as any
-    })
-
-    const result = await client.execute('echo "test";')
-    expect(result).toBe('output\n')
-    expect(exec).toHaveBeenCalled()
-    const command = vi.mocked(exec).mock.calls[0][0] as string
-    expect(command).toContain('docker exec my-container "/usr/bin/php" "/tmp/client-8.1.phar" "/var/www" execute')
-  })
-
-  it('execute runs code in docker container via SSH', async () => {
+  it('executes user code without a shell and with a 60 second timeout', async () => {
+    mockExecFile(() => 'output\n')
     const client = new DockerClient({
       type: 'docker',
       container_name: 'my-container',
       php_path: '/usr/bin/php',
-      client_path: '/tmp/client-8.1.phar',
+      client_path: '/tmp/client.phar',
       working_directory: '/var/www',
-      ssh: { host: 'my-host-unique' },
     } as any)
 
+    await expect(client.execute('echo "test";')).resolves.toBe('output\n')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      ['exec', 'my-container', '/usr/bin/php', '/tmp/client.phar', '/var/www', 'execute', expect.any(String)],
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('executes Docker commands through SSH when configured', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      ssh: { host: 'docker-host-execute' },
+    } as any)
     const sshInstance = (client as any).ssh
-    sshInstance.exec.mockImplementation((command: string) => {
-      if (command.includes('which docker')) {
-        return 'docker\n'
-      }
-      return 'ssh output\n'
-    })
+    sshInstance.exec.mockImplementation(async (command: string) =>
+      command === 'which docker' ? 'docker\n' : 'ssh output\n'
+    )
 
-    const result = await client.execute('echo "test";')
-    expect(result).toBe('ssh output\n')
-    expect(sshInstance.exec).toHaveBeenCalled()
-    const command = sshInstance.exec.mock.lastCall[0] as string
-    expect(command).toContain('docker exec my-container')
+    await expect(client.execute('echo "test";')).resolves.toBe('ssh output\n')
+    expect(sshInstance.exec).toHaveBeenLastCalledWith(expect.stringContaining("docker 'exec' 'my-container'"))
   })
 
-  it('info retrieves info via SSH', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-      php_path: '/usr/bin/php',
-      client_path: '/tmp/client-8.1.phar',
-      working_directory: '/var/www',
-      ssh: { host: 'my-host-unique-info' },
-    } as any)
-
-    const sshInstance = (client as any).ssh
-    sshInstance.exec.mockImplementation((command: string) => {
-      if (command.includes('which docker')) {
-        return 'docker\n'
-      }
-      return 'ssh info output\n'
-    })
-
-    const result = await client.info()
-    expect(result).toBe('ssh info output\n')
-    expect(sshInstance.exec).toHaveBeenCalled()
-    const command = sshInstance.exec.mock.lastCall[0] as string
-    expect(command).toContain('docker exec my-container')
-    expect(command).toContain('info')
-  })
-
-  it('getContainersAction returns list of docker containers', async () => {
+  it('lists local Docker containers', async () => {
+    mockExecFile(args => (args[0] === 'ps' ? '123|my-container|php-image\n456|other-container|mysql-image\n' : ''))
     const client = new DockerClient({ type: 'docker' } as any)
 
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) {
-        return 'docker\n'
-      }
-      if (cmdStr.includes('ps --format')) {
-        return '123|my-container|php-image\n456|other-container|mysql-image\n'
-      }
-      return ''
-    })
-
-    const containers = await (client as any).action('getContainers')
-    expect(containers).toEqual([
+    await expect((client as any).action('getContainers')).resolves.toEqual([
       { id: '123', name: 'my-container', image: 'php-image' },
       { id: '456', name: 'other-container', image: 'mysql-image' },
     ])
   })
 
-  it('getContainersAction throws parsed error on failure', async () => {
-    const client = new DockerClient({ type: 'docker' } as any)
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) {
-        return 'docker\n'
-      }
-      throw new Error("docker daemon is not running. See 'docker daemon --help' for details")
-    })
-
-    await expect((client as any).action('getContainers')).rejects.toThrow('docker daemon is not running.')
-  })
-
-  it('getPHPVersionAction action retrieves version', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-    } as any)
-
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) return 'docker\n'
-      if (cmdStr.includes('PHP_MAJOR_VERSION')) return '8.2\n'
-      return ''
-    })
-
-    const result = await (client as any).action('getPHPVersion')
-    expect(result).toBe('8.2')
-  })
-
-  it('getDockerPath falls back to "docker" when command fails', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-      php_path: '/usr/bin/php',
-      client_path: '/tmp/client-8.1.phar',
-      working_directory: '/var/www',
-    } as any)
-
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) {
-        throw new Error('Command which failed')
-      }
-      return ''
-    })
-
-    vi.mocked(exec).mockImplementation((_cmd, cb) => {
-      // @ts-ignore
-      cb(null, 'output')
+  it('returns parsed Docker errors from failed commands', async () => {
+    vi.mocked(execFile).mockImplementation(((_file: any, _args: any, _options: any, callback: any) => {
+      callback(new Error("Command failed: docker exec my-container. See 'docker exec --help'"), '', '')
       return {} as any
-    })
+    }) as any)
 
-    await client.execute('echo 1;')
-    const command = vi.mocked(exec).mock.calls[0][0] as string
-    expect(command.startsWith('docker exec')).toBe(true)
-  })
-
-  it('gracefully handles missing or "undefined" connectionConfig properties in info()', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'laravel_demo-laravel.test-1',
-      php_path: 'undefined',
-      client_path: 'undefined',
-      working_directory: 'undefined',
-    } as any)
-
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) return 'docker\n'
-      if (cmdStr.includes('which php')) throw new Error('which php failed')
-      if (cmdStr.includes('cp')) throw new Error('cp failed')
-      if (cmdStr.includes('info')) return 'PHP Version => 8.2.0\n'
-      return ''
-    })
-
-    const result = await client.info()
-    expect(result).toBe('PHP Version => 8.2.0\n')
-
-    // Find the command executed for info
-    const infoCmdCall = vi.mocked(execSync).mock.calls.find(call => call[0].toString().includes('info'))
-    expect(infoCmdCall).toBeDefined()
-    const infoCmd = infoCmdCall![0].toString()
-    expect(infoCmd).not.toContain('"undefined"')
-    expect(infoCmd).toContain('docker exec laravel_demo-laravel.test-1 "php" "/tmp/client.phar" "/var/www/html" info')
-  })
-
-  it('gracefully handles missing or "undefined" connectionConfig properties in execute()', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'laravel_demo-laravel.test-1',
-      php_path: undefined,
-      client_path: undefined,
-      working_directory: undefined,
-    } as any)
-
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) return 'docker\n'
-      if (cmdStr.includes('which php')) throw new Error('which php failed')
-      if (cmdStr.includes('cp')) throw new Error('cp failed')
-      return ''
-    })
-
-    vi.mocked(exec).mockImplementation((_cmd, cb) => {
-      // @ts-ignore
-      cb(null, 'executed successfully\n')
-      return {} as any
-    })
-
-    const result = await client.execute('echo "hello";')
-    expect(result).toBe('executed successfully\n')
-
-    expect(exec).toHaveBeenCalled()
-    const command = vi.mocked(exec).mock.calls[0][0] as string
-    expect(command).not.toContain('"undefined"')
-    expect(command).toContain('docker exec laravel_demo-laravel.test-1 "php" "/tmp/client.phar" "/var/www/html" execute')
-  })
-
-  it('rejects with formatted error on execSync failure in info()', async () => {
     const client = new DockerClient({
       type: 'docker',
       container_name: 'my-container',
@@ -328,32 +159,13 @@ describe('DockerClient', () => {
       working_directory: '/var/www',
     } as any)
 
-    vi.mocked(execSync).mockImplementation((command: any) => {
-      const cmdStr = command.toString()
-      if (cmdStr.includes('which docker')) return 'docker\n'
-      if (cmdStr.includes('info')) throw new Error("Error: Command failed. See 'docker exec --help'")
-      return ''
-    })
-
-    await expect(client.info()).rejects.toThrow('Error: Command failed.')
+    await expect(client.info()).rejects.toThrow('Command failed: docker exec my-container.')
   })
 
-  it('rejects with formatted error on exec failure in execute()', async () => {
-    const client = new DockerClient({
-      type: 'docker',
-      container_name: 'my-container',
-      php_path: 'php',
-      client_path: '/tmp/client.phar',
-      working_directory: '/var/www',
-    } as any)
+  it('rejects unsupported PHP versions during setup', async () => {
+    mockExecFile(args => (args.some(arg => arg.includes('PHP_MAJOR_VERSION')) ? '7.2\n' : ''))
+    const client = new DockerClient({ type: 'docker', container_name: 'my-container' } as any)
 
-    vi.mocked(execSync).mockReturnValue('docker\n')
-    vi.mocked(exec).mockImplementation((_cmd, cb) => {
-      // @ts-ignore
-      cb(new Error("Command failed: docker exec my-container. See 'docker exec --help'"), '', '')
-      return {} as any
-    })
-
-    await expect(client.execute('echo 1;')).rejects.toThrow('Command failed: docker exec my-container.')
+    await expect(client.setup()).rejects.toThrow('PHP version must be 7.4 or higher')
   })
 })

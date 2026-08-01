@@ -1,13 +1,14 @@
-import { exec, execSync } from 'child_process'
+import { execFile } from 'child_process'
 import { ConnectionConfig } from '../../types/docker.type'
 import { SSH } from '../utils/ssh'
 import { BaseClient } from './client.base'
-import { isWindows } from '../system/platform'
 import { app } from 'electron'
 import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
 
 const dockerPathCache: Record<string, string> = {}
+const DOCKER_SETUP_TIMEOUT = 30_000
+const DOCKER_EXECUTION_TIMEOUT = 60_000
 
 const cleanParam = (val?: any): string | undefined => {
   if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {
@@ -74,25 +75,16 @@ export default class DockerClient extends BaseClient {
         '/var/www/html'
       const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
 
-      const phpPath = `"${phpPathVal}"`
-      const path = `"${workingDirVal}"`
-      const clientPath = `"${clientPathVal}"`
-      const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${containerName} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-
-      if (this.ssh) {
-        return await this.ssh.exec(command)
+      const args = ['exec', containerName, phpPathVal, clientPathVal, workingDirVal, 'execute', base64Encode(code)]
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
       }
 
-      return await new Promise<string>((resolve, reject) => {
-        exec(command, (err, stdout, stderr) => {
-          if (err) {
-            reject(new Error(parseDockerErrorMessage(err.message || stderr || err)))
-          } else {
-            resolve(stdout)
-          }
-        })
-      })
+      if (this.ssh) {
+        return await this.ssh.exec(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`)
+      }
+
+      return await this.runLocalDocker(args, DOCKER_EXECUTION_TIMEOUT)
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -108,17 +100,16 @@ export default class DockerClient extends BaseClient {
         cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
       const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
 
-      const phpPath = `"${phpPathVal}"`
-      const path = `"${workingDirVal}"`
-      const clientPath = `"${clientPathVal}"`
-      const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${containerName} ${phpPath} ${clientPath} ${path} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-
-      if (this.ssh) {
-        return await this.ssh.exec(command)
+      const args = ['exec', containerName, phpPathVal, clientPathVal, workingDirVal, 'info']
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
       }
 
-      return execSync(command).toString()
+      if (this.ssh) {
+        return await this.ssh.exec(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`)
+      }
+
+      return await this.runLocalDocker(args, DOCKER_EXECUTION_TIMEOUT)
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -133,14 +124,15 @@ export default class DockerClient extends BaseClient {
   // @ts-ignore
   private async getContainersAction(_data: any): Promise<any> {
     try {
-      const dockerPath = await this.getDockerPath()
-
       let result
-      const command = `${dockerPath} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`
       if (this.ssh) {
-        result = (await this.ssh.exec(command)).trim()
+        result = (
+          await this.ssh.exec(`${await this.getDockerPath()} ps --format "{{.ID}}|{{.Names}}|{{.Image}}"`)
+        ).trim()
       } else {
-        result = execSync(command).toString().trim()
+        result = (
+          await this.runLocalDocker(['ps', '--format', '{{.ID}}|{{.Names}}|{{.Image}}'], DOCKER_SETUP_TIMEOUT)
+        ).trim()
       }
 
       if (result) {
@@ -167,13 +159,20 @@ export default class DockerClient extends BaseClient {
       throw new Error('Container is not selected')
     }
     try {
-      const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${containerName} php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
       let phpVersion
       if (this.ssh) {
-        phpVersion = (await this.ssh.exec(command)).trim()
+        phpVersion = (
+          await this.ssh.exec(
+            `${await this.getDockerPath()} exec ${quoteShellArg(containerName)} php -r ${quoteShellArg("echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;")}`
+          )
+        ).trim()
       } else {
-        phpVersion = execSync(command).toString().trim()
+        phpVersion = (
+          await this.runLocalDocker(
+            ['exec', containerName, 'php', '-r', "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"],
+            DOCKER_SETUP_TIMEOUT
+          )
+        ).trim()
       }
       if (parseFloat(phpVersion) < 7.4) {
         throw new Error('PHP version must be 7.4 or higher')
@@ -198,7 +197,7 @@ export default class DockerClient extends BaseClient {
         return dockerPathCache[this.connection.ssh.host]
       }
 
-      return execSync('which docker').toString().trim()
+      return 'docker'
     } catch (error) {
       if (this.connection.ssh) {
         dockerPathCache[this.connection.ssh.host] = 'docker'
@@ -213,15 +212,13 @@ export default class DockerClient extends BaseClient {
       if (!containerName) {
         throw new Error('Container is not selected')
       }
-      const dockerPath = await this.getDockerPath()
-
-      const command = `${dockerPath} exec ${containerName} which php`
-
       if (this.ssh) {
-        return (await this.ssh.exec(command)).trim()
+        return (
+          await this.ssh.exec(`${await this.getDockerPath()} exec ${quoteShellArg(containerName)} which php`)
+        ).trim()
       }
 
-      return execSync(command).toString().trim()
+      return (await this.runLocalDocker(['exec', containerName, 'which', 'php'], DOCKER_SETUP_TIMEOUT)).trim()
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -230,13 +227,9 @@ export default class DockerClient extends BaseClient {
   private async getClientPath(): Promise<string> {
     const phpVersion = this.connection.php_version || '8.2'
     let getClient
-    if (!isWindows()) {
-      getClient = app.isPackaged
-        ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
-        : path.join(__dirname, `../public/client-${phpVersion}.phar`)
-    } else {
-      getClient = path.join(process.cwd(), `public/client-${phpVersion}.phar`).replace(/\\/g, '/')
-    }
+    getClient = app.isPackaged
+      ? path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
+      : path.join(__dirname, `../public/client-${phpVersion}.phar`)
 
     if (this.ssh) {
       const tmpClientPath = `/tmp/client-${phpVersion}.phar`
@@ -251,14 +244,12 @@ export default class DockerClient extends BaseClient {
         throw new Error('Container is not selected')
       }
 
-      const dockerPath = await this.getDockerPath()
-
-      const command = `${dockerPath} cp "${getClient}" ${containerName}:${pharPath}`
-
       if (this.ssh) {
-        await this.ssh.exec(command)
+        await this.ssh.exec(
+          `${await this.getDockerPath()} cp ${quoteShellArg(getClient)} ${quoteShellArg(`${containerName}:${pharPath}`)}`
+        )
       } else {
-        execSync(command)
+        await this.runLocalDocker(['cp', getClient, `${containerName}:${pharPath}`], DOCKER_SETUP_TIMEOUT)
       }
 
       return pharPath
@@ -266,7 +257,23 @@ export default class DockerClient extends BaseClient {
       throw new Error(parseDockerErrorMessage(error))
     }
   }
+
+  private async runLocalDocker(args: string[], timeout: number): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      execFile('docker', args, { encoding: 'utf8', shell: false, timeout }, (error, stdout, stderr) => {
+        if (error) {
+          const message = parseDockerErrorMessage(stderr || error)
+          console.error('Docker command failed', { args, message })
+          reject(new Error(message))
+          return
+        }
+        resolve(stdout)
+      })
+    })
+  }
 }
+
+const quoteShellArg = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`
 
 const parseDockerErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {

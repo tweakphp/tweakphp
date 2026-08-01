@@ -43,7 +43,7 @@ export default class KubectlClient extends RemoteClient {
   }
 
   async getHomePath(): Promise<string> {
-    return (await this.kubectl.exec(`sh -c 'echo $HOME'`, this.connection)).trim()
+    return (await this.kubectl.exec('printf %s "$HOME"', this.connection)).trim()
   }
 
   // @ts-ignore
