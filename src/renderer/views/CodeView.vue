@@ -136,7 +136,6 @@
     tabsStore.updateTab(tab.value)
   }
 
-
   const getInfo = () => {
     vaporRequestEnvironmentTab()
     let connection = tabsStore.getConnectionConfig(tab.value)
