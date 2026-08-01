@@ -38,7 +38,8 @@ export default class DockerClient extends BaseClient {
       const path = `"${projectPath || this.connection.working_directory}"`
       const clientPath = `"${this.connection.client_path}"`
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const userFlag = this.connection.user ? ` -u ${this.connection.user}` : ''
+      const command = `${dockerPath} exec${userFlag} ${this.connection.container_name} ${phpPath} ${clientPath} ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
 
       if (this.ssh) {
         result = await this.ssh.exec(command)
@@ -59,7 +60,8 @@ export default class DockerClient extends BaseClient {
       const path = `"${this.connection.working_directory}"`
       const clientPath = `"${this.connection.client_path}"`
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} ${phpPath} ${clientPath} ${path} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const userFlag = this.connection.user ? ` -u ${this.connection.user}` : ''
+      const command = `${dockerPath} exec${userFlag} ${this.connection.container_name} ${phpPath} ${clientPath} ${path} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
 
       if (this.ssh) {
         result = await this.ssh.exec(command)
@@ -115,7 +117,8 @@ export default class DockerClient extends BaseClient {
     }
     try {
       const dockerPath = await this.getDockerPath()
-      const command = `${dockerPath} exec ${this.connection.container_name} php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
+      const userFlag = this.connection.user ? ` -u ${this.connection.user}` : ''
+      const command = `${dockerPath} exec${userFlag} ${this.connection.container_name} php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
       let phpVersion
       if (this.ssh) {
         phpVersion = (await this.ssh.exec(command)).trim()
@@ -157,8 +160,8 @@ export default class DockerClient extends BaseClient {
   private async getPHPPath(): Promise<string> {
     try {
       const dockerPath = await this.getDockerPath()
-
-      const command = `${dockerPath} exec ${this.connection.container_name} which php`
+      const userFlag = this.connection.user ? ` -u ${this.connection.user}` : ''
+      const command = `${dockerPath} exec${userFlag} ${this.connection.container_name} which php`
 
       if (this.ssh) {
         return (await this.ssh.exec(command)).trim()

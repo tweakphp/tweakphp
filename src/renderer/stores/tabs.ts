@@ -229,6 +229,7 @@ const normalize = (tab: any): Tab => {
       php_path: tab.docker.php_path ?? '',
       client_path: tab.docker.client_path ?? tab.docker.phar_path,
       ssh_id: tab.docker.ssh_id ?? 0,
+      user: tab.docker.user ?? '',
     }
   }
 

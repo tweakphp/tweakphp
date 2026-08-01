@@ -9,5 +9,6 @@ export interface ConnectionConfig {
   php_path: string
   client_path: string
   ssh_id: number
+  user?: string
   ssh?: SSHConnectionConfig
 }
