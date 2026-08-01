@@ -69,6 +69,7 @@
     tab,
     rawOutput,
     resultEditor,
+    codeEditor,
     settingsStore,
     executeStore,
     tabsStore,
@@ -135,21 +136,6 @@
     tabsStore.updateTab(tab.value)
   }
 
-  const executeHandler = () => {
-    let connection = tabsStore.getConnectionConfig(tab.value)
-    const { loader } = tab.value
-    const loaderCode = getLoader(loader ?? '')
-    const selected = codeEditor.value?.getSelectedText() ?? ''
-    const code = selected !== '' ? selected : tab.value.code
-
-    executeStore.setExecuting(true)
-
-    window.ipcRenderer.send('client.execute', {
-      connection: JSON.parse(JSON.stringify(connection)),
-      code,
-      loader: loaderCode,
-    })
-  }
 
   const getInfo = () => {
     vaporRequestEnvironmentTab()
