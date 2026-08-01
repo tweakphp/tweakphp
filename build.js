@@ -8,7 +8,6 @@ const options = {
   external: ['electron', 'better-sqlite3', 'cpu-features'],
   define: {
     'process.env.NODE_ENV': `"${process.argv[2] === '--dev' ? 'development' : 'production'}"`,
-    'process.platform': `"${process.platform}"`,
   },
   loader: {
     '.node': 'file',

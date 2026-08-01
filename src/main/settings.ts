@@ -194,7 +194,7 @@ export const detectPhpPaths = (): string[] => {
 
       for (const distro of distros) {
         try {
-          const wslPhp = execSync(`wsl -d "${distro}" which php`, {
+          const wslPhp = execSync(`wsl -d ${distro} which php`, {
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore'],
             timeout: 1500,
