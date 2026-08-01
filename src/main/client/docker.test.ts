@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { app } from 'electron'
+import { EventEmitter } from 'events'
 import DockerClient from './docker'
 
 vi.mock('../utils/ssh', () => ({
@@ -8,12 +9,14 @@ vi.mock('../utils/ssh', () => ({
     connect = vi.fn()
     disconnect = vi.fn()
     exec = vi.fn()
+    execStream = vi.fn()
     uploadFile = vi.fn()
   },
 }))
 
 vi.mock('child_process', () => ({
   execFile: vi.fn(),
+  spawn: vi.fn(),
 }))
 
 vi.mock('electron', () => ({
@@ -27,6 +30,14 @@ const mockExecFile = (handler: (args: string[]) => string) => {
     callback(null, handler(args), '')
     return {} as any
   }) as any)
+}
+
+const createChildProcess = () => {
+  const child = new EventEmitter() as any
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.kill = vi.fn()
+  return child
 }
 
 describe('DockerClient', () => {
@@ -117,6 +128,34 @@ describe('DockerClient', () => {
     )
   })
 
+  it('streams parsed events from a local Docker container', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const events: any[] = []
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    const streaming = client.executeStreaming('echo "test";', undefined, event => events.push(event))
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    child.stdout.emit('data', Buffer.from('TWEAKPHP_STR'))
+    child.stdout.emit('data', Buffer.from('EAM:{"type":"output","index":0,"data":"test"}\n'))
+    child.emit('close', 0, null)
+
+    await streaming
+
+    expect(spawn).toHaveBeenCalledWith(
+      'docker',
+      ['exec', 'my-container', '/usr/bin/php', '/tmp/client.phar', '/var/www', 'execute-stream', expect.any(String)],
+      { shell: false, windowsHide: true }
+    )
+    expect(events).toEqual([{ type: 'output', index: 0, data: 'test' }])
+  })
+
   it('executes Docker commands through SSH when configured', async () => {
     const client = new DockerClient({
       type: 'docker',
@@ -146,6 +185,7 @@ describe('DockerClient', () => {
   })
 
   it('returns parsed Docker errors from failed commands', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(execFile).mockImplementation(((_file: any, _args: any, _options: any, callback: any) => {
       callback(new Error("Command failed: docker exec my-container. See 'docker exec --help'"), '', '')
       return {} as any
@@ -160,6 +200,10 @@ describe('DockerClient', () => {
     } as any)
 
     await expect(client.info()).rejects.toThrow('Command failed: docker exec my-container.')
+    expect(consoleError).toHaveBeenCalledWith(
+      'Docker command failed',
+      expect.objectContaining({ message: 'Command failed: docker exec my-container.' })
+    )
   })
 
   it('rejects unsupported PHP versions during setup', async () => {

@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import path from 'path'
 
 const KUBECTL_SETUP_TIMEOUT = 30_000
@@ -77,24 +77,54 @@ export class Kubectl {
 
   async exec(command: string, params: { pod: string; context: string; namespace: string }): Promise<string> {
     try {
-      return (
-        await this.run(
-          [
-            'exec',
-            params.pod,
-            `--context=${params.context}`,
-            `--namespace=${params.namespace}`,
-            '--',
-            'sh',
-            '-lc',
-            command,
-          ],
-          KUBECTL_EXECUTION_TIMEOUT
-        )
-      ).trim()
+      return (await this.run(this.getExecArgs(command, params), KUBECTL_EXECUTION_TIMEOUT)).trim()
     } catch (error: any) {
       throw new Error(error)
     }
+  }
+
+  async execStream(
+    command: string,
+    params: { pod: string; context: string; namespace: string },
+    onData: (chunk: string) => void
+  ): Promise<void> {
+    const args = this.getExecArgs(command, params)
+    return await new Promise((resolve, reject) => {
+      let stderr = ''
+      let settled = false
+      let timeout: ReturnType<typeof setTimeout> | undefined
+      const child = spawn('kubectl', args, { shell: false, windowsHide: true })
+      const fail = (error: Error) => {
+        if (settled) return
+        settled = true
+        if (timeout) clearTimeout(timeout)
+        const message = stderr || error.message
+        console.error('kubectl stream command failed', { args, message })
+        reject(new Error(message))
+      }
+      timeout = setTimeout(() => {
+        child.kill()
+        fail(new Error(`kubectl command timed out after ${KUBECTL_EXECUTION_TIMEOUT / 1000} seconds`))
+      }, KUBECTL_EXECUTION_TIMEOUT)
+
+      child.stdout.on('data', chunk => onData(chunk.toString()))
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString()
+      })
+      child.on('error', fail)
+      child.on('close', (code, signal) => {
+        if (settled) return
+        settled = true
+        if (timeout) clearTimeout(timeout)
+        if (code === 0) {
+          resolve()
+          return
+        }
+        const message = stderr || `kubectl exited with code ${code ?? 'unknown'}${signal ? ` (${signal})` : ''}`
+        console.error('kubectl stream command failed', { args, message })
+        reject(new Error(message))
+      })
+    })
   }
 
   async uploadFile(
@@ -142,5 +172,18 @@ export class Kubectl {
         }
       )
     })
+  }
+
+  private getExecArgs(command: string, params: { pod: string; context: string; namespace: string }): string[] {
+    return [
+      'exec',
+      params.pod,
+      `--context=${params.context}`,
+      `--namespace=${params.namespace}`,
+      '--',
+      'sh',
+      '-lc',
+      command,
+    ]
   }
 }

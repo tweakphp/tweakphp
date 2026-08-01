@@ -1,10 +1,11 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/docker.type'
 import { SSH } from '../utils/ssh'
 import { BaseClient } from './client.base'
 import { app } from 'electron'
 import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
+import { createStreamOutputParser } from './stream-output'
 
 const dockerPathCache: Record<string, string> = {}
 const DOCKER_SETUP_TIMEOUT = 30_000
@@ -85,6 +86,44 @@ export default class DockerClient extends BaseClient {
       }
 
       return await this.runLocalDocker(args, DOCKER_EXECUTION_TIMEOUT)
+    } catch (error: unknown) {
+      throw new Error(parseDockerErrorMessage(error))
+    }
+  }
+
+  async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+    try {
+      await this.ensureConnectionConfig()
+
+      const containerName = cleanParam(this.connection.container_name)!
+      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
+      const workingDirVal =
+        cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
+      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
+      const args = [
+        'exec',
+        containerName,
+        phpPathVal,
+        clientPathVal,
+        workingDirVal,
+        'execute-stream',
+        base64Encode(code),
+      ]
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
+      }
+
+      const parser = createStreamOutputParser(onEvent)
+      if (this.ssh) {
+        await this.ssh.execStream(`${await this.getDockerPath()} ${args.map(quoteShellArg).join(' ')}`, chunk => {
+          parser.push(chunk)
+        })
+      } else {
+        await this.runLocalDockerStream(args, chunk => {
+          parser.push(chunk)
+        })
+      }
+      parser.finish()
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -268,6 +307,47 @@ export default class DockerClient extends BaseClient {
           return
         }
         resolve(stdout)
+      })
+    })
+  }
+
+  private async runLocalDockerStream(args: string[], onData: (chunk: string) => void): Promise<void> {
+    return await new Promise((resolve, reject) => {
+      let stderr = ''
+      let settled = false
+      let timeout: ReturnType<typeof setTimeout> | undefined
+      const child = spawn('docker', args, { shell: false, windowsHide: true })
+      const fail = (error: Error) => {
+        if (settled) return
+        settled = true
+        if (timeout) clearTimeout(timeout)
+        const message = parseDockerErrorMessage(stderr || error)
+        console.error('Docker stream command failed', { args, message })
+        reject(new Error(message))
+      }
+      timeout = setTimeout(() => {
+        child.kill()
+        fail(new Error(`Docker command timed out after ${DOCKER_EXECUTION_TIMEOUT / 1000} seconds`))
+      }, DOCKER_EXECUTION_TIMEOUT)
+
+      child.stdout.on('data', chunk => onData(chunk.toString()))
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString()
+      })
+      child.on('error', fail)
+      child.on('close', (code, signal) => {
+        if (settled) return
+        settled = true
+        if (timeout) clearTimeout(timeout)
+        if (code === 0) {
+          resolve()
+          return
+        }
+        const message = parseDockerErrorMessage(
+          stderr || `Docker exited with code ${code ?? 'unknown'}${signal ? ` (${signal})` : ''}`
+        )
+        console.error('Docker stream command failed', { args, message })
+        reject(new Error(message))
       })
     })
   }

@@ -5,6 +5,7 @@ vi.mock('../utils/kubectl', () => {
   return {
     Kubectl: class {
       exec = vi.fn()
+      execStream = vi.fn()
       uploadFile = vi.fn()
       getContexts = vi.fn()
       getNamespaces = vi.fn()
@@ -31,6 +32,33 @@ describe('KubectlClient', () => {
     const result = await client.remoteExec('echo hello')
     expect(result).toBe('output\n')
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith('echo hello', conn)
+  })
+
+  it('uses execute-stream and emits structured events', async () => {
+    const conn = {
+      type: 'kubectl',
+      path: '/app',
+      namespace: 'default',
+      pod: 'my-pod',
+      php: '8.3',
+      client_path: '/root/.tweakphp/client-8.3.phar',
+    } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.execStream.mockImplementation(async (_command: string, _connection: any, onData: any) => {
+      onData('TWEAKPHP_STR')
+      onData('EAM:{"type":"statement.started","index":0,"line":1,"code":"echo 1;"}\n')
+    })
+    const events: any[] = []
+
+    await client.executeStreaming('echo 1;', undefined, event => events.push(event))
+
+    expect(mockKubectlInstance.execStream).toHaveBeenCalledWith(
+      expect.stringContaining('execute-stream'),
+      conn,
+      expect.any(Function)
+    )
+    expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
   })
 
   it('remoteUploadFile calls kubectl.uploadFile', async () => {
