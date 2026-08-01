@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tweakphp-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tweakphp-k8s-laravel
+  namespace: tweakphp-test
+  labels:
+    app: tweakphp-k8s-laravel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tweakphp-k8s-laravel
+  template:
+    metadata:
+      labels:
+        app: tweakphp-k8s-laravel
+    spec:
+      containers:
+        - name: laravel
+          image: php:8.3-cli
+          command: ["/bin/sh", "-c", "tail -f /dev/null"]
+          workingDir: /var/www/html
+          ports:
+            - containerPort: 8000
