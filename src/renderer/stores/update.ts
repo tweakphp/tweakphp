@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { UpdateInfo } from 'electron-updater'
 import semver from 'semver'
+import { storage, repositoryStorageKeys } from '../storage'
 
 export interface DownloadProgress {
   percent: number
@@ -21,19 +22,14 @@ export const useUpdateStore = defineStore('update', () => {
     bytesPerSecond: 0,
   })
 
-  let storedUpdate = localStorage.getItem('update')
-  if (storedUpdate && storedUpdate !== 'undefined' && storedUpdate !== 'null') {
-    try {
-      update.value = JSON.parse(storedUpdate)
-    } catch (error) {
-      localStorage.removeItem('update') // Clean up invalid data
-    }
-  }
+  const ready = storage.get<UpdateInfo>(repositoryStorageKeys.update).then(value => {
+    if (value) update.value = value
+  })
 
   const setUpdate = (info: UpdateInfo): void => {
     checking.value = false
     update.value = info
-    localStorage.setItem('update', JSON.stringify(info))
+    void storage.set(repositoryStorageKeys.update, info)
   }
 
   const setChecking = (value: boolean): void => {
@@ -76,5 +72,6 @@ export const useUpdateStore = defineStore('update', () => {
     setDownloadProgress,
     resetDownloadProgress,
     isUpdateAvailable,
+    ready,
   }
 })

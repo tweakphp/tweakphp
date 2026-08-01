@@ -5,16 +5,30 @@ import { app, ipcMain } from 'electron'
 import { Settings } from '../types/settings.type'
 import os from 'os'
 import { isWindows } from './system/platform.ts'
+import { execSync } from 'child_process'
 
 const homeDir = os.homedir()
 
-const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
+export const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
 
 if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
 }
 const laravelPath = path.join(settingsDir, 'laravel')
 export const settingsPath = path.join(settingsDir, 'settings.json')
+const DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 60
+const MIN_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 1
+const MAX_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 3600
+
+export const normalizeDockerKubectlExecutionTimeoutSeconds = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS
+
+  return Math.min(
+    MAX_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
+    Math.max(MIN_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS, Math.round(parsed))
+  )
+}
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
@@ -38,10 +52,26 @@ const defaultSettings: Settings = {
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
   navigationDisplay: 'collapsed',
+  mcpEnabled: false,
+  mcpPort: 3000,
+  streaming: true,
+  dockerKubectlExecutionTimeoutSeconds: DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
 }
 
 export const init = async () => {
   ipcMain.on('settings.store', async (_event: any, data: Settings) => {
+    data.php = handlePhpExecutable(_event, data.php)
+    setSettings(data)
+    !isWindows() && (await lsp.init())
+  })
+
+  ipcMain.on('settings.detect-php', async (event: any) => {
+    const paths = detectPhpPaths()
+    event.reply('settings.detect-php.reply', paths)
+  })
+
+  // Awaitable variant used where callers need confirmation the write completed
+  ipcMain.handle('settings.save', async (_event: any, data: Settings) => {
     data.php = handlePhpExecutable(_event, data.php)
     setSettings(data)
     await lsp.init()
@@ -66,6 +96,9 @@ const handlePhpExecutable = (_event: any, phpPath: string) => {
 }
 
 export const setSettings = (data: Settings) => {
+  data.dockerKubectlExecutionTimeoutSeconds = normalizeDockerKubectlExecutionTimeoutSeconds(
+    data.dockerKubectlExecutionTimeoutSeconds
+  )
   fs.writeFileSync(settingsPath, JSON.stringify(data))
 }
 
@@ -106,8 +139,18 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+      mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
+      mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
+      streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,
+      dockerKubectlExecutionTimeoutSeconds: normalizeDockerKubectlExecutionTimeoutSeconds(
+        settingsJson.dockerKubectlExecutionTimeoutSeconds
+      ),
     }
-    if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {
+    if (
+      settingsJson.version !== defaultSettings.version ||
+      settingsJson.laravelPath !== defaultSettings.laravelPath ||
+      settingsJson.dockerKubectlExecutionTimeoutSeconds !== settings.dockerKubectlExecutionTimeoutSeconds
+    ) {
       setSettings(settings)
     }
   } else {
@@ -115,6 +158,86 @@ export const getSettings = () => {
     setSettings(settings)
   }
 
-  // merge default settings with stored settings and take stored settings as priority
   return settings
+}
+
+export const detectPhpPaths = (): string[] => {
+  const pathsSet = new Set<string>()
+
+  try {
+    const cmd = isWindows() ? 'where php' : 'which -a php'
+    const out = execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    if (out) {
+      out.split(/\r?\n/).forEach(p => {
+        const cleaned = p.trim()
+        if (cleaned && fs.existsSync(cleaned)) {
+          pathsSet.add(cleaned)
+        }
+      })
+    }
+  } catch (e) {}
+
+  if (isWindows()) {
+    const userHome = os.homedir()
+    const commonPaths = [
+      'C:\\php\\php.exe',
+      'C:\\xampp\\php\\php.exe',
+      path.join(userHome, 'AppData', 'Local', 'Herd', 'bin', 'php.exe'),
+    ]
+
+    const laragonPhpDir = 'C:\\laragon\\bin\\php'
+    try {
+      if (fs.existsSync(laragonPhpDir)) {
+        const subdirs = fs.readdirSync(laragonPhpDir)
+        subdirs.forEach(dir => {
+          const p = path.join(laragonPhpDir, dir, 'php.exe')
+          if (fs.existsSync(p)) {
+            pathsSet.add(p)
+          }
+        })
+      }
+    } catch (e) {}
+
+    commonPaths.forEach(p => {
+      if (fs.existsSync(p)) {
+        pathsSet.add(p)
+      }
+    })
+
+    try {
+      const out = execSync('wsl -l -q', { encoding: 'utf16le', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 })
+      let distrosStr = out.toString()
+      if (distrosStr.includes('\u0000')) {
+        distrosStr = distrosStr.replace(/\u0000/g, '')
+      }
+      const distros = distrosStr
+        .split(/\r?\n/)
+        .map(d => d.trim())
+        .filter(Boolean)
+        .filter(d => !d.toLowerCase().includes('docker'))
+
+      for (const distro of distros) {
+        try {
+          const wslPhp = execSync(`wsl -d ${distro} which php`, {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 1500,
+          }).trim()
+          if (wslPhp && !wslPhp.includes('not found') && wslPhp.startsWith('/')) {
+            const uncPath = `\\\\wsl.localhost\\${distro}${wslPhp.replace(/\//g, '\\')}`
+            pathsSet.add(uncPath)
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  } else {
+    const commonPaths = ['/usr/bin/php', '/usr/local/bin/php', '/opt/homebrew/bin/php']
+    commonPaths.forEach(p => {
+      if (fs.existsSync(p)) {
+        pathsSet.add(p)
+      }
+    })
+  }
+
+  return Array.from(pathsSet)
 }

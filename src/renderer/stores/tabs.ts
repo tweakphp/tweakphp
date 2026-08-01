@@ -11,19 +11,11 @@ import { useSettingsStore } from './settings'
 import { useSSHStore } from './ssh'
 import { useKubectlStore } from './kubectl'
 import { useVaporStore } from './vapor.ts'
+import { storage, repositoryStorageKeys, toPlain } from '../storage'
 
 export const useTabsStore = defineStore('tabs', () => {
   // setup tabs
-  let defaultTabs = []
-  let storedTabs = localStorage.getItem('tabs')
-  if (storedTabs) {
-    defaultTabs = JSON.parse(storedTabs)
-      .filter((tab: any) => tab.type !== 'home')
-      .map((tab: any) => {
-        return normalize(tab)
-      })
-  }
-  const tabs: Ref<Tab[]> = ref(defaultTabs)
+  const tabs: Ref<Tab[]> = ref([])
   const current: Ref<Tab | null> = ref(null)
   const scrollPosition = ref(0)
   const settingsStore = useSettingsStore()
@@ -31,21 +23,28 @@ export const useTabsStore = defineStore('tabs', () => {
   const kubectlStore = useKubectlStore()
   const vaporStore = useVaporStore()
 
+  const ready = Promise.all([
+    window.ipcRenderer.invoke('storage:tabs:list'),
+    storage.get<string>(repositoryStorageKeys.currentTab),
+  ]).then(([storedTabs, currentTabId]) => {
+    tabs.value = (storedTabs as any[]).filter(tab => tab.type !== 'home').map(normalize)
+    current.value = findTab(currentTabId ? parseInt(currentTabId) : null)
+  })
+
   const setCurrent = (tab: Tab | null): void => {
     current.value = tab
     if (tab) {
-      localStorage.setItem('currentTab', tab.id.toString())
+      void storage.set(repositoryStorageKeys.currentTab, tab.id.toString())
       return
     }
-    localStorage.removeItem('currentTab')
+    void storage.remove(repositoryStorageKeys.currentTab)
   }
 
   const getCurrent = (): Tab | null => {
     if (current.value) {
       return current.value
     }
-    let id = localStorage.getItem('currentTab')
-    return findTab(id ? parseInt(id) : null)
+    return findTab()
   }
 
   const addTab = (data: { id?: number | null; type: string; path: string }) => {
@@ -53,16 +52,15 @@ export const useTabsStore = defineStore('tabs', () => {
       data.id = Date.now()
     }
 
-    const pathSplitter = window.platformInfo.getPlatform() === 'win32' ? '\\' : '/'
-
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.path.split(pathSplitter).pop() as string,
+      name: data.path.split(/[/\\]/).pop() as string,
       path: data.path,
       execution: 'local',
       code: '<?php\n\n',
       result: [],
+      queries: [],
       pane: {
         code: 50,
         result: 50,
@@ -78,7 +76,7 @@ export const useTabsStore = defineStore('tabs', () => {
       return tabExists
     }
     tabs.value.push(tab)
-    localStorage.setItem('tabs', JSON.stringify(tabs.value))
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
     setCurrent(tab)
     return tab
   }
@@ -86,7 +84,7 @@ export const useTabsStore = defineStore('tabs', () => {
   const removeTab = async (id: number) => {
     let index = tabs.value.findIndex(tab => tab.id === id)
     tabs.value.splice(index, 1)
-    localStorage.setItem('tabs', JSON.stringify(tabs.value))
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
       let activeTab = tabs.value[tabs.value.length - 1]
@@ -101,7 +99,7 @@ export const useTabsStore = defineStore('tabs', () => {
   const updateTab = (tab: Tab) => {
     let index = tabs.value.findIndex(t => t.id === tab.id)
     tabs.value[index] = tab
-    localStorage.setItem('tabs', JSON.stringify(tabs.value))
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
   }
 
   const findTab = (id: number | null = null) => {
@@ -187,6 +185,7 @@ export const useTabsStore = defineStore('tabs', () => {
     scrollPosition,
     setScrollPosition,
     getConnectionConfig,
+    ready,
   }
 })
 
@@ -209,6 +208,7 @@ const normalize = (tab: any): Tab => {
     execution: (tab.execution as 'local' | 'ssh' | 'vapor' | 'docker' | 'kubectl') ?? 'local',
     loader: tab.loader as string,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
+    queries: Array.isArray(tab.queries) ? tab.queries : [],
     pane: {
       code: (tab.pane?.code as number) ?? 50,
       result: (tab.pane?.result as number) ?? 50,
@@ -229,6 +229,7 @@ const normalize = (tab: any): Tab => {
       php_path: tab.docker.php_path ?? '',
       client_path: tab.docker.client_path ?? tab.docker.phar_path,
       ssh_id: tab.docker.ssh_id ?? 0,
+      user: tab.docker.user ?? '',
     }
   }
 

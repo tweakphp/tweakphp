@@ -5,10 +5,9 @@ const options = {
   platform: 'node',
   bundle: true,
   target: 'node20',
-  external: ['electron', 'better-sqlite3'],
+  external: ['electron', 'better-sqlite3', 'cpu-features'],
   define: {
     'process.env.NODE_ENV': `"${process.argv[2] === '--dev' ? 'development' : 'production'}"`,
-    'process.platform': `"${process.platform}"`,
   },
   loader: {
     '.node': 'file',

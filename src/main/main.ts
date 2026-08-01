@@ -11,9 +11,10 @@ import * as laravel from './laravel'
 import * as updater from './system/updater.ts'
 import * as link from './system/link.ts'
 import * as tray from './system/tray.ts'
+import * as mcp from './mcp/index.ts'
 
 import { runMigrations } from './db/migration.ts'
-import { initCodeHistory } from './tools/code-history.ts'
+import { initStorageIpc } from './ipc/storage-ipc.ts'
 
 import url from 'url'
 
@@ -21,12 +22,16 @@ import { fixPath } from './utils/fix-path.ts'
 import { isWindows } from './system/platform.ts'
 import { AiCompletion } from './tools/ai-completion.ts'
 import { Tab } from '../types/tab.type.ts'
+import { initLogger } from './utils/logger.ts'
 
 runMigrations()
+initStorageIpc()
 
 fixPath()
 
 Object.assign(console, log.functions)
+
+initLogger(log, settings.settingsDir, 7)
 
 dotenv.config()
 
@@ -58,10 +63,6 @@ const createMainWindow = async () => {
 
   window.webContents.on('did-finish-load', async () => {
     try {
-      window.webContents.send('init.reply', {
-        settings: settings.getSettings(),
-      })
-
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
@@ -72,6 +73,7 @@ const createMainWindow = async () => {
 
       window.show()
     } catch (error) {
+      console.error(error)
     } finally {
       window.setProgressBar(-1)
     }
@@ -109,8 +111,22 @@ const createMainWindow = async () => {
   isDev && window.webContents.openDevTools()
 }
 
+ipcMain.on('init', event => {
+  event.sender.send('init.reply', {
+    settings: settings.getSettings(),
+  })
+})
+
 const initializeModules = async () => {
-  await Promise.all([settings.init(), tray.init(), updater.init(), link.init(), client.init(), source.init()])
+  await Promise.all([
+    settings.init(),
+    tray.init(),
+    updater.init(),
+    link.init(),
+    client.init(),
+    source.init(),
+    mcp.init(),
+  ])
 }
 
 app.whenReady().then(async () => {
@@ -126,6 +142,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', async () => {
   await lsp.shutdown()
+  const mcpServer = mcp.getMCPServer()
+  if (mcpServer.isRunning()) {
+    await mcpServer.stop()
+  }
 })
 
 ipcMain.on('lsp.restart', async event => {
@@ -139,15 +159,13 @@ ipcMain.on('lsp.restart', async event => {
     event.sender.send('lsp.restart.success')
   } catch (error) {
     console.error('Failed to restart LSP server:', error)
-    event.sender.send('lsp.restart.error', error?.message)
+    event.sender.send('lsp.restart.error', error)
   }
 })
 
-initCodeHistory()
-
 const aiService = new AiCompletion()
 
-ipcMain.handle('ai:get-completion', async (event, { context, tab }) => {
+ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
   try {
     return await aiService.getCompletions(context, tab as Tab)
   } catch (error: any) {

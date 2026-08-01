@@ -1,5 +1,6 @@
 import { Ref, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { toPlain } from '../storage'
 
 export function createConnectionStore<T extends { id: number }>(
   storeName: string,
@@ -7,15 +8,14 @@ export function createConnectionStore<T extends { id: number }>(
   normalize: (raw: any) => T
 ) {
   return defineStore(storeName, () => {
-    let storedConnections: T[] = []
-    const storedConnectionsRaw = localStorage.getItem(storageKey)
-    if (storedConnectionsRaw) {
-      storedConnections = JSON.parse(storedConnectionsRaw).map((connection: any) => normalize(connection))
-    }
-    const connections: Ref<T[]> = ref(storedConnections) as Ref<T[]>
+    const connections: Ref<T[]> = ref([]) as Ref<T[]>
     const connecting = ref(false)
 
-    const persist = () => localStorage.setItem(storageKey, JSON.stringify(connections.value))
+    const ready = window.ipcRenderer.invoke('storage:connections:list').then((stored: any[]) => {
+      connections.value = stored
+        .filter(connection => connection.type === storageKey.replace('-connections', ''))
+        .map(connection => normalize({ ...connection, id: Number(connection.id) || connection.id })) as T[]
+    })
 
     const getConnection = (id: number): T | undefined => {
       return connections.value.find(c => c.id === id)
@@ -27,14 +27,14 @@ export function createConnectionStore<T extends { id: number }>(
 
     const addConnection = (config: T) => {
       connections.value.push(config)
-      persist()
+      void window.ipcRenderer.invoke('storage:connections:save', toPlain(config))
     }
 
     const updateConnection = (id: number, config: T): void => {
       const index = connections.value.findIndex(c => c.id === id)
       if (index !== -1) {
         connections.value[index] = config
-        persist()
+        void window.ipcRenderer.invoke('storage:connections:save', toPlain(config))
       }
     }
 
@@ -42,10 +42,10 @@ export function createConnectionStore<T extends { id: number }>(
       const index = connections.value.findIndex(c => c.id === id)
       if (index !== -1) {
         connections.value.splice(index, 1)
-        persist()
+        void window.ipcRenderer.invoke('storage:connections:delete', id)
       }
     }
 
-    return { connections, setConnecting, connecting, remove, getConnection, addConnection, updateConnection }
+    return { connections, setConnecting, connecting, remove, getConnection, addConnection, updateConnection, ready }
   })
 }

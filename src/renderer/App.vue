@@ -15,6 +15,7 @@
   import { UpdateInfo } from 'electron-updater'
   import ProjectTile from './components/ProjectTile.vue'
   import Modal from './components/Modal.vue'
+  import CloseTabModal from './components/CloseTabModal.vue'
   import NewProjectView from './views/NewProjectView.vue'
   import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
 
@@ -32,18 +33,9 @@
   const settingsStore = useSettingsStore()
   const updateStore = useUpdateStore()
 
-  const platform = window.platformInfo.getPlatform()
   const newProjectModal = ref()
 
   const isAppReady = ref(false)
-  const initAppInterval = setInterval(() => {
-    if (isAppReady.value) {
-      clearInterval(initAppInterval)
-      return
-    }
-
-    window.ipcRenderer.send('init')
-  }, 500)
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -90,6 +82,7 @@
       settingsStore.setSettings(e.settings)
       isAppReady.value = true
     })
+    window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
       let tab = tabStore.addTab({
         path: e,
@@ -104,6 +97,9 @@
     })
     window.ipcRenderer.on('client.execute.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
+    })
+    window.ipcRenderer.on('client.execute.stream', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client.execute.stream', { detail: e }))
     })
     window.ipcRenderer.on('client.action.reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client.action.reply', { detail: e }))
@@ -139,16 +135,18 @@
       }
     }
   }
+
+  const requestCloseTab = (id: number) => {
+    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
+  }
 </script>
 
 <template>
   <div v-if="isAppReady" class="h-full" :style="{ color: settingsStore.colors.foreground }">
     <TitleBar />
     <aside
-      class="fixed z-40 left-0 bottom-0 justify-between border-r transition-all duration-300"
+      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r transition-all duration-300"
       :class="{
-        'top-[38px]': platform === 'darwin',
-        'top-0': platform !== 'darwin',
         'w-12': !settingsStore.isNavigationExpanded,
         'w-48': settingsStore.isNavigationExpanded,
       }"
@@ -174,7 +172,7 @@
           <template v-for="tab in tabStore.tabs" :key="tab.id">
             <button
               @click="router.replace({ name: 'code', params: { id: tab.id } })"
-              @mousedown.middle="tabStore.removeTab(tab.id)"
+              @mousedown.middle="requestCloseTab(tab.id)"
               class="w-full"
             >
               <ProjectMenuContext :tab="tab">
@@ -239,5 +237,6 @@
     <Modal title="Add new project" ref="newProjectModal" size="xl">
       <NewProjectView @opened="newProjectModal.closeModal()" />
     </Modal>
+    <CloseTabModal />
   </div>
 </template>

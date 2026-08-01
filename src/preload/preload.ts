@@ -15,18 +15,44 @@ export interface PlatformInfo {
   isDev: () => boolean
 }
 
+// Map from user callback → per-channel wrapper, so removeListener can find the right wrapper
+const listenerWrappers = new Map<(...args: any[]) => void, Map<string, (...args: any[]) => void>>()
+
+const toCloneable = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map(item => toCloneable(item)) as T
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, toCloneable(item)])) as T
+  }
+
+  return value
+}
+
 const ipcRendererHandler: IpcRenderer = {
   invoke: (channel: string, ...args: any[]) => {
-    return ipcRenderer.invoke(channel, ...args)
+    return ipcRenderer.invoke(channel, ...args.map(toCloneable))
   },
   send: (channel: string, ...args: any[]) => {
-    ipcRenderer.send(channel, ...args)
+    ipcRenderer.send(channel, ...args.map(toCloneable))
   },
   on: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.on(channel, (_, ...args) => callback(...args))
+    const wrapper = (_: Electron.IpcRendererEvent, ...args: any[]) => callback(...args)
+    if (!listenerWrappers.has(callback)) {
+      listenerWrappers.set(callback, new Map())
+    }
+    listenerWrappers.get(callback)!.set(channel, wrapper)
+    ipcRenderer.on(channel, wrapper)
   },
   removeListener: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.removeListener(channel, callback)
+    const wrapper = listenerWrappers.get(callback)?.get(channel)
+    if (wrapper) {
+      ipcRenderer.removeListener(channel, wrapper)
+      const channelMap = listenerWrappers.get(callback)!
+      channelMap.delete(channel)
+      if (channelMap.size === 0) listenerWrappers.delete(callback)
+    }
   },
   once: (channel: string, callback: (...args: any[]) => void) => {
     ipcRenderer.once(channel, (_, ...args) => callback(...args))

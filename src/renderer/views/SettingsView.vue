@@ -4,6 +4,7 @@
   import { useSettingsStore } from '../stores/settings'
   import GeneralSettings from './settings/GeneralSettings.vue'
   import LoadersSettings from './settings/LoadersSettings.vue'
+  import MCPSettings from './settings/MCPSettings.vue'
   import { useRoute, useRouter } from 'vue-router'
   import AiAutocompleteSetting from '@/views/settings/AiAutocompleteSetting.vue'
   const settingsStore = useSettingsStore()
@@ -43,11 +44,20 @@
         >
           Loaders
         </li>
+        <li class="mx-3">|</li>
+        <li
+          class="cursor-pointer hover:text-primary-500"
+          :class="{ 'text-primary-500': route.params.tab === 'mcp' }"
+          @click="router.push({ name: 'settings', params: { tab: 'mcp' } })"
+        >
+          MCP Server
+        </li>
       </ul>
       <div class="py-10">
         <GeneralSettings v-if="!route.params.tab" />
         <LoadersSettings v-if="route.params.tab === 'loaders'" />
         <AiAutocompleteSetting v-if="route.params.tab === 'ai'" />
+        <MCPSettings v-if="route.params.tab === 'mcp'" />
       </div>
     </div>
   </Container>

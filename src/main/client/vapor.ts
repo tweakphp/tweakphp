@@ -15,8 +15,8 @@ export class VaporClient extends BaseClient {
     super(connection)
   }
 
-  async execute(code: string, loader?: string): Promise<string> {
-    const clientPath = this.connection.client_path
+  async execute(code: string, loader?: string, projectPath?: string): Promise<string> {
+    const clientPath = projectPath || this.connection.client_path
     const env = this.connection.environment || 'local'
 
     if (!clientPath) throw new Error('Missing client path in connection configuration.')
@@ -42,7 +42,7 @@ export class VaporClient extends BaseClient {
     }
   }
 
-  async info(loader?: string): Promise<string> {
+  async info(_loader?: string): Promise<string> {
     return new Promise(async resolve => {
       resolve('{}')
     })

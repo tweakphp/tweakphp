@@ -19,7 +19,7 @@ export abstract class BaseClient implements Client {
     throw new Error(`Method ${type} does not exist.`)
   }
 
-  abstract execute(code: string, loader?: string): Promise<string>
+  abstract execute(code: string, loader?: string, projectPath?: string): Promise<string>
 
   abstract info(loader?: string): Promise<string>
 

@@ -1,23 +1,21 @@
 <script setup lang="ts">
-  import { useSettingsStore } from '@/stores/settings'
+  import { useSettingsStore } from '../../stores/settings'
   import { ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
   import { computed, ref } from 'vue'
   import Modal from '@/components/Modal.vue'
-  import { useTabsStore } from '@/stores/tabs'
   import ChangeNameProject from '@/views/ChangeNameProject.vue'
   const changeNameProject = ref()
-  import { Tab } from '../../types/tab.type'
+  import { Tab } from '../../../types/tab.type'
   import TrashIcon from '@/components/icons/TrashIcon.vue'
+  import events from '../../events'
 
   const settingsStore = useSettingsStore()
-  const tabsStore = useTabsStore()
-
   const props = defineProps<{
     tab: Tab
   }>()
 
   const lastFolderName = computed(() => {
-    const pathParts = props.tab.path.split(/[/\\]/)
+    const pathParts = (props.tab.path ?? '').split(/[/\\]/)
     return pathParts[pathParts.length - 1] || null
   })
 
@@ -30,7 +28,7 @@
   }
 
   function removeTab() {
-    tabsStore.removeTab(props.tab.id)
+    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: props.tab.id }))
   }
 
   const hoverChangeName = ref(false)

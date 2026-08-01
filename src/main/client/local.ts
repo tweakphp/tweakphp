@@ -1,64 +1,97 @@
-import { exec, execSync } from 'child_process'
-import { ConnectionConfig } from '../../types/local.type'
-import * as settings from '../settings'
-import { app } from 'electron'
+import * as fs from 'fs'
 import path from 'path'
+import { app } from 'electron'
+import { ConnectionConfig } from '../../types/local.type'
 import { BaseClient } from './client.base'
-import { base64Encode } from '../utils/base64-encode'
+import {
+  executeWindows,
+  executeStreamingWindows,
+  infoWindows,
+  getPHPVersionWindows,
+  getWslDetails,
+  getWslDistros,
+  resolveWslDistro,
+  translateWindowsToWslPath,
+  getWslPhpExecutable,
+} from './local.windows'
+import { executeUnix, executeStreamingUnix, infoUnix, getPHPVersionUnix } from './local.unix'
+
+export { getWslDistros, resolveWslDistro, getWslDetails, translateWindowsToWslPath, getWslPhpExecutable }
+
+const isWindowsOrWsl = (projectPath?: string): boolean => {
+  if (process.platform === 'win32') return true
+  if (projectPath && getWslDetails(projectPath).isWsl) return true
+  return false
+}
 
 export class LocalClient extends BaseClient {
   constructor(public connection: ConnectionConfig) {
     super(connection)
   }
 
-  execute(code: string, loader?: string): Promise<string> {
-    return new Promise(resolve => {
-      const phpPath = `"${this.connection.php}"`
-      const path = `"${this.connection.path}"`
-      const command = `${phpPath} "${getLocalPharClient()}" ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-      exec(command, (_err, stdout) => {
-        resolve(stdout)
-      })
-    })
+  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
+    const targetPath = projectPath || this.connection.path
+    const pharPath = getLocalPharClient(this.connection)
+
+    if (isWindowsOrWsl(targetPath)) {
+      return executeWindows(this.connection, pharPath, code, loader, targetPath)
+    }
+    return executeUnix(this.connection, pharPath, code, loader, targetPath)
+  }
+
+  executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+    const pharPath = getLocalPharClient(this.connection)
+
+    if (isWindowsOrWsl(this.connection.path)) {
+      return executeStreamingWindows(this.connection, pharPath, code, loader, onEvent)
+    }
+    return executeStreamingUnix(this.connection, pharPath, code, loader, onEvent)
   }
 
   async info(loader?: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      exec(
-        `"${this.connection.php}" "${getLocalPharClient()}" "${this.connection.path}" info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`,
-        (error, stdout) => {
-          if (error) {
-            reject(error.message)
-            return
-          }
-          resolve(stdout?.replaceAll('\n', ''))
-        }
-      )
-    })
+    const pharPath = getLocalPharClient(this.connection)
+
+    if (isWindowsOrWsl(this.connection.path)) {
+      return infoWindows(this.connection, pharPath, loader)
+    }
+    return infoUnix(this.connection, pharPath, loader)
   }
 }
 
-export const getLocalPharClient = (): string => {
-  const phpVersion = getPHPVersion(settings.getSettings().php)
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, `public/client-${phpVersion}.phar`)
-  }
-
+export const getLocalPharClient = (connection?: ConnectionConfig): string => {
   if (process.env.CLIENT_PATH) {
     return process.env.CLIENT_PATH
   }
 
-  return path.join(__dirname, `../public/client-${phpVersion}.phar`)
+  const phpVersion = getPHPVersion(connection)
+  const baseDir = app.isPackaged ? path.join(process.resourcesPath, 'public') : path.join(__dirname, '../public')
+  const exact = path.join(baseDir, `client-${phpVersion}.phar`)
+
+  if (fs.existsSync(exact)) {
+    return exact
+  }
+
+  try {
+    if (fs.existsSync(baseDir)) {
+      const available = fs
+        .readdirSync(baseDir)
+        .filter(f => f.match(/^client-[\d.]+\.phar$/))
+        .sort()
+        .reverse()
+
+      if (available.length > 0) {
+        return path.join(baseDir, available[0])
+      }
+    }
+  } catch (e) {}
+
+  return exact
 }
 
-export const getPHPVersion = (path: string | undefined) => {
-  try {
-    const command = `"${path}" -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`
-    const output = execSync(command, { encoding: 'utf8' })
-    return output.trim()
-  } catch (error: any) {
-    console.error('Error executing PHP command:', error.message)
-    console.error('Stack:', error.stack)
-    return null
+export const getPHPVersion = (connection?: ConnectionConfig | string): string | null => {
+  const projectPath = typeof connection === 'string' ? '' : (connection?.path ?? '')
+  if (isWindowsOrWsl(projectPath)) {
+    return getPHPVersionWindows(connection)
   }
+  return getPHPVersionUnix(connection)
 }
