@@ -9,7 +9,7 @@ import { execSync } from 'child_process'
 
 const homeDir = os.homedir()
 
-const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
+export const settingsDir = app.isPackaged ? path.join(homeDir, '.tweakphp') : path.join(homeDir, '.tweakphp_dev')
 
 if (!fs.existsSync(settingsDir)) {
   fs.mkdirSync(settingsDir, { recursive: true })
@@ -39,6 +39,8 @@ const defaultSettings: Settings = {
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
   navigationDisplay: 'collapsed',
+  mcpEnabled: false,
+  mcpPort: 3000,
   streaming: true,
 }
 
@@ -52,6 +54,13 @@ export const init = async () => {
   ipcMain.on('settings.detect-php', async (event: any) => {
     const paths = detectPhpPaths()
     event.reply('settings.detect-php.reply', paths)
+  })
+
+  // Awaitable variant used where callers need confirmation the write completed
+  ipcMain.handle('settings.save', async (_event: any, data: Settings) => {
+    data.php = handlePhpExecutable(_event, data.php)
+    setSettings(data)
+    await lsp.init()
   })
 }
 
@@ -113,6 +122,8 @@ export const getSettings = () => {
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
       navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
+      mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
+      mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
       streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,
     }
     if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {

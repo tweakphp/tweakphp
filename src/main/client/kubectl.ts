@@ -1,4 +1,5 @@
 import { ConnectionConfig } from '../../types/kubectl.type'
+import { base64Encode } from '../utils/base64-encode'
 import { Kubectl } from '../utils/kubectl'
 import { RemoteClient } from './client.remote'
 
@@ -12,6 +13,29 @@ export default class KubectlClient extends RemoteClient {
 
   async remoteExec(command: string): Promise<string> {
     return this.kubectl.exec(command, this.connection)
+  }
+
+  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
+    return new Promise(async resolve => {
+      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const result = await this.kubectl.exec(command, this.connection)
+      resolve(result)
+    })
+  }
+
+  async info(loader?: string): Promise<string> {
+    return new Promise(async resolve => {
+      const command = `${this.command()} info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const result = await this.kubectl.exec(command, this.connection)
+      resolve(result)
+    })
+  }
+
+  protected command(projectPath?: string): string {
+    const phpPath = 'php'
+    const path = projectPath || this.connection.path
+    const clientPath = this.connection.client_path
+    return `${phpPath} ${clientPath} ${path}`
   }
 
   async remoteUploadFile(localPath: string, remotePath: string): Promise<void> {

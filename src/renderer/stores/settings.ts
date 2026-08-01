@@ -28,6 +28,8 @@ export const useSettingsStore = defineStore('settings', () => {
     aiPromptTemplateCompleteComment: '',
     aiPromptTemplateCompleteCode: '',
     navigationDisplay: 'collapsed',
+    mcpEnabled: false,
+    mcpPort: 3000,
     streaming: true,
   }
 

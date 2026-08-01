@@ -131,6 +131,7 @@
     "@protobufjs/utf8": "^1.1.1"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "better-sqlite3": "^12.1.1",
     "intelephense": "^1.12.6",
     "js-yaml": "^4.1.1",
@@ -206,5 +207,13 @@
     "vue-tsc": "^2.0.26",
     "ws": "^8.17.0",
     "zod": "^3.25.67"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
+    "@rollup/rollup-linux-x64-musl": "^4.62.2",
+    "@rollup/rollup-win32-arm64-msvc": "^4.62.2",
+    "@rollup/rollup-win32-ia32-msvc": "^4.62.2",
+    "@rollup/rollup-win32-x64-gnu": "^4.62.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
   }
 }

@@ -16,7 +16,6 @@
   import VerticalSplitIcon from './icons/VerticalSplitIcon.vue'
   import { useSettingsStore } from '../stores/settings'
   import { useExecuteStore } from '../stores/execute'
-  import { useVaporStore } from '../stores/vapor'
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
@@ -28,7 +27,6 @@
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
   const tabStore = useTabsStore()
-  const vaporStore = useVaporStore()
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
@@ -76,8 +74,7 @@
   }
 
   const removeTab = (id: number) => {
-    tabStore.removeTab(id)
-    vaporStore.removeVaporConfig(id)
+    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
   }
 
   const sponsor = () => {

@@ -43,6 +43,7 @@ vi.mock('electron', () => ({
   },
   ipcMain: {
     on: (event: string, cb: Function) => mockIpcOn(event, cb),
+    handle: (event: string, cb: Function) => mockIpcOn(event, cb),
   },
 }))
 
