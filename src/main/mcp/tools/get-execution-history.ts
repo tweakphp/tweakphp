@@ -5,7 +5,7 @@
 
 import { GetExecutionHistoryParams } from './schemas'
 import { MCPErrorCode } from '../types'
-import { ExecutionHistoryDB } from '../execution-history-db'
+import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
 import { getErrorHandler } from '../error-handler'
 
 interface ExecutionHistoryRecord {
@@ -28,10 +28,10 @@ interface GetExecutionHistoryResult {
 }
 
 export class GetExecutionHistoryHandler {
-  private historyDB: ExecutionHistoryDB
+  private historyDB: ExecutionHistoryRepository
   private errorHandler = getErrorHandler()
 
-  constructor(historyDB: ExecutionHistoryDB) {
+  constructor(historyDB: ExecutionHistoryRepository) {
     this.historyDB = historyDB
   }
 

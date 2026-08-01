@@ -10,9 +10,11 @@ import KubectlClient from '../client/kubectl'
 import { VaporClient } from '../client/vapor'
 import { Client } from '../client/client.interface'
 import { getSettings } from '../settings'
+import { ConnectionsRepository } from '../db/repositories/connections-repository'
+import { ConnectionType } from '../../types/connection.type'
 
 export interface ConnectionConfig {
-  type: 'local' | 'docker' | 'ssh' | 'kubectl' | 'vapor'
+  type: ConnectionType
   name?: string
   [key: string]: any
 }
@@ -48,6 +50,20 @@ export class ConnectionManager {
       this.activeConnection = localConnection
       this.storedConnections.set('local-default', localConnection)
     }
+
+    try {
+      const repo = new ConnectionsRepository()
+      const savedConnections = repo.getAllConnections()
+      for (const conn of savedConnections) {
+        this.addConnection(conn.id, conn as any)
+      }
+      const active = repo.getActiveConnection()
+      if (active) {
+        this.setActiveConnection(active as any)
+      }
+    } catch (e) {
+      // Ignore if DB not ready
+    }
   }
 
   getActiveConnection(): ConnectionConfig | null {
@@ -55,11 +71,11 @@ export class ConnectionManager {
   }
 
   setActiveConnection(connection: ConnectionConfig): void {
-    this.activeConnection = connection
+    this.activeConnection = this.normalizeConnection(connection)
   }
 
   addConnection(id: string, connection: ConnectionConfig): void {
-    this.storedConnections.set(id, connection)
+    this.storedConnections.set(id, this.normalizeConnection(connection))
   }
 
   getConnection(id: string): ConnectionConfig | undefined {
@@ -78,20 +94,40 @@ export class ConnectionManager {
     return this.storedConnections.delete(id)
   }
 
+  public normalizeConnection(connection: ConnectionConfig): ConnectionConfig {
+    if (!connection) return connection
+    const normalized = { ...connection }
+    if (normalized.type === 'docker') {
+      if (!normalized.container_name) {
+        if (normalized.container_id) normalized.container_name = String(normalized.container_id)
+        else if (normalized.name) normalized.container_name = String(normalized.name)
+      }
+      const defaultPhp = normalized.php_path || normalized.php || 'php'
+      normalized.php = normalized.php || defaultPhp
+      normalized.php_path = normalized.php_path || defaultPhp
+
+      const defaultPath = normalized.working_directory || normalized.path || '/var/www/html'
+      normalized.path = normalized.path || defaultPath
+      normalized.working_directory = normalized.working_directory || defaultPath
+    }
+    return normalized
+  }
+
   getClient(connection: ConnectionConfig): Client {
-    switch (connection.type) {
+    const normalized = this.normalizeConnection(connection)
+    switch (normalized.type) {
       case 'local':
-        return new LocalClient(connection as any)
+        return new LocalClient(normalized as any)
       case 'docker':
-        return new DockerClient(connection as any)
+        return new DockerClient(normalized as any)
       case 'ssh':
-        return new SSHClient(connection as any)
+        return new SSHClient(normalized as any)
       case 'kubectl':
-        return new KubectlClient(connection as any)
+        return new KubectlClient(normalized as any)
       case 'vapor':
-        return new VaporClient(connection as any)
+        return new VaporClient(normalized as any)
       default:
-        throw new Error(`Unsupported connection type: ${connection.type}`)
+        throw new Error(`Unsupported connection type: ${normalized.type}`)
     }
   }
 

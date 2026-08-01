@@ -4,9 +4,13 @@ import { MCPServerConfig } from './types'
 // Mock database manager to avoid native better-sqlite3 loading issues in Vitest
 vi.mock('../db/db_manager', () => ({
   db: {
-    prepare: () => ({
+    prepare: (sql: string) => ({
       run: () => ({ lastInsertRowid: 1, changes: 1 }),
-      get: () => ({ total: 0, successful: 0, failed: 0, avgDuration: 0 }),
+      get: () => {
+        if (sql.includes('FROM connections')) return undefined
+        if (sql.includes('FROM execution_history')) return { total: 0 }
+        return { total: 0, successful: 0, failed: 0, avgDuration: 0 }
+      },
       all: () => [],
     }),
   },

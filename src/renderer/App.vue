@@ -33,18 +33,9 @@
   const settingsStore = useSettingsStore()
   const updateStore = useUpdateStore()
 
-  const platform = window.platformInfo.getPlatform()
   const newProjectModal = ref()
 
   const isAppReady = ref(false)
-  const initAppInterval = setInterval(() => {
-    if (isAppReady.value) {
-      clearInterval(initAppInterval)
-      return
-    }
-
-    window.ipcRenderer.send('init')
-  }, 500)
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -91,6 +82,7 @@
       settingsStore.setSettings(e.settings)
       isAppReady.value = true
     })
+    window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
       let tab = tabStore.addTab({
         path: e,
@@ -153,10 +145,8 @@
   <div v-if="isAppReady" class="h-full" :style="{ color: settingsStore.colors.foreground }">
     <TitleBar />
     <aside
-      class="fixed z-40 left-0 bottom-0 justify-between border-r transition-all duration-300"
+      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r transition-all duration-300"
       :class="{
-        'top-[38px]': platform === 'darwin',
-        'top-0': platform !== 'darwin',
         'w-12': !settingsStore.isNavigationExpanded,
         'w-48': settingsStore.isNavigationExpanded,
       }"

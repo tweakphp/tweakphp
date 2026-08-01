@@ -14,7 +14,7 @@ import * as tray from './system/tray.ts'
 import * as mcp from './mcp/index.ts'
 
 import { runMigrations } from './db/migration.ts'
-import { initCodeHistory } from './tools/code-history.ts'
+import { initStorageIpc } from './ipc/storage-ipc.ts'
 
 import url from 'url'
 
@@ -25,6 +25,7 @@ import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
 
 runMigrations()
+initStorageIpc()
 
 fixPath()
 
@@ -62,10 +63,6 @@ const createMainWindow = async () => {
 
   window.webContents.on('did-finish-load', async () => {
     try {
-      window.webContents.send('init.reply', {
-        settings: settings.getSettings(),
-      })
-
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
@@ -76,6 +73,7 @@ const createMainWindow = async () => {
 
       window.show()
     } catch (error) {
+      console.error(error)
     } finally {
       window.setProgressBar(-1)
     }
@@ -112,6 +110,12 @@ const createMainWindow = async () => {
 
   isDev && window.webContents.openDevTools()
 }
+
+ipcMain.on('init', event => {
+  event.sender.send('init.reply', {
+    settings: settings.getSettings(),
+  })
+})
 
 const initializeModules = async () => {
   await Promise.all([
@@ -158,8 +162,6 @@ ipcMain.on('lsp.restart', async event => {
     event.sender.send('lsp.restart.error', error)
   }
 })
-
-initCodeHistory()
 
 const aiService = new AiCompletion()
 

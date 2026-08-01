@@ -6,7 +6,7 @@
 import { ExecutePhpParams } from './schemas'
 import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
-import { ExecutionHistoryDB } from '../execution-history-db'
+import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
 import { getErrorHandler } from '../error-handler'
 
 interface ExecutePhpResult {
@@ -19,11 +19,11 @@ interface ExecutePhpResult {
 
 export class ExecutePhpHandler {
   private connectionManager: ConnectionManager
-  private historyDB: ExecutionHistoryDB
+  private historyDB: ExecutionHistoryRepository
   private errorHandler = getErrorHandler()
   private defaultTimeout = 30000 // 30 seconds
 
-  constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryDB) {
+  constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryRepository) {
     this.connectionManager = connectionManager
     this.historyDB = historyDB
   }

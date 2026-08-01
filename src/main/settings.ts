@@ -16,6 +16,19 @@ if (!fs.existsSync(settingsDir)) {
 }
 const laravelPath = path.join(settingsDir, 'laravel')
 export const settingsPath = path.join(settingsDir, 'settings.json')
+const DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 60
+const MIN_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 1
+const MAX_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS = 3600
+
+export const normalizeDockerKubectlExecutionTimeoutSeconds = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS
+
+  return Math.min(
+    MAX_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
+    Math.max(MIN_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS, Math.round(parsed))
+  )
+}
 
 const defaultSettings: Settings = {
   version: app.getVersion(),
@@ -42,6 +55,7 @@ const defaultSettings: Settings = {
   mcpEnabled: false,
   mcpPort: 3000,
   streaming: true,
+  dockerKubectlExecutionTimeoutSeconds: DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
 }
 
 export const init = async () => {
@@ -82,6 +96,9 @@ const handlePhpExecutable = (_event: any, phpPath: string) => {
 }
 
 export const setSettings = (data: Settings) => {
+  data.dockerKubectlExecutionTimeoutSeconds = normalizeDockerKubectlExecutionTimeoutSeconds(
+    data.dockerKubectlExecutionTimeoutSeconds
+  )
   fs.writeFileSync(settingsPath, JSON.stringify(data))
 }
 
@@ -125,8 +142,15 @@ export const getSettings = () => {
       mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
       mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
       streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,
+      dockerKubectlExecutionTimeoutSeconds: normalizeDockerKubectlExecutionTimeoutSeconds(
+        settingsJson.dockerKubectlExecutionTimeoutSeconds
+      ),
     }
-    if (settingsJson.version !== defaultSettings.version || settingsJson.laravelPath !== defaultSettings.laravelPath) {
+    if (
+      settingsJson.version !== defaultSettings.version ||
+      settingsJson.laravelPath !== defaultSettings.laravelPath ||
+      settingsJson.dockerKubectlExecutionTimeoutSeconds !== settings.dockerKubectlExecutionTimeoutSeconds
+    ) {
       setSettings(settings)
     }
   } else {
@@ -194,7 +218,7 @@ export const detectPhpPaths = (): string[] => {
 
       for (const distro of distros) {
         try {
-          const wslPhp = execSync(`wsl -d "${distro}" which php`, {
+          const wslPhp = execSync(`wsl -d ${distro} which php`, {
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore'],
             timeout: 1500,

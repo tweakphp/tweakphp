@@ -2,8 +2,7 @@ import { ref, Ref } from 'vue'
 import { defineStore } from 'pinia'
 import { ConnectionConfig } from '../../types/vapor.type'
 import { integer } from 'vscode-languageserver'
-
-const STORAGE_KEY = 'vapor-connections'
+import { toPlain } from '../storage'
 const TYPE = 'vapor'
 
 const normalize = (connection: any): ConnectionConfig => ({
@@ -15,18 +14,22 @@ const normalize = (connection: any): ConnectionConfig => ({
 })
 
 export const useVaporStore = defineStore(TYPE, () => {
-  const loadFromStorage = (): ConnectionConfig[] => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    try {
-      return JSON.parse(raw).map((connection: any) => normalize(connection))
-    } catch (error) {
-      console.error('Error parsing Vapor connections from localStorage:', error)
-      return []
-    }
-  }
+  const connectionConfigs: Ref<ConnectionConfig[]> = ref([])
+  const ready = window.ipcRenderer.invoke('storage:connections:list').then((stored: any[]) => {
+    connectionConfigs.value = stored
+      .filter(connection => connection.type === TYPE)
+      .map(connection => normalize({ ...connection, id: Number(connection.id) || connection.id }))
+  })
 
-  const connectionConfigs: Ref<ConnectionConfig[]> = ref(loadFromStorage())
+  const persist = (config: ConnectionConfig) => {
+    void window.ipcRenderer.invoke(
+      'storage:connections:save',
+      toPlain({
+        ...config,
+        name: `vapor-${config.id}`,
+      })
+    )
+  }
 
   const getConnectionConfig = (id: integer | undefined | null): ConnectionConfig | undefined => {
     return connectionConfigs.value.find(c => c.id === id)
@@ -36,42 +39,42 @@ export const useVaporStore = defineStore(TYPE, () => {
     const config = connectionConfigs.value.find(c => c.id === id)
     if (config) {
       config.client_path = path
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      persist(config)
       return
     }
 
     connectionConfigs.value.push({ id, type: TYPE, client_path: path, environment: null, environments: [] })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+    persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
   const setEnviroments = (id: integer, environments: string[]) => {
     const config = connectionConfigs.value.find(c => c.id === id)
     if (config) {
       config.environments = environments
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      persist(config)
       return
     }
 
     connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment: null, environments })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+    persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
   const setEnvironment = (id: integer, environment: string | null) => {
     const config = connectionConfigs.value.find(c => c.id === id)
     if (config) {
       config.environment = environment
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      persist(config)
       return
     }
     connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment, environments: [] })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+    persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
   const removeEnvironment = (id: integer) => {
     const config = connectionConfigs.value.find(c => c.id === id)
     if (config) {
       config.environment = null
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      persist(config)
       return
     }
 
@@ -82,19 +85,19 @@ export const useVaporStore = defineStore(TYPE, () => {
     const index = connectionConfigs.value.findIndex(c => c.id === id)
     if (index !== -1) {
       connectionConfigs.value.splice(index, 1)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      void window.ipcRenderer.invoke('storage:connections:delete', id)
       return
     }
 
     connectionConfigs.value.push({ id, type: 'vapor', client_path: null, environment: null, environments: [] })
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+    persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
   const removeVaporConfig = (id: integer) => {
     const index = connectionConfigs.value.findIndex(c => c.id === id)
     if (index !== -1) {
       connectionConfigs.value.splice(index, 1)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionConfigs.value))
+      void window.ipcRenderer.invoke('storage:connections:delete', id)
       return
     }
     console.warn(`Vapor config with id ${id} not found for removal.`)
@@ -108,5 +111,7 @@ export const useVaporStore = defineStore(TYPE, () => {
     setEnviroments,
     resetVaporConfig,
     removeVaporConfig,
+    connectionConfigs,
+    ready,
   }
 })

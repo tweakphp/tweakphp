@@ -64,6 +64,7 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.theme).toBe('dracula')
       expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
       expect(settings.streaming).toBe(true)
+      expect(settings.dockerKubectlExecutionTimeoutSeconds).toBe(60)
       expect(fs.writeFileSync).toHaveBeenCalled()
     })
 
@@ -79,6 +80,7 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.editorFontSize).toBe(18)
       expect(settings.editorWordWrap).toBe('on')
       expect(settings.streaming).toBe(true)
+      expect(settings.dockerKubectlExecutionTimeoutSeconds).toBe(60)
     })
 
     it('preserves a disabled streaming setting', () => {
@@ -110,6 +112,7 @@ describe('Settings Management (settings.ts)', () => {
             version: '0.13.1',
             laravelPath: '/mocked/home/.tweakphp_dev/laravel',
             theme: 'monokai',
+            dockerKubectlExecutionTimeoutSeconds: 60,
           })
         )
       )
@@ -123,6 +126,15 @@ describe('Settings Management (settings.ts)', () => {
       const data: any = { theme: 'github' }
       setSettings(data)
       expect(fs.writeFileSync).toHaveBeenCalledWith(expect.any(String), JSON.stringify(data))
+    })
+
+    it('normalizes Docker and Kubernetes execution timeouts', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(JSON.stringify({ dockerKubectlExecutionTimeoutSeconds: 9_999 }))
+      )
+
+      expect(getSettings().dockerKubectlExecutionTimeoutSeconds).toBe(3600)
     })
   })
 

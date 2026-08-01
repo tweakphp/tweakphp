@@ -5,3 +5,4 @@ out
 .idea
 .github
 *.md
+e2e-environment

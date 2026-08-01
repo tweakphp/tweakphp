@@ -84,7 +84,7 @@ describe('RemoteClient Shared Logic', () => {
     expect(result).toBe('output')
     expect(client.mockExec).toHaveBeenCalled()
     const commandSent = client.mockExec.mock.calls[0][0]
-    expect(commandSent).toContain('php /home/mock_user/.tweakphp/client-8.2.0.phar /remote/project execute')
+    expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/remote/project' execute")
   })
 
   it('info runs remote command to retrieve project info', async () => {
@@ -100,6 +100,17 @@ describe('RemoteClient Shared Logic', () => {
     expect(result).toBe('project_info')
     expect(client.mockExec).toHaveBeenCalled()
     const commandSent = client.mockExec.mock.calls[0][0]
-    expect(commandSent).toContain('php /home/mock_user/.tweakphp/client-8.2.0.phar /remote/project info')
+    expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/remote/project' info")
+  })
+
+  it('rejects streaming when the remote transport does not support it', async () => {
+    const client = new TestRemoteClient({
+      path: '/remote/project',
+      php: '8.2.0',
+      client_path: '/home/mock_user/.tweakphp/client-8.2.0.phar',
+    })
+
+    await expect(client.executeStreaming('echo 1;')).rejects.toThrow('Streaming is not supported by this connection')
+    expect(client.mockExec).not.toHaveBeenCalled()
   })
 })

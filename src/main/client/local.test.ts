@@ -6,14 +6,18 @@ import {
   getWslPhpExecutable,
   getPHPVersion,
   getLocalPharClient,
+  resolveWslDistro,
+  getWslDistros,
 } from './local'
-import { exec, execSync } from 'child_process'
+import { exec, execFile, execFileSync, execSync } from 'child_process'
 import { app } from 'electron'
 
 // Mock child_process
 vi.mock('child_process', () => ({
   exec: vi.fn(),
   execSync: vi.fn(),
+  execFile: vi.fn(),
+  execFileSync: vi.fn(),
 }))
 
 // Mock electron
@@ -34,6 +38,7 @@ vi.mock('../settings', () => ({
 describe('LocalClient WSL Support', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(execFileSync).mockReturnValue('8.1\n' as any)
     vi.mocked(execSync).mockReturnValue('8.1\n')
   })
 
@@ -66,6 +71,25 @@ describe('LocalClient WSL Support', () => {
       const details = getWslDetails('//wsl.localhost/Ubuntu/home/david')
       expect(details.isWsl).toBe(true)
       expect(details.distro).toBe('Ubuntu')
+    })
+  })
+
+  describe('resolveWslDistro', () => {
+    it('returns clean requested distro when distros list is empty', () => {
+      vi.mocked(execSync).mockImplementation(() => {
+        throw new Error('wsl not found')
+      })
+      expect(resolveWslDistro('Ubuntu')).toBe('Ubuntu')
+    })
+
+    it('resolves case-insensitive matches', () => {
+      vi.mocked(execSync).mockReturnValue(Buffer.from('Ubuntu\r\nDebian\r\n', 'utf16le') as any)
+      expect(resolveWslDistro('ubuntu')).toBe('Ubuntu')
+    })
+
+    it('resolves prefix matches when requested distro has version suffix', () => {
+      vi.mocked(execSync).mockReturnValue(Buffer.from('Ubuntu\r\nDebian\r\n', 'utf16le') as any)
+      expect(resolveWslDistro('Ubuntu-22.04')).toBe('Ubuntu')
     })
   })
 
@@ -114,28 +138,22 @@ describe('LocalClient WSL Support', () => {
 
   describe('getPHPVersion', () => {
     it('returns the PHP version for non-WSL PHP', () => {
-      vi.mocked(execSync).mockReturnValue('8.2.0\n')
+      vi.mocked(execFileSync).mockReturnValue('PHP 8.2.0 (cli) (built: ...)\n' as any)
       const version = getPHPVersion({ type: 'local', php: 'C:\\php\\php.exe', path: 'C:\\project' })
-      expect(version).toBe('8.2.0')
-      expect(execSync).toHaveBeenCalledWith(
-        '"C:\\php\\php.exe" -r "echo PHP_MAJOR_VERSION . \'.\' . PHP_MINOR_VERSION . PHP_EOL;"',
-        expect.any(Object)
-      )
+      expect(version).toBe('8.2')
+      expect(execFileSync).toHaveBeenCalledWith('C:\\php\\php.exe', ['-v'], expect.any(Object))
     })
 
     it('returns the PHP version for WSL PHP', () => {
-      vi.mocked(execSync).mockReturnValue('8.3.0\n')
+      vi.mocked(execFileSync).mockReturnValue('PHP 8.3.0 (cli) (built: ...)\n' as any)
       const version = getPHPVersion({ type: 'local', php: 'php', path: '\\\\wsl.localhost\\Ubuntu\\project' })
-      expect(version).toBe('8.3.0')
-      expect(execSync).toHaveBeenCalledWith(
-        'wsl -d "Ubuntu" php -r "echo PHP_MAJOR_VERSION . \'.\' . PHP_MINOR_VERSION . PHP_EOL;"',
-        expect.any(Object)
-      )
+      expect(version).toBe('8.3')
+      expect(execFileSync).toHaveBeenCalledWith('wsl', ['-d', 'Ubuntu', 'php', '-v'], expect.any(Object))
     })
 
     it('returns null on execution error', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.mocked(execSync).mockImplementation(() => {
+      vi.mocked(execFileSync).mockImplementation(() => {
         throw new Error('Command failed')
       })
       const version = getPHPVersion({ type: 'local', php: 'php', path: 'C:\\project' })
@@ -173,18 +191,21 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
         return {} as any
       })
 
       await client.execute('echo "hello";')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-
-      expect(commandRun).not.toContain('wsl -d')
-      expect(commandRun).toContain('C:\\php\\php.exe')
+      expect(execFile).toHaveBeenCalledWith(
+        'C:\\php\\php.exe',
+        expect.arrayContaining(['C:\\Users\\David\\project', 'execute']),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('executes a standard Linux/macOS path command', async () => {
@@ -194,19 +215,21 @@ describe('LocalClient WSL Support', () => {
         php: '/usr/bin/php',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
         return {} as any
       })
 
       await client.execute('echo "hello";')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-
-      expect(commandRun).not.toContain('wsl -d')
-      expect(commandRun).toContain('"/usr/bin/php"')
-      expect(commandRun).toContain('"/home/david/project"')
+      expect(execFile).toHaveBeenCalledWith(
+        '/usr/bin/php',
+        expect.arrayContaining(['/home/david/project', 'execute']),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('executes a WSL path command using wsl wrapper', async () => {
@@ -216,19 +239,21 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
         return {} as any
       })
 
       await client.execute('echo "hello";')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-
-      expect(commandRun).toContain('wsl -d "Ubuntu" php')
-      expect(commandRun).not.toContain('C:\\php\\php.exe "/')
-      expect(commandRun).toContain('"/home/david/project"')
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        ['-d', 'Ubuntu', 'php', expect.any(String), '/home/david/project', 'execute', expect.any(String)],
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('executes a command with loader option', async () => {
@@ -238,16 +263,21 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
         return {} as any
       })
 
       await client.execute('echo "hello";', 'my-custom-loader')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).toContain('--loader=')
+      expect(execFile).toHaveBeenCalledWith(
+        'C:\\php\\php.exe',
+        expect.arrayContaining([expect.stringContaining('--loader=')]),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('retrieves project info on standard Windows path', async () => {
@@ -257,18 +287,22 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'Laravel Framework 10.0.0')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'Laravel Framework 10.0.0')
+        }
         return {} as any
       })
 
       const info = await client.info()
       expect(info).toBe('Laravel Framework 10.0.0')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).not.toContain('wsl -d')
-      expect(commandRun).toContain('info')
+      expect(execFile).toHaveBeenCalledWith(
+        'C:\\php\\php.exe',
+        expect.arrayContaining(['C:\\Users\\David\\project', 'info']),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('retrieves project info on standard Linux/macOS path', async () => {
@@ -278,19 +312,22 @@ describe('LocalClient WSL Support', () => {
         php: '/usr/bin/php',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'Laravel Framework 10.0.0')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'Laravel Framework 10.0.0')
+        }
         return {} as any
       })
 
       const info = await client.info()
       expect(info).toBe('Laravel Framework 10.0.0')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).not.toContain('wsl -d')
-      expect(commandRun).toContain('"/usr/bin/php"')
-      expect(commandRun).toContain('"/home/david/project"')
+      expect(execFile).toHaveBeenCalledWith(
+        '/usr/bin/php',
+        expect.arrayContaining(['/home/david/project', 'info']),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('retrieves project info on WSL path', async () => {
@@ -300,18 +337,22 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'Laravel Framework 10.0.0')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'Laravel Framework 10.0.0')
+        }
         return {} as any
       })
 
       const info = await client.info()
       expect(info).toBe('Laravel Framework 10.0.0')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).toContain('wsl -d "Ubuntu" php')
-      expect(commandRun).toContain('info')
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        ['-d', 'Ubuntu', 'php', expect.any(String), '/home/david/project', 'info'],
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('retrieves project info with loader option', async () => {
@@ -321,17 +362,22 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(null, 'Laravel Framework 10.0.0')
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'Laravel Framework 10.0.0')
+        }
         return {} as any
       })
 
       const info = await client.info('my-custom-loader')
       expect(info).toBe('Laravel Framework 10.0.0')
-      expect(exec).toHaveBeenCalled()
-      const commandRun = vi.mocked(exec).mock.calls[0][0] as string
-      expect(commandRun).toContain('--loader=')
+      expect(execFile).toHaveBeenCalledWith(
+        'C:\\php\\php.exe',
+        expect.arrayContaining([expect.stringContaining('--loader=')]),
+        expect.any(Object),
+        expect.any(Function)
+      )
     })
 
     it('rejects the Promise when info shell execution fails', async () => {
@@ -341,9 +387,11 @@ describe('LocalClient WSL Support', () => {
         php: 'C:\\php\\php.exe',
       })
 
-      vi.mocked(exec).mockImplementation((_cmd, cb) => {
-        // @ts-ignore
-        cb(new Error('Shell error'), null)
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(new Error('Shell error'), null)
+        }
         return {} as any
       })
 

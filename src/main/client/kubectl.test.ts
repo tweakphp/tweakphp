@@ -5,6 +5,7 @@ vi.mock('../utils/kubectl', () => {
   return {
     Kubectl: class {
       exec = vi.fn()
+      execStream = vi.fn()
       uploadFile = vi.fn()
       getContexts = vi.fn()
       getNamespaces = vi.fn()
@@ -12,6 +13,16 @@ vi.mock('../utils/kubectl', () => {
     },
   }
 })
+
+vi.mock('../settings', () => ({
+  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+}))
+
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+  },
+}))
 
 describe('KubectlClient', () => {
   let mockKubectlInstance: any
@@ -33,6 +44,34 @@ describe('KubectlClient', () => {
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith('echo hello', conn)
   })
 
+  it('uses execute-stream and emits structured events', async () => {
+    const conn = {
+      type: 'kubectl',
+      path: '/app',
+      namespace: 'default',
+      pod: 'my-pod',
+      php: '8.3',
+      client_path: '/root/.tweakphp/client-8.3.phar',
+    } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.execStream.mockImplementation(async (_command: string, _connection: any, onData: any) => {
+      onData('TWEAKPHP_STR')
+      onData('EAM:{"type":"statement.started","index":0,"line":1,"code":"echo 1;"}\n')
+    })
+    const events: any[] = []
+
+    await client.executeStreaming('echo 1;', undefined, event => events.push(event))
+
+    expect(mockKubectlInstance.execStream).toHaveBeenCalledWith(
+      expect.stringContaining('execute-stream'),
+      conn,
+      expect.any(Function),
+      60_000
+    )
+    expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
+  })
+
   it('remoteUploadFile calls kubectl.uploadFile', async () => {
     const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
     const client = new KubectlClient(conn)
@@ -42,7 +81,7 @@ describe('KubectlClient', () => {
     expect(mockKubectlInstance.uploadFile).toHaveBeenCalledWith('/local/path', '/remote/path', conn)
   })
 
-  it('getHomePath executes echo $HOME', async () => {
+  it('getHomePath executes a POSIX command without host-shell quoting', async () => {
     const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
     const client = new KubectlClient(conn)
     mockKubectlInstance = (client as any).kubectl
@@ -50,7 +89,29 @@ describe('KubectlClient', () => {
 
     const home = await client.getHomePath()
     expect(home).toBe('/root')
-    expect(mockKubectlInstance.exec).toHaveBeenCalledWith("sh -c 'echo $HOME'", conn)
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith('printf %s "$HOME"', conn)
+  })
+
+  it('falls back to /tmp when the Kubernetes home directory is not writable', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec
+      .mockResolvedValueOnce('8.3\n')
+      .mockResolvedValueOnce('/readonly\n')
+      .mockResolvedValueOnce('not_found\n')
+      .mockRejectedValueOnce(new Error('Read-only file system'))
+      .mockResolvedValueOnce('not_found\n')
+      .mockResolvedValueOnce('')
+
+    await client.setup()
+
+    expect(client.connection.client_path).toBe('/tmp/.tweakphp/client-8.3.phar')
+    expect(mockKubectlInstance.uploadFile).toHaveBeenCalledWith(
+      expect.any(String),
+      '/tmp/.tweakphp/client-8.3.phar',
+      conn
+    )
   })
 
   it('getContextsAction retrieves contexts from Kubectl utility', async () => {

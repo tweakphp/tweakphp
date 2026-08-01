@@ -31,6 +31,7 @@ export const useSettingsStore = defineStore('settings', () => {
     mcpEnabled: false,
     mcpPort: 3000,
     streaming: true,
+    dockerKubectlExecutionTimeoutSeconds: 60,
   }
 
   const settings = ref<Settings>(defaultSettings)

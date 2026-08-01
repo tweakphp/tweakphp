@@ -36,3 +36,6 @@ tweakphp.db-shm
 CLAUDE.md
 AGENTS.md
 .claude
+
+# E2E test environment generated projects
+e2e-environment/apps/

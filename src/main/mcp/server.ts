@@ -7,7 +7,7 @@
  *   { "url": "http://127.0.0.1:<port>/mcp", "type": "http" }
  *
  * Stateless pattern: a fresh McpServer + transport is created per POST /mcp request.
- * Shared state (ConnectionManager, ExecutionHistoryDB) lives on MCPServerImpl and is
+ * Shared state (ConnectionManager, ExecutionHistoryRepository) lives on MCPServerImpl and is
  * accessed via closure from each per-request server instance.
  */
 
@@ -18,13 +18,14 @@ import { z } from 'zod'
 import { MCPServerConfig, MCPServerStatus } from './types'
 import { getErrorLogger } from './error-logger'
 import { ConnectionManager } from './connection-manager'
-import { ExecutionHistoryDB } from './execution-history-db'
+import { ExecutionHistoryRepository } from '../db/repositories/execution-history-repository'
 import { ExecutePhpHandler } from './tools/execute-php'
 import { ExecuteWithLoaderHandler } from './tools/execute-with-loader'
 import { GetExecutionHistoryHandler } from './tools/get-execution-history'
 import { SwitchConnectionHandler } from './tools/switch-connection'
 import { GetPhpInfoHandler } from './tools/get-php-info'
 import { ListConnectionsHandler } from './tools/list-connections'
+import { connectionTypes } from '../../types/connection.type'
 
 export interface MCPServer {
   start(config: MCPServerConfig): Promise<void>
@@ -44,7 +45,7 @@ export class MCPServerImpl implements MCPServer {
 
   // Shared state — created once, reused across every per-request McpServer instance
   private connectionManager: ConnectionManager
-  private historyDB: ExecutionHistoryDB
+  private historyDB: ExecutionHistoryRepository
   private executePhpHandler: ExecutePhpHandler
   private executeWithLoaderHandler: ExecuteWithLoaderHandler
   private getExecutionHistoryHandler: GetExecutionHistoryHandler
@@ -54,7 +55,7 @@ export class MCPServerImpl implements MCPServer {
 
   constructor() {
     this.connectionManager = new ConnectionManager()
-    this.historyDB = new ExecutionHistoryDB()
+    this.historyDB = new ExecutionHistoryRepository()
     this.executePhpHandler = new ExecutePhpHandler(this.connectionManager, this.historyDB)
     this.executeWithLoaderHandler = new ExecuteWithLoaderHandler(this.connectionManager, this.historyDB)
     this.getExecutionHistoryHandler = new GetExecutionHistoryHandler(this.historyDB)
@@ -175,10 +176,7 @@ export class MCPServerImpl implements MCPServer {
       'Switch TweakPHP to a different execution environment (local, Docker, SSH, kubectl, Vapor)',
       {
         connectionId: z.string().optional().describe('ID of an existing stored connection to switch to'),
-        connectionType: z
-          .enum(['local', 'docker', 'ssh', 'kubectl', 'vapor'])
-          .optional()
-          .describe('Type of new connection to create'),
+        connectionType: z.enum(connectionTypes).optional().describe('Type of new connection to create'),
         connectionConfig: z.record(z.unknown()).optional().describe('Configuration object for the new connection'),
       },
       async ({ connectionId, connectionType, connectionConfig }) => {
@@ -234,10 +232,7 @@ export class MCPServerImpl implements MCPServer {
       'list_connections',
       'List all currently configured, stored, or active execution environments (local, Docker, SSH, kubectl, Vapor)',
       {
-        typeFilter: z
-          .enum(['local', 'docker', 'ssh', 'kubectl', 'vapor'])
-          .optional()
-          .describe('Optional filter by connection type'),
+        typeFilter: z.enum(connectionTypes).optional().describe('Optional filter by connection type'),
         includeDiscovered: z
           .boolean()
           .optional()
