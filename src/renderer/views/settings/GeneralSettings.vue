@@ -192,6 +192,19 @@
         <option :value="false">Disabled</option>
       </SelectInput>
     </div>
+    <Divider class="mt-3" />
+    <div class="mt-3 grid grid-cols-2 items-center">
+      <label for="docker-kubectl-execution-timeout">Docker/Kubernetes timeout (seconds)</label>
+      <TextInput
+        id="docker-kubectl-execution-timeout"
+        v-model.number="settingsStore.settings.dockerKubectlExecutionTimeoutSeconds"
+        @change="saveSettings()"
+        type="number"
+        min="1"
+        max="3600"
+        step="1"
+      />
+    </div>
   </div>
 </template>
 
