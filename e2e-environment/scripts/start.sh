@@ -49,7 +49,8 @@ if [ "$HAS_K8S" = true ]; then
     if kubectl get ns tweakphp-test 2>/dev/null | grep -q Terminating; then
         kubectl wait --for=delete namespace/tweakphp-test --timeout=30s || true
     fi
-    kubectl apply -f "$BASE_DIR/k8s/laravel-pod.yaml" || true
+    kubectl apply -f "$BASE_DIR/k8s/laravel-pod.yaml"
+    kubectl rollout status deployment/tweakphp-k8s-laravel -n tweakphp-test --timeout=300s
 fi
 
 echo ""

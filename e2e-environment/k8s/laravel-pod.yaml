@@ -23,7 +23,40 @@ spec:
       containers:
         - name: laravel
           image: php:8.3-cli
-          command: ["/bin/sh", "-c", "tail -f /dev/null"]
+          imagePullPolicy: IfNotPresent
+          command: ['/bin/sh', '-c']
+          args:
+            - |
+              set -eu
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                curl \
+                git \
+                libsqlite3-dev \
+                libzip-dev \
+                sqlite3 \
+                unzip \
+                zip
+              docker-php-ext-install pdo_sqlite zip
+              curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+              mkdir -p /var/www/html
+              if [ ! -f /var/www/html/artisan ]; then
+                composer create-project laravel/laravel /var/www/html --prefer-dist --no-interaction
+              fi
+              cd /var/www/html
+              touch database/database.sqlite
+              sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+              sed -i 's/^DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env
+              php artisan key:generate --ansi
+              php artisan migrate --force --graceful --ansi
+              exec tail -f /dev/null
           workingDir: /var/www/html
           ports:
             - containerPort: 8000
+          readinessProbe:
+            exec:
+              command: ['/bin/sh', '-c', 'test -f /var/www/html/artisan']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 60

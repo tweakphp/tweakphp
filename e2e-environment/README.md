@@ -19,9 +19,13 @@ Dedicated, script-managed E2E testing environment for verifying **TweakPHP** con
    - Eliminates runtime `apt-get` delays, `dpkg` lock conflicts, and `ZipDownloader` errors.
 
 2. **In-Container Provisioning**:
-   - `composer create-project` runs **INSIDE** the PHP 8.3 container via `docker exec`.
-   - `vendor/composer/platform_check.php` is generated natively by PHP 8.3.33, ensuring 100% platform check compliance with zero host PHP version leakage.
-   - All test apps (`docker-app`, `sail-app`, `ssh-app`) are automatically configured with **SQLite** (`database/database.sqlite`).
+    - `composer create-project` runs **INSIDE** the PHP 8.3 container via `docker exec`.
+    - `vendor/composer/platform_check.php` is generated natively by PHP 8.3.33, ensuring 100% platform check compliance with zero host PHP version leakage.
+    - All test apps (`docker-app`, `sail-app`, `ssh-app`) are automatically configured with **SQLite** (`database/database.sqlite`).
+
+3. **Kubernetes Provisioning**:
+   - The Kubernetes deployment builds a Laravel application with SQLite inside its PHP 8.3 pod before reporting as ready.
+   - `start.sh` waits for the deployment rollout, so the displayed pod name is ready for a TweakPHP connection.
 
 ---
 
