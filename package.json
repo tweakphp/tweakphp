@@ -169,7 +169,7 @@
     "adm-zip": "^0.5.16",
     "autoprefixer": "^10.4.19",
     "bufferutil": "^4.0.8",
-    "concurrently": "^9.1.2",
+    "concurrently": "^9.2.4",
     "dotenv": "^16.4.7",
     "electron": "^41.1.1",
     "electron-builder": "^26.8.1",
