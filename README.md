@@ -24,6 +24,11 @@
   <a href="https://github.com/tweakphp/tweakphp/releases">Download Now</a> | <a href="https://tweakphp.com/">Documentation</a> | <a href="https://discord.gg/Et3UTT4xwC">Discord</a>
 </div>
 
+## Maintainers
+
+- Original creator: [Saeed Vaziry](https://github.com/saeedvaziry)
+- Maintainer: [David Galet (@ildaviz)](https://github.com/ildaviz)
+
 ## Installation
 
 ### macOS
