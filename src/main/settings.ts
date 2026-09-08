@@ -99,7 +99,9 @@ export const setSettings = (data: Settings) => {
   data.dockerKubectlExecutionTimeoutSeconds = normalizeDockerKubectlExecutionTimeoutSeconds(
     data.dockerKubectlExecutionTimeoutSeconds
   )
-  fs.writeFileSync(settingsPath, JSON.stringify(data))
+  const tmpPath = `${settingsPath}.tmp`
+  fs.writeFileSync(tmpPath, JSON.stringify(data))
+  fs.renameSync(tmpPath, settingsPath)
 }
 
 export const getSettings = () => {
@@ -111,7 +113,19 @@ export const getSettings = () => {
   }
 
   if (settingsRaw) {
-    let settingsJson = JSON.parse(settingsRaw)
+    let settingsJson: any
+    try {
+      settingsJson = JSON.parse(settingsRaw)
+    } catch (error) {
+      console.error('Failed to parse settings.json, resetting to default settings', error)
+      settings = { ...defaultSettings }
+      try {
+        setSettings(settings)
+      } catch (writeError) {
+        console.error('Failed to reset settings.json', writeError)
+      }
+      return settings
+    }
     settings = {
       version: defaultSettings.version,
       laravelPath: defaultSettings.laravelPath,

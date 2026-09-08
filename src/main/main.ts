@@ -84,7 +84,7 @@ const createMainWindow = async () => {
   })
 
   window.on('closed', (): void => {
-    app.exit(0)
+    void shutdownApp().finally(() => app.exit(0))
   })
 
   window.on('resize', (): void => {
@@ -140,12 +140,32 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', async () => {
-  await lsp.shutdown()
-  const mcpServer = mcp.getMCPServer()
-  if (mcpServer.isRunning()) {
-    await mcpServer.stop()
+let isShuttingDown = false
+
+const shutdownApp = async (): Promise<void> => {
+  if (isShuttingDown) {
+    return
   }
+  isShuttingDown = true
+
+  try {
+    await lsp.shutdown()
+  } catch (error) {
+    console.error('Error shutting down LSP server:', error)
+  }
+
+  try {
+    const mcpServer = mcp.getMCPServer()
+    if (mcpServer.isRunning()) {
+      await mcpServer.stop()
+    }
+  } catch (error) {
+    console.error('Error stopping MCP server:', error)
+  }
+}
+
+app.on('before-quit', () => {
+  void shutdownApp()
 })
 
 ipcMain.on('lsp.restart', async event => {

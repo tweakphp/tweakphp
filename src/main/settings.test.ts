@@ -12,6 +12,7 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
   readdirSync: vi.fn(),
   writeFileSync: vi.fn(),
+  renameSync: vi.fn(),
   readFileSync: vi.fn(),
   lstatSync: vi.fn(),
 }))
@@ -101,7 +102,8 @@ describe('Settings Management (settings.ts)', () => {
       const settings = getSettings()
       expect(settings.version).toBe('0.13.1')
       expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
-      expect(fs.writeFileSync).toHaveBeenCalledWith(settingsPath, JSON.stringify(settings))
+      expect(fs.writeFileSync).toHaveBeenCalledWith(`${settingsPath}.tmp`, JSON.stringify(settings))
+      expect(fs.renameSync).toHaveBeenCalledWith(`${settingsPath}.tmp`, settingsPath)
     })
 
     it('does not re-persist settings when stored version and laravelPath already match defaults', () => {
@@ -135,6 +137,24 @@ describe('Settings Management (settings.ts)', () => {
       )
 
       expect(getSettings().dockerKubectlExecutionTimeoutSeconds).toBe(3600)
+    })
+
+    it('falls back to default settings and re-persists when settings.json is corrupted', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from('{ not-valid-json !!!'))
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const settings = getSettings()
+
+      expect(settings.theme).toBe('dracula')
+      expect(settings.php).toBe('')
+      expect(settings.version).toBe('0.13.1')
+      expect(fs.writeFileSync).toHaveBeenCalledWith(`${settingsPath}.tmp`, JSON.stringify(settings))
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to parse settings.json, resetting to default settings',
+        expect.any(Error)
+      )
+      consoleErrorSpy.mockRestore()
     })
   })
 

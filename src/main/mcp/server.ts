@@ -32,6 +32,7 @@ export interface MCPServer {
   stop(): Promise<void>
   isRunning(): boolean
   getStatus(): MCPServerStatus
+  getConnectionManager(): ConnectionManager
 }
 
 export class MCPServerImpl implements MCPServer {
@@ -432,6 +433,10 @@ export class MCPServerImpl implements MCPServer {
 
   isRunning(): boolean {
     return this.running
+  }
+
+  getConnectionManager(): ConnectionManager {
+    return this.connectionManager
   }
 
   getStatus(): MCPServerStatus {

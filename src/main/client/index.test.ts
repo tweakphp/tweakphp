@@ -316,14 +316,18 @@ describe('IPC Router (index.ts)', () => {
       expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', 'info-result')
     })
 
-    it('throws error on info failure', async () => {
+    it('replies with error on info failure', async () => {
       const mockEvent = { reply: vi.fn() }
       const payload = { connection: { type: 'local' } }
+      const errorObj = new Error('Info failed')
 
       mockConnect.mockResolvedValue(undefined)
-      mockInfo.mockRejectedValue(new Error('Info failed'))
+      mockInfo.mockRejectedValue(errorObj)
 
-      await expect(ipcHandlers['client.info'](mockEvent, payload)).rejects.toThrow('Info failed')
+      await ipcHandlers['client.info'](mockEvent, payload)
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', errorObj)
+      expect(mockDisconnect).toHaveBeenCalled()
     })
   })
 
@@ -341,16 +345,24 @@ describe('IPC Router (index.ts)', () => {
       await ipcHandlers['client.info'](mockEvent, { connection: { type: 'kubectl' } })
     })
 
-    it('throws error if type is not supported', async () => {
+    it('replies with error if type is not supported', async () => {
       const mockEvent = { reply: vi.fn() }
-      await expect(ipcHandlers['client.info'](mockEvent, { connection: { type: 'unsupported' } })).rejects.toThrow(
-        'Type not supported'
-      )
+
+      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'unsupported' } })
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', expect.any(Error))
+      const reply = mockEvent.reply.mock.calls[0][1] as Error
+      expect(reply.message).toBe('Type not supported')
     })
 
-    it('throws error if connection object is missing', async () => {
+    it('replies with error if connection object is missing', async () => {
       const mockEvent = { reply: vi.fn() }
-      await expect(ipcHandlers['client.info'](mockEvent, {})).rejects.toThrow('Connection is required')
+
+      await ipcHandlers['client.info'](mockEvent, {})
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', expect.any(Error))
+      const reply = mockEvent.reply.mock.calls[0][1] as Error
+      expect(reply.message).toBe('Connection is required')
     })
   })
 })

@@ -15,8 +15,9 @@ export const init = async () => {
 }
 
 const connect = async (event: Electron.IpcMainEvent, payload: any) => {
-  const client = getClient(payload)
+  let client: Client | null = null
   try {
+    client = getClient(payload)
     await client.connect()
     if (payload.data?.setup) {
       await client.setup()
@@ -29,7 +30,7 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
   } catch (error: any) {
     event.reply('client.connect.reply', {
       connected: false,
-      connection: client.getConnection(),
+      connection: client?.getConnection() ?? null,
       data: payload.data,
       error,
     })
@@ -38,13 +39,14 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
       body: error.message ?? error,
     }).show()
   } finally {
-    client.disconnect()
+    client?.disconnect()
   }
 }
 
 const execute = async (event: Electron.IpcMainEvent, payload: any) => {
-  const client = getClient(payload)
+  let client: Client | null = null
   try {
+    client = getClient(payload)
     await client.connect()
 
     if (payload.streaming && typeof client.executeStreaming === 'function') {
@@ -87,13 +89,14 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   } catch (error: any) {
     event.reply('client.execute.reply', error)
   } finally {
-    client.disconnect()
+    client?.disconnect()
   }
 }
 
 const action = async (event: Electron.IpcMainEvent, payload: any) => {
-  const client = getClient(payload)
+  let client: Client | null = null
   try {
+    client = getClient(payload)
     await client.connect()
     const result = await client.action(payload.type, payload.data)
     event.reply('client.action.reply', {
@@ -106,20 +109,21 @@ const action = async (event: Electron.IpcMainEvent, payload: any) => {
       error,
     })
   } finally {
-    client.disconnect()
+    client?.disconnect()
   }
 }
 
 const info = async (event: Electron.IpcMainEvent, data: any) => {
-  const client = getClient(data)
+  let client: Client | null = null
   try {
+    client = getClient(data)
     await client.connect()
     const result = await client.info(data.loader)
     event.reply('client.info.reply', result)
   } catch (error: any) {
-    throw new Error(error)
+    event.reply('client.info.reply', error)
   } finally {
-    client.disconnect()
+    client?.disconnect()
   }
 }
 

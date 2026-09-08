@@ -45,6 +45,13 @@ export function createServerProcess(serverName: string, command: string, args: s
   return createProcessStreamConnection(serverProcess)
 }
 
+export function killServerProcess() {
+  if (serverProcess !== null) {
+    serverProcess.kill()
+    serverProcess = null
+  }
+}
+
 export const upgradeWsServer = (runconfig: RunConfig, config: any) => {
   config.server.on('upgrade', (request: import('http').IncomingMessage, socket: import('net').Socket, head: Buffer) => {
     const baseURL = `http://${request.headers.host}/`

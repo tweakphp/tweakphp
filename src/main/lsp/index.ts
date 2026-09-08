@@ -1,4 +1,5 @@
 import * as runServer from './server-runner'
+import { killServerProcess } from './server-commons'
 import log from 'electron-log/main'
 
 import * as settings from '../settings'
@@ -44,4 +45,5 @@ export const init = async () => {
 export const shutdown = async () => {
   console.log('Shutting down PHP language server')
   await runServer.shutdown()
+  killServerProcess()
 }
