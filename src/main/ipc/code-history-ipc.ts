@@ -21,42 +21,42 @@ const codeAddSchema = z.object({
 const codeHistoryRepository = new CodeHistoryRepository()
 
 export function registerCodeHistoryIpc(): void {
-  ipcMain.on('code-add', (event: IpcMainEvent, payload: CodeAddPayload) => {
+  ipcMain.on('code-history:add', (event: IpcMainEvent, payload: CodeAddPayload) => {
     try {
       const { tabId, code, cursor } = codeAddSchema.parse(payload)
       codeHistoryRepository.add(tabId, code, cursor)
-      event.reply('code-add.reply', { data: { success: true }, error: null })
+      event.reply('code-history:add:reply', { data: { success: true }, error: null })
     } catch (error) {
       console.error('Failed to add code history:', error)
-      event.reply('code-add.reply', { data: null, error: 'Failed to add code history' })
+      event.reply('code-history:add:reply', { data: null, error: 'Failed to add code history' })
     }
   })
 
-  ipcMain.on('code-undo', (event: IpcMainEvent, tabId: number) => {
+  ipcMain.on('code-history:undo', (event: IpcMainEvent, tabId: number) => {
     try {
       tabIdSchema.parse(tabId)
       const previousState = codeHistoryRepository.undo(tabId)
-      event.reply('code-undo.reply', {
+      event.reply('code-history:undo:reply', {
         data: previousState,
         error: previousState ? null : 'No previous state to undo.',
       })
     } catch (error) {
       console.error('Failed to undo:', error)
-      event.reply('code-undo.reply', { data: null, error: 'Failed to undo' })
+      event.reply('code-history:undo:reply', { data: null, error: 'Failed to undo' })
     }
   })
 
-  ipcMain.on('code-redo', (event: IpcMainEvent, tabId: number) => {
+  ipcMain.on('code-history:redo', (event: IpcMainEvent, tabId: number) => {
     try {
       tabIdSchema.parse(tabId)
       const nextState = codeHistoryRepository.redo(tabId)
-      event.reply('code-redo.reply', {
+      event.reply('code-history:redo:reply', {
         data: nextState,
         error: nextState ? null : 'No next state to redo.',
       })
     } catch (error) {
       console.error('Failed to redo:', error)
-      event.reply('code-redo.reply', { data: null, error: 'Failed to redo' })
+      event.reply('code-history:redo:reply', { data: null, error: 'Failed to redo' })
     }
   })
 }

@@ -24,7 +24,7 @@
   }
 
   function goToFolder() {
-    window.ipcRenderer.send('source.openPath', props.tab.path)
+    window.ipcRenderer.send('source:open-path', props.tab.path)
   }
 
   function removeTab() {

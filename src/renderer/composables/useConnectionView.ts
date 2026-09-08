@@ -43,11 +43,11 @@ export function useConnectionView(options: {
   }
 
   onMounted(() => {
-    events.addEventListener('client.connect.reply', connectReply)
+    events.addEventListener('client:connect:reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.connect.reply', connectReply)
+    events.removeEventListener('client:connect:reply', connectReply)
   })
 
   return { connectModal, connecting, editId, add, edit, remove }

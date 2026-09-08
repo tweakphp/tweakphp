@@ -8,10 +8,10 @@ import KubectlClient from './kubectl'
 import { parseTweakPhpError } from '../../shared/tweakphp-error'
 
 export const init = async () => {
-  ipcMain.on('client.connect', connect)
-  ipcMain.on('client.execute', execute)
-  ipcMain.on('client.action', action)
-  ipcMain.on('client.info', info)
+  ipcMain.on('client:connect', connect)
+  ipcMain.on('client:execute', execute)
+  ipcMain.on('client:action', action)
+  ipcMain.on('client:info', info)
 }
 
 const connect = async (event: Electron.IpcMainEvent, payload: any) => {
@@ -22,13 +22,13 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
     if (payload.data?.setup) {
       await client.setup()
     }
-    event.reply('client.connect.reply', {
+    event.reply('client:connect:reply', {
       connected: true,
       connection: client.getConnection(),
       data: payload.data,
     })
   } catch (error: any) {
-    event.reply('client.connect.reply', {
+    event.reply('client:connect:reply', {
       connected: false,
       connection: client?.getConnection() ?? null,
       data: payload.data,
@@ -50,19 +50,19 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     await client.connect()
 
     if (payload.streaming && typeof client.executeStreaming === 'function') {
-      event.reply('client.execute.stream', {
+      event.reply('client:execute:stream', {
         tabId: payload.tabId,
         event: { type: 'started' },
       })
 
       await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
-        event.reply('client.execute.stream', {
+        event.reply('client:execute:stream', {
           tabId: payload.tabId,
           event: streamEvent,
         })
       })
 
-      event.reply('client.execute.reply', { streamingDone: true })
+      event.reply('client:execute:reply', { streamingDone: true })
       return
     }
 
@@ -85,9 +85,9 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       }
     }
 
-    event.reply('client.execute.reply', output ?? result)
+    event.reply('client:execute:reply', output ?? result)
   } catch (error: any) {
-    event.reply('client.execute.reply', error)
+    event.reply('client:execute:reply', error)
   } finally {
     client?.disconnect()
   }
@@ -99,12 +99,12 @@ const action = async (event: Electron.IpcMainEvent, payload: any) => {
     client = getClient(payload)
     await client.connect()
     const result = await client.action(payload.type, payload.data)
-    event.reply('client.action.reply', {
+    event.reply('client:action:reply', {
       type: payload.type,
       result,
     })
   } catch (error: any) {
-    event.reply('client.action.reply', {
+    event.reply('client:action:reply', {
       type: payload.type,
       error,
     })
@@ -119,9 +119,9 @@ const info = async (event: Electron.IpcMainEvent, data: any) => {
     client = getClient(data)
     await client.connect()
     const result = await client.info(data.loader)
-    event.reply('client.info.reply', result)
+    event.reply('client:info:reply', result)
   } catch (error: any) {
-    event.reply('client.info.reply', error)
+    event.reply('client:info:reply', error)
   } finally {
     client?.disconnect()
   }

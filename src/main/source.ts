@@ -2,15 +2,15 @@ import { dialog, ipcMain, shell } from 'electron'
 import { IpcMainEvent } from 'electron'
 
 export const init = async () => {
-  ipcMain.on('source.open', open)
-  ipcMain.on('source.openPath', openPath)
+  ipcMain.on('source:open', open)
+  ipcMain.on('source:open-path', openPath)
 }
 
 export const open = async (event: IpcMainEvent) => {
   // Use shell.openPath to open the specified folder
   dialog.showOpenDialog({ properties: ['openDirectory'] }).then(result => {
     if (!result.canceled) {
-      event.reply('source.open.reply', result.filePaths[0])
+      event.reply('source:open:reply', result.filePaths[0])
     }
   })
 }

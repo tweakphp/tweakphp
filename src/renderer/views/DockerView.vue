@@ -53,7 +53,7 @@
     }
 
     connecting.value = true
-    window.ipcRenderer.send('client.connect', {
+    window.ipcRenderer.send('client:connect', {
       connection: getConnection(),
       data: {
         state: 'connect-docker',
@@ -97,7 +97,7 @@
     loading.value = true
     form.value.container_name = ''
 
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       connection: getConnection(),
       type: 'getContainers',
     })
@@ -107,7 +107,7 @@
     loading.value = true
     phpVersion.value = ''
 
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       connection: getConnection(),
       type: 'getPHPVersion',
     })
@@ -151,13 +151,13 @@
 
     selectDockerContainer()
 
-    eventBus.addEventListener('client.connect.reply', connectReply)
-    eventBus.addEventListener('client.action.reply', actionReply)
+    eventBus.addEventListener('client:connect:reply', connectReply)
+    eventBus.addEventListener('client:action:reply', actionReply)
   })
 
   onBeforeUnmount(() => {
-    eventBus.removeEventListener('client.connect.reply', connectReply)
-    eventBus.removeEventListener('client.action.reply', actionReply)
+    eventBus.removeEventListener('client:connect:reply', connectReply)
+    eventBus.removeEventListener('client:action:reply', actionReply)
   })
 </script>
 

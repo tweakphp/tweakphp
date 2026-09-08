@@ -127,10 +127,10 @@ describe('IPC Router (index.ts)', () => {
   })
 
   it('init registers all IPC handlers', () => {
-    expect(mockIpcOn).toHaveBeenCalledWith('client.connect', expect.any(Function))
-    expect(mockIpcOn).toHaveBeenCalledWith('client.execute', expect.any(Function))
-    expect(mockIpcOn).toHaveBeenCalledWith('client.action', expect.any(Function))
-    expect(mockIpcOn).toHaveBeenCalledWith('client.info', expect.any(Function))
+    expect(mockIpcOn).toHaveBeenCalledWith('client:connect', expect.any(Function))
+    expect(mockIpcOn).toHaveBeenCalledWith('client:execute', expect.any(Function))
+    expect(mockIpcOn).toHaveBeenCalledWith('client:action', expect.any(Function))
+    expect(mockIpcOn).toHaveBeenCalledWith('client:info', expect.any(Function))
   })
 
   describe('connect handler', () => {
@@ -141,11 +141,11 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockSetup.mockResolvedValue(undefined)
 
-      await ipcHandlers['client.connect'](mockEvent, payload)
+      await ipcHandlers['client:connect'](mockEvent, payload)
 
       expect(mockConnect).toHaveBeenCalled()
       expect(mockSetup).toHaveBeenCalled()
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.connect.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:connect:reply', {
         connected: true,
         connection: { type: 'local' },
         data: payload.data,
@@ -160,9 +160,9 @@ describe('IPC Router (index.ts)', () => {
 
       mockConnect.mockRejectedValue(errorObj)
 
-      await ipcHandlers['client.connect'](mockEvent, payload)
+      await ipcHandlers['client:connect'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.connect.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:connect:reply', {
         connected: false,
         connection: { type: 'local' },
         data: payload.data,
@@ -181,11 +181,11 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Some output\nTWEAKPHP_RESULT:{"val": 42}\n')
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
       expect(mockConnect).toHaveBeenCalled()
       expect(mockExecute).toHaveBeenCalledWith('echo 1;', 'my-loader')
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { val: 42 })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { val: 42 })
       expect(mockDisconnect).toHaveBeenCalled()
     })
 
@@ -196,9 +196,9 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Raw output\n')
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'Raw output')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', 'Raw output')
     })
 
     it('replies with raw string payload when TWEAKPHP_RESULT is not valid JSON', async () => {
@@ -208,9 +208,9 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_RESULT:not-json-payload\n')
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'not-json-payload')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', 'not-json-payload')
     })
 
     it('parses TWEAKPHP_ERROR JSON payload and replies with structured error result', async () => {
@@ -222,9 +222,9 @@ describe('IPC Router (index.ts)', () => {
         'TWEAKPHP_ERROR:{"class":"ParseError","message":"syntax error, unexpected end of file","line":3}\n'
       )
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', {
         output: [
           {
             line: 3,
@@ -243,9 +243,9 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_ERROR:PHP Fatal error: something bad on line 7\n')
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', {
         output: [
           {
             line: 7,
@@ -263,9 +263,9 @@ describe('IPC Router (index.ts)', () => {
 
       mockConnect.mockRejectedValue(new Error('Exec failed'))
 
-      await ipcHandlers['client.execute'](mockEvent, payload)
+      await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', expect.any(Error))
     })
   })
 
@@ -277,10 +277,10 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockAction.mockResolvedValue('actionResult')
 
-      await ipcHandlers['client.action'](mockEvent, payload)
+      await ipcHandlers['client:action'](mockEvent, payload)
 
       expect(mockAction).toHaveBeenCalledWith('myAction', 'myData')
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.action.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:action:reply', {
         type: 'myAction',
         result: 'actionResult',
       })
@@ -293,9 +293,9 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockAction.mockRejectedValue(new Error('Action failed'))
 
-      await ipcHandlers['client.action'](mockEvent, payload)
+      await ipcHandlers['client:action'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.action.reply', {
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:action:reply', {
         type: 'myAction',
         error: expect.any(Error),
       })
@@ -310,10 +310,10 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockInfo.mockResolvedValue('info-result')
 
-      await ipcHandlers['client.info'](mockEvent, payload)
+      await ipcHandlers['client:info'](mockEvent, payload)
 
       expect(mockInfo).toHaveBeenCalledWith('my-loader')
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', 'info-result')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:info:reply', 'info-result')
     })
 
     it('replies with error on info failure', async () => {
@@ -324,9 +324,9 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockInfo.mockRejectedValue(errorObj)
 
-      await ipcHandlers['client.info'](mockEvent, payload)
+      await ipcHandlers['client:info'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', errorObj)
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:info:reply', errorObj)
       expect(mockDisconnect).toHaveBeenCalled()
     })
   })
@@ -338,19 +338,19 @@ describe('IPC Router (index.ts)', () => {
       mockConnect.mockResolvedValue(undefined)
       mockInfo.mockResolvedValue('info-result')
 
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'local' } })
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'docker' } })
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'vapor' } })
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'ssh' } })
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'kubectl' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'local' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'docker' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'vapor' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'ssh' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'kubectl' } })
     })
 
     it('replies with error if type is not supported', async () => {
       const mockEvent = { reply: vi.fn() }
 
-      await ipcHandlers['client.info'](mockEvent, { connection: { type: 'unsupported' } })
+      await ipcHandlers['client:info'](mockEvent, { connection: { type: 'unsupported' } })
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:info:reply', expect.any(Error))
       const reply = mockEvent.reply.mock.calls[0][1] as Error
       expect(reply.message).toBe('Type not supported')
     })
@@ -358,9 +358,9 @@ describe('IPC Router (index.ts)', () => {
     it('replies with error if connection object is missing', async () => {
       const mockEvent = { reply: vi.fn() }
 
-      await ipcHandlers['client.info'](mockEvent, {})
+      await ipcHandlers['client:info'](mockEvent, {})
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:info:reply', expect.any(Error))
       const reply = mockEvent.reply.mock.calls[0][1] as Error
       expect(reply.message).toBe('Connection is required')
     })

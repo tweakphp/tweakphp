@@ -59,7 +59,7 @@
   })
 
   onMounted(() => {
-    events.addEventListener('client.action.reply', actionReply)
+    events.addEventListener('client:action:reply', actionReply)
     getContexts()
     if (props.id) {
       const connection = kubectlStore.getConnection(props.id)
@@ -71,14 +71,14 @@
   })
 
   const getContexts = () => {
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       type: 'getContexts',
       connection: { ...form.value },
     })
   }
 
   const getNamespaces = () => {
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       type: 'getNamespaces',
       connection: { ...form.value },
     })
@@ -111,7 +111,7 @@
   }
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.action.reply', actionReply)
+    events.removeEventListener('client:action:reply', actionReply)
   })
 </script>
 

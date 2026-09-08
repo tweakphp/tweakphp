@@ -39,11 +39,11 @@
   const connecting = ref('')
 
   onMounted(() => {
-    events.addEventListener('client.connect.reply', connectReply)
+    events.addEventListener('client:connect:reply', connectReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.connect.reply', connectReply)
+    events.removeEventListener('client:connect:reply', connectReply)
   })
 
   const connect = (execution: string) => {
@@ -57,7 +57,7 @@
 
     connecting.value = execution
     let connection = tabStore.getConnectionConfig(tabStore.current, execution)
-    window.ipcRenderer.send('client.connect', {
+    window.ipcRenderer.send('client:connect', {
       connection: JSON.parse(JSON.stringify(connection)),
       data: {
         state: 'reconnect',

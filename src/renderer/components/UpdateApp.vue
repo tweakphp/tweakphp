@@ -16,7 +16,7 @@
 
   const checkForUpdates = () => {
     updateStore.setChecking(true)
-    window.ipcRenderer.send('update.check')
+    window.ipcRenderer.send('update:check')
   }
 
   const openChangelogModal = () => {
@@ -25,27 +25,27 @@
 
   const openInBrowser = (update?: UpdateInfo) => {
     if (update) {
-      window.ipcRenderer.send('link.open', `https://github.com/tweakphp/tweakphp/releases/tag/v${update.releaseName}`)
+      window.ipcRenderer.send('link:open', `https://github.com/tweakphp/tweakphp/releases/tag/v${update.releaseName}`)
     }
   }
 
   const update = () => {
     updating.value = true
     updateStore.resetDownloadProgress()
-    window.ipcRenderer.send('update.download')
+    window.ipcRenderer.send('update:download')
   }
 
   const testProgress = () => {
     updating.value = true
     updateStore.resetDownloadProgress()
-    window.ipcRenderer.send('update.test-progress')
+    window.ipcRenderer.send('update:test-progress')
   }
 
   const cancelUpdate = () => {
     updating.value = false
     updateStore.setDownloading(false)
     updateStore.resetDownloadProgress()
-    window.ipcRenderer.send('update.cancel')
+    window.ipcRenderer.send('update:cancel')
   }
 
   const formatBytes = (bytes: number): string => {

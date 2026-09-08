@@ -14,20 +14,20 @@ export const init = async () => {
   }
   autoUpdater.on('update-available', (info: UpdateInfo) => {
     update = info
-    window.webContents.send('update.available', info)
+    window.webContents.send('update:available', info)
   })
   autoUpdater.on('update-not-available', (info: UpdateInfo) => {
-    window.webContents.send('update.not-available', info)
+    window.webContents.send('update:not-available', info)
   })
   autoUpdater.on('error', error => {
     console.error('Update error:', error)
     // In dev mode, send not-available to stop the checking state
     if (process.env.NODE_ENV === 'development') {
-      window.webContents.send('update.not-available', {})
+      window.webContents.send('update:not-available', {})
     }
   })
   autoUpdater.on('download-progress', progressInfo => {
-    window.webContents.send('update.download-progress', {
+    window.webContents.send('update:download-progress', {
       percent: progressInfo.percent,
       transferred: progressInfo.transferred,
       total: progressInfo.total,
@@ -35,20 +35,20 @@ export const init = async () => {
     })
   })
   autoUpdater.on('update-downloaded', () => {
-    window.webContents.send('update.downloaded')
+    window.webContents.send('update:downloaded')
     autoUpdater.quitAndInstall()
   })
-  ipcMain.on('update.check', () => {
+  ipcMain.on('update:check', () => {
     checkForUpdates()
   })
-  ipcMain.on('update.download', async (): Promise<void> => {
-    window.webContents.send('update.available', update)
+  ipcMain.on('update:download', async (): Promise<void> => {
+    window.webContents.send('update:available', update)
     // Create a new cancellation token for this download
     cancellationToken = new CancellationToken()
     await autoUpdater.downloadUpdate(cancellationToken)
   })
 
-  ipcMain.on('update.test-progress', () => {
+  ipcMain.on('update:test-progress', () => {
     // Clear any existing interval first
     if (testProgressInterval) {
       clearInterval(testProgressInterval)
@@ -60,7 +60,7 @@ export const init = async () => {
       let progress = 0
       testProgressInterval = setInterval(() => {
         progress += 10
-        window.webContents.send('update.download-progress', {
+        window.webContents.send('update:download-progress', {
           percent: progress,
           transferred: progress * 1024 * 1024,
           total: 100 * 1024 * 1024,
@@ -69,13 +69,13 @@ export const init = async () => {
         if (progress >= 100) {
           if (testProgressInterval) clearInterval(testProgressInterval)
           testProgressInterval = null
-          window.webContents.send('update.downloaded')
+          window.webContents.send('update:downloaded')
         }
       }, 500)
     }
   })
 
-  ipcMain.on('update.cancel', () => {
+  ipcMain.on('update:cancel', () => {
     // Cancel test progress in dev mode
     if (testProgressInterval) {
       clearInterval(testProgressInterval)
@@ -87,7 +87,7 @@ export const init = async () => {
       try {
         cancellationToken.cancel()
         cancellationToken = null
-        window.webContents.send('update.cancelled')
+        window.webContents.send('update:cancelled')
       } catch (error) {
         console.error('Failed to cancel update:', error)
       }
@@ -96,12 +96,12 @@ export const init = async () => {
 }
 
 export const checkForUpdates = async () => {
-  window.webContents.send('update.checking')
+  window.webContents.send('update:checking')
 
   // In development mode, just simulate no update available
   if (process.env.NODE_ENV === 'development') {
     setTimeout(() => {
-      window.webContents.send('update.not-available', {})
+      window.webContents.send('update:not-available', {})
     }, 1000)
     return
   }

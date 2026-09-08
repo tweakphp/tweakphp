@@ -57,33 +57,39 @@
       colorSchemeStore.change()
       colorSchemeSetup()
     })
-    window.ipcRenderer.on('update.available', (e: UpdateInfo) => {
+    window.ipcRenderer.on('update:available', (e: UpdateInfo) => {
       updateStore.setUpdate(e)
     })
-    window.ipcRenderer.on('update.not-available', (e: UpdateInfo) => {
+    window.ipcRenderer.on('update:not-available', (e: UpdateInfo) => {
       updateStore.setUpdate(e)
     })
-    window.ipcRenderer.on('update.checking', () => {
+    window.ipcRenderer.on('update:checking', () => {
       updateStore.setChecking(true)
     })
-    window.ipcRenderer.on('update.download-progress', (progress: any) => {
+    window.ipcRenderer.on('update:download-progress', (progress: any) => {
       updateStore.setDownloading(true)
       updateStore.setDownloadProgress(progress)
     })
-    window.ipcRenderer.on('update.downloaded', () => {
+    window.ipcRenderer.on('update:downloaded', () => {
       updateStore.setDownloading(false)
       updateStore.resetDownloadProgress()
     })
-    window.ipcRenderer.on('update.cancelled', () => {
+    window.ipcRenderer.on('update:cancelled', () => {
       updateStore.setDownloading(false)
       updateStore.resetDownloadProgress()
     })
-    window.ipcRenderer.on('init.reply', async (e: any) => {
-      settingsStore.setSettings(e.settings)
-      isAppReady.value = true
-    })
-    window.ipcRenderer.send('init')
-    window.ipcRenderer.on('source.open.reply', (e: any) => {
+    try {
+      const initResult = await window.ipcRenderer.invoke('app:init')
+      if (initResult?.error) {
+        console.error('Failed to load settings:', initResult.error)
+      } else {
+        settingsStore.setSettings(initResult.data.settings)
+        isAppReady.value = true
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    }
+    window.ipcRenderer.on('source:open:reply', (e: any) => {
       let tab = tabStore.addTab({
         path: e,
         type: 'code',
@@ -92,20 +98,20 @@
       router.push({ name: 'code', params: { id: tab.id } })
       newProjectModal.value.closeModal()
     })
-    window.ipcRenderer.on('client.connect.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.connect.reply', { detail: e }))
+    window.ipcRenderer.on('client:connect:reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client:connect:reply', { detail: e }))
     })
-    window.ipcRenderer.on('client.execute.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.execute.reply', { detail: e }))
+    window.ipcRenderer.on('client:execute:reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client:execute:reply', { detail: e }))
     })
-    window.ipcRenderer.on('client.execute.stream', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.execute.stream', { detail: e }))
+    window.ipcRenderer.on('client:execute:stream', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client:execute:stream', { detail: e }))
     })
-    window.ipcRenderer.on('client.action.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.action.reply', { detail: e }))
+    window.ipcRenderer.on('client:action:reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client:action:reply', { detail: e }))
     })
-    window.ipcRenderer.on('client.info.reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client.info.reply', { detail: e }))
+    window.ipcRenderer.on('client:info:reply', (e: any) => {
+      events.dispatchEvent(new CustomEvent('client:info:reply', { detail: e }))
     })
 
     window.addEventListener('keydown', keydownListener)

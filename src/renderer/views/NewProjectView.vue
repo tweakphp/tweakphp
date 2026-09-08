@@ -36,7 +36,7 @@
   onMounted(() => {})
 
   const openProject = () => {
-    window.ipcRenderer.send('source.open')
+    window.ipcRenderer.send('source:open')
   }
 
   const getHistoryName = (path: string) => {

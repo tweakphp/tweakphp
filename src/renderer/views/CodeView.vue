@@ -76,19 +76,19 @@
     loadersStore,
   })
 
-  const handleLspReconnect = () => {
-    window.ipcRenderer.send('lsp.restart')
+  const handleLspReconnect = async () => {
+    try {
+      const result = await window.ipcRenderer.invoke('lsp:restart')
+      if (result?.error) {
+        console.error('Failed to restart LSP server:', result.error)
+      }
+    } catch (error) {
+      console.error('Failed to restart LSP server:', error)
+    }
     try {
       // @ts-ignore - template ref typed at runtime
       codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
     } catch (e) {}
-  }
-
-  const lspRestartSuccessListener = () => {
-    console.log('LSP restart success, reconnecting editors...')
-    if (codeEditor.value) {
-      codeEditor.value.reconnectLsp()
-    }
   }
 
   const vaporRequestEnvironmentTab = () => {
@@ -98,7 +98,7 @@
     }
     vaporStore.setClientPath(tab.value.id, String(tabsStore.current?.path))
     const config = JSON.parse(JSON.stringify(vaporStore.getConnectionConfig(tabsStore.current?.id)))
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       type: 'getEnvironments',
       connection: config,
     })
@@ -143,7 +143,7 @@
     const loaderCode = getLoader(loader ?? '')
 
     if (connection && tab.value.type === 'code') {
-      window.ipcRenderer.send('client.info', {
+      window.ipcRenderer.send('client:info', {
         connection: JSON.parse(JSON.stringify(connection)),
         loader: loaderCode,
       })
@@ -167,8 +167,6 @@
   }
 
   onMounted(async () => {
-    window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
-
     if (settingsStore.settings.php === '') {
       await router.push({ name: 'settings' })
       alert('PHP path is not set!')
@@ -197,10 +195,10 @@
 
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
-    events.addEventListener('client.execute.reply', executeReplyListener)
-    events.addEventListener('client.execute.stream', executeStreamListener)
-    events.addEventListener('client.info.reply', infoReplyListener)
-    events.addEventListener('client.action.reply', vaporResponseEnvironmentTab)
+    events.addEventListener('client:execute:reply', executeReplyListener)
+    events.addEventListener('client:execute:stream', executeStreamListener)
+    events.addEventListener('client:info:reply', infoReplyListener)
+    events.addEventListener('client:action:reply', vaporResponseEnvironmentTab)
     if (tabsContainer.value) {
       tabsContainer.value.scrollLeft = tabsStore.scrollPosition
       tabsContainer.value.addEventListener('wheel', tabsContainerWheelListener)
@@ -208,12 +206,11 @@
   })
 
   onBeforeUnmount(async () => {
-    window.ipcRenderer.removeListener('lsp.restart.success', lspRestartSuccessListener)
     window.removeEventListener('keydown', keydownListener)
-    events.removeEventListener('client.execute.reply', executeReplyListener)
-    events.removeEventListener('client.execute.stream', executeStreamListener)
-    events.removeEventListener('client.info.reply', infoReplyListener)
-    events.removeEventListener('client.action.reply', vaporResponseEnvironmentTab)
+    events.removeEventListener('client:execute:reply', executeReplyListener)
+    events.removeEventListener('client:execute:stream', executeStreamListener)
+    events.removeEventListener('client:info:reply', infoReplyListener)
+    events.removeEventListener('client:action:reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)
     if (tabsContainer.value) {
       tabsContainer.value.removeEventListener('wheel', tabsContainerWheelListener)

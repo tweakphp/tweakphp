@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { detectPhpPaths, getSettings, setSettings, init, settingsPath } from './settings'
+import { detectPhpPaths, getSettings, setSettings, settingsPath } from './settings'
 import { execSync } from 'child_process'
 import * as fs from 'node:fs'
 
@@ -28,32 +28,18 @@ vi.mock('./system/platform', () => ({
   isWindows: vi.fn(),
 }))
 
-vi.mock('./lsp/index', () => ({
-  init: vi.fn(),
-}))
-
-const ipcHandlers: Record<string, Function> = {}
-const mockIpcOn = vi.fn().mockImplementation((event: string, callback: Function) => {
-  ipcHandlers[event] = callback
-})
-
 vi.mock('electron', () => ({
   app: {
     isPackaged: false,
     getVersion: () => '0.13.1',
-  },
-  ipcMain: {
-    on: (event: string, cb: Function) => mockIpcOn(event, cb),
-    handle: (event: string, cb: Function) => mockIpcOn(event, cb),
   },
 }))
 
 import { isWindows } from './system/platform'
 
 describe('Settings Management (settings.ts)', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-    await init()
   })
 
   describe('getSettings & setSettings', () => {
@@ -155,39 +141,6 @@ describe('Settings Management (settings.ts)', () => {
         expect.any(Error)
       )
       consoleErrorSpy.mockRestore()
-    })
-  })
-
-  describe('settings.store IPC handler', () => {
-    it('saves settings and resolves folder path to executable path if directory is passed', async () => {
-      const mockEvent = {
-        sender: {
-          send: vi.fn(),
-        },
-      }
-      const payload: any = {
-        php: 'C:\\php-folder',
-        theme: 'monokai',
-      }
-
-      vi.mocked(isWindows).mockReturnValue(true)
-      vi.mocked(fs.existsSync).mockImplementation((p: any) => {
-        const normalized = p.toString().replace(/\\/g, '/')
-        return normalized === 'C:/php-folder' || normalized === 'C:/php-folder/php.exe'
-      })
-      vi.mocked(fs.lstatSync).mockReturnValue({
-        isDirectory: () => true,
-      } as any)
-
-      await ipcHandlers['settings.store'](mockEvent, payload)
-
-      expect(fs.writeFileSync).toHaveBeenCalled()
-      const savedData = JSON.parse(vi.mocked(fs.writeFileSync).mock.calls[0][1] as string)
-      expect(savedData.php.replace(/\\/g, '/')).toBe('C:/php-folder/php.exe')
-      expect(mockEvent.sender.send).toHaveBeenCalledWith(
-        'settings.php-located',
-        expect.stringMatching(/C:[/\\]php-folder[/\\]php\.exe/)
-      )
     })
   })
 

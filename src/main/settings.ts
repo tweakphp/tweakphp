@@ -1,7 +1,6 @@
 import path from 'path'
 import * as fs from 'node:fs'
-import * as lsp from './lsp/index'
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import { Settings } from '../types/settings.type'
 import os from 'os'
 import { isWindows } from './system/platform.ts'
@@ -56,43 +55,6 @@ const defaultSettings: Settings = {
   mcpPort: 3000,
   streaming: true,
   dockerKubectlExecutionTimeoutSeconds: DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
-}
-
-export const init = async () => {
-  ipcMain.on('settings.store', async (_event: any, data: Settings) => {
-    data.php = handlePhpExecutable(_event, data.php)
-    setSettings(data)
-    !isWindows() && (await lsp.init())
-  })
-
-  ipcMain.on('settings.detect-php', async (event: any) => {
-    const paths = detectPhpPaths()
-    event.reply('settings.detect-php.reply', paths)
-  })
-
-  // Awaitable variant used where callers need confirmation the write completed
-  ipcMain.handle('settings.save', async (_event: any, data: Settings) => {
-    data.php = handlePhpExecutable(_event, data.php)
-    setSettings(data)
-    await lsp.init()
-  })
-}
-
-const handlePhpExecutable = (_event: any, phpPath: string) => {
-  try {
-    if (fs.existsSync(phpPath) && fs.lstatSync(phpPath).isDirectory()) {
-      const phpExecutable = isWindows() ? 'php.exe' : 'php'
-      let potentialPath = path.join(phpPath, phpExecutable)
-
-      if (fs.existsSync(potentialPath)) {
-        phpPath = potentialPath
-        _event.sender.send('settings.php-located', potentialPath)
-      }
-    }
-  } catch (err) {
-    // Ignore errors as path may no longer exist or has been changed etc..
-  }
-  return phpPath
 }
 
 export const setSettings = (data: Settings) => {

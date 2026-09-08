@@ -7,7 +7,7 @@
   const title = ref<string>('')
   const progress = ref<number>(0)
 
-  window.ipcRenderer.on('statusbar.progress', e => {
+  window.ipcRenderer.on('statusbar:progress', e => {
     title.value = e.title
     progress.value = e.progress
   })

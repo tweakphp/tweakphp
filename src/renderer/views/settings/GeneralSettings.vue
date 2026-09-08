@@ -18,7 +18,7 @@
   const updateStore = useUpdateStore()
 
   onMounted(() => {
-    window.ipcRenderer.on('settings.php-located', updatePhpSetting)
+    window.ipcRenderer.on('settings:php-located', updatePhpSetting)
   })
 
   const updatePhpSetting = (newPhpSetting: string) => {
@@ -35,13 +35,16 @@
     }, 2000)
   }
 
-  const detectPhp = () => {
+  const detectPhp = async () => {
     detecting.value = true
-    window.ipcRenderer.send('settings.detect-php')
-    window.ipcRenderer.once('settings.detect-php.reply', (paths: string[]) => {
+    try {
+      const result = await window.ipcRenderer.invoke('settings:detect-php')
+      detectedPaths.value = result?.error ? [] : result.data || []
+    } catch (error) {
+      console.error('Failed to detect PHP paths:', error)
+    } finally {
       detecting.value = false
-      detectedPaths.value = paths || []
-    })
+    }
   }
 
   const selectDetectedPhp = (p: string) => {

@@ -47,9 +47,16 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   const update = () => {
-    window.ipcRenderer.send('settings.store', {
-      ...settings.value,
-    })
+    window.ipcRenderer
+      .invoke('settings:store', { ...settings.value })
+      .then((result: any) => {
+        if (result?.error) {
+          console.error('Failed to save settings:', result.error)
+        }
+      })
+      .catch((error: any) => {
+        console.error('Failed to save settings:', error)
+      })
   }
 
   return { settings, themes, setSettings, update, colors, isNavigationExpanded }

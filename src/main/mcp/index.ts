@@ -3,7 +3,7 @@
  * Main entry point for Model Context Protocol integration
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 import { getMCPServer } from './server'
 import { MCPServerConfig } from './types'
 import { getSettings } from '../settings'
@@ -21,7 +21,7 @@ export * from './tools'
 /**
  * Start MCP server with current settings
  */
-const startServerFromSettings = async (): Promise<void> => {
+export const startServerFromSettings = async (): Promise<void> => {
   const settings = getSettings()
   const server = getMCPServer()
 
@@ -46,7 +46,7 @@ const startServerFromSettings = async (): Promise<void> => {
 /**
  * Stop MCP server
  */
-const stopServer = async (): Promise<void> => {
+export const stopServer = async (): Promise<void> => {
   const server = getMCPServer()
 
   if (server.isRunning()) {
@@ -61,65 +61,23 @@ const stopServer = async (): Promise<void> => {
 /**
  * Send status update to all renderer windows
  */
-const broadcastStatusUpdate = () => {
+export const broadcastStatusUpdate = () => {
   const server = getMCPServer()
   const status = server.getStatus()
 
   BrowserWindow.getAllWindows().forEach(window => {
-    window.webContents.send('mcp.status-update', status)
+    window.webContents.send('mcp:status-update', status)
   })
 }
 
 /**
- * Initialize MCP server IPC handlers
+ * Initialize MCP server
  */
 export const init = async () => {
   const server = getMCPServer()
 
   setMcpConnectionManager(server.getConnectionManager())
 
-  // Handle get status requests
-  ipcMain.handle('mcp.get-status', async () => {
-    return server.getStatus()
-  })
-
-  // Handle start server requests
-  ipcMain.handle('mcp.start', async (_event, config: MCPServerConfig) => {
-    try {
-      await server.start(config)
-      broadcastStatusUpdate()
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
-    }
-  })
-
-  // Handle stop server requests
-  ipcMain.handle('mcp.stop', async () => {
-    try {
-      await server.stop()
-      broadcastStatusUpdate()
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
-    }
-  })
-
-  // Listen for settings changes to start/stop/restart server
-  ipcMain.on('mcp.settings-changed', async (_event, enabled: boolean) => {
-    if (enabled) {
-      // Stop first to pick up any config changes (e.g. port), then restart
-      if (server.isRunning()) {
-        await stopServer()
-      }
-      await startServerFromSettings()
-    } else {
-      await stopServer()
-    }
-    broadcastStatusUpdate()
-  })
-
-  // Start server on initialization if enabled in settings
   await startServerFromSettings()
 
   // Broadcast status updates every 2 seconds

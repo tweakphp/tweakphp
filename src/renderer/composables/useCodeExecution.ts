@@ -254,7 +254,7 @@ export function useCodeExecution(options: {
 
     options.tabsStore.updateTab(options.tab.value)
 
-    window.ipcRenderer.send('client.execute', {
+    window.ipcRenderer.send('client:execute', {
       connection: JSON.parse(JSON.stringify(connection)),
       code,
       loader: getLoader(loader ?? ''),

@@ -29,7 +29,7 @@
 
   const getPods = (con: ConnectionConfig) => {
     loadingPods.value = true
-    window.ipcRenderer.send('client.action', {
+    window.ipcRenderer.send('client:action', {
       type: 'getPods',
       connection: { ...con },
     })
@@ -38,7 +38,7 @@
   const connect = (con: ConnectionConfig, pod: string) => {
     connecting.value = con.id
     con.pod = pod
-    window.ipcRenderer.send('client.connect', {
+    window.ipcRenderer.send('client:connect', {
       connection: { ...con },
       data: {
         state: 'connect',
@@ -61,11 +61,11 @@
   }
 
   onMounted(() => {
-    events.addEventListener('client.action.reply', actionReply)
+    events.addEventListener('client:action:reply', actionReply)
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.action.reply', actionReply)
+    events.removeEventListener('client:action:reply', actionReply)
   })
 </script>
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import path, { join } from 'path'
 import log from 'electron-log/main'
 
@@ -14,18 +14,16 @@ import * as tray from './system/tray.ts'
 import * as mcp from './mcp/index.ts'
 
 import { runMigrations } from './db/migration.ts'
-import { initStorageIpc } from './ipc/storage-ipc.ts'
+import { initIpc } from './ipc/storage-ipc.ts'
 
 import url from 'url'
 
 import { fixPath } from './utils/fix-path.ts'
 import { isWindows } from './system/platform.ts'
-import { AiCompletion } from './tools/ai-completion.ts'
-import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
 
 runMigrations()
-initStorageIpc()
+initIpc()
 
 fixPath()
 
@@ -80,7 +78,7 @@ const createMainWindow = async () => {
   })
 
   window.on('close', (): void => {
-    window.webContents.send('ssh.disconnect')
+    window.webContents.send('ssh:disconnect')
   })
 
   window.on('closed', (): void => {
@@ -111,22 +109,8 @@ const createMainWindow = async () => {
   isDev && window.webContents.openDevTools()
 }
 
-ipcMain.on('init', event => {
-  event.sender.send('init.reply', {
-    settings: settings.getSettings(),
-  })
-})
-
 const initializeModules = async () => {
-  await Promise.all([
-    settings.init(),
-    tray.init(),
-    updater.init(),
-    link.init(),
-    client.init(),
-    source.init(),
-    mcp.init(),
-  ])
+  await Promise.all([tray.init(), updater.init(), link.init(), client.init(), source.init(), mcp.init()])
 }
 
 app.whenReady().then(async () => {
@@ -166,29 +150,4 @@ const shutdownApp = async (): Promise<void> => {
 
 app.on('before-quit', () => {
   void shutdownApp()
-})
-
-ipcMain.on('lsp.restart', async event => {
-  console.log('Received request to restart LSP server.')
-
-  try {
-    await lsp.shutdown()
-    console.log('Previous LSP server shut down. Restarting...')
-    await lsp.init()
-    console.log('LSP server restarted successfully.')
-    event.sender.send('lsp.restart.success')
-  } catch (error) {
-    console.error('Failed to restart LSP server:', error)
-    event.sender.send('lsp.restart.error', error)
-  }
-})
-
-const aiService = new AiCompletion()
-
-ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
-  try {
-    return await aiService.getCompletions(context, tab as Tab)
-  } catch (error: any) {
-    return { completion: [], error: error.message }
-  }
 })

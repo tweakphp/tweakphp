@@ -28,11 +28,16 @@
       settingsStore.settings.mcpEnabled = value
 
       // Await the save so the main process has the updated settings on disk
-      // before mcp.settings-changed triggers a start/stop/restart
-      await window.ipcRenderer.invoke('settings.save', { ...settingsStore.settings })
+      // before mcp:settings-changed triggers a start/stop/restart
+      const saveResult = await window.ipcRenderer.invoke('settings:save', { ...settingsStore.settings })
+      if (saveResult?.error) {
+        console.error('Failed to save settings:', saveResult.error)
+      }
 
-      // Notify main process about settings change
-      window.ipcRenderer.send('mcp.settings-changed', value)
+      const changeResult = await window.ipcRenderer.invoke('mcp:settings-changed', value)
+      if (changeResult?.error) {
+        console.error('Failed to apply MCP settings:', changeResult.error)
+      }
 
       // Fetch updated status after a short delay
       setTimeout(fetchServerStatus, 500)
@@ -83,9 +88,11 @@
 
   const fetchServerStatus = async () => {
     try {
-      const status = await window.ipcRenderer.invoke('mcp.get-status')
-      if (status) {
-        serverStatus.value = status
+      const result = await window.ipcRenderer.invoke('mcp:get-status')
+      if (result?.error) {
+        console.error('Failed to fetch MCP server status:', result.error)
+      } else if (result.data) {
+        serverStatus.value = result.data
       }
     } catch (error) {
       console.error('Failed to fetch MCP server status:', error)
@@ -107,11 +114,11 @@
         timeout: 30000,
         maxConcurrentExecutions: 5,
       }
-      const result = await window.ipcRenderer.invoke('mcp.start', config)
-      if (result.success) {
-        await fetchServerStatus()
-      } else {
+      const result = await window.ipcRenderer.invoke('mcp:start', config)
+      if (result?.error) {
         console.error('Failed to start server:', result.error)
+      } else {
+        await fetchServerStatus()
       }
     } catch (error) {
       console.error('Error starting server:', error)
@@ -123,11 +130,11 @@
   const stopServer = async () => {
     isStopping.value = true
     try {
-      const result = await window.ipcRenderer.invoke('mcp.stop')
-      if (result.success) {
-        await fetchServerStatus()
-      } else {
+      const result = await window.ipcRenderer.invoke('mcp:stop')
+      if (result?.error) {
         console.error('Failed to stop server:', result.error)
+      } else {
+        await fetchServerStatus()
       }
     } catch (error) {
       console.error('Error stopping server:', error)
@@ -141,7 +148,7 @@
     fetchServerStatus()
 
     // Listen for status updates from main process
-    window.ipcRenderer.on('mcp.status-update', handleStatusUpdate)
+    window.ipcRenderer.on('mcp:status-update', handleStatusUpdate)
 
     // Poll for status updates every 2 seconds as fallback
     statusInterval = setInterval(fetchServerStatus, 2000)
@@ -153,7 +160,7 @@
     }
 
     // Remove status update listener
-    window.ipcRenderer.removeListener('mcp.status-update', handleStatusUpdate)
+    window.ipcRenderer.removeListener('mcp:status-update', handleStatusUpdate)
   })
 </script>
 
@@ -189,7 +196,7 @@
         @change="
           () => {
             saveSettings()
-            if (mcpEnabled) window.ipcRenderer.send('mcp.settings-changed', true)
+            if (mcpEnabled) window.ipcRenderer.invoke('mcp:settings-changed', true)
           }
         "
         placeholder="3000"

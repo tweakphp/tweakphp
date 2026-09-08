@@ -19,7 +19,7 @@
 
   const connect = (connection: ConnectionConfig) => {
     connecting.value = connection.id
-    window.ipcRenderer.send('client.connect', {
+    window.ipcRenderer.send('client:connect', {
       connection: { ...connection },
       data: {
         state: 'connect-ssh',

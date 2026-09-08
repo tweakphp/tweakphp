@@ -195,10 +195,14 @@
           trigger: 'onIdle',
           enableCaching: false,
           requestHandler: async ({ body }) => {
-            return await window.ipcRenderer.invoke('ai:get-completion', {
+            const result = await window.ipcRenderer.invoke('ai:get-completion', {
               context: body,
               tab: JSON.parse(JSON.stringify(tabsStore.current)),
             })
+            if (result?.error) {
+              return { completion: null, error: result.error }
+            }
+            return result.data
           },
           onError: error => {
             errorAiCompletion.value = error.message

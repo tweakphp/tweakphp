@@ -78,7 +78,7 @@
   }
 
   const sponsor = () => {
-    window.ipcRenderer.send('link.open', 'https://github.com/sponsors/saeedvaziry')
+    window.ipcRenderer.send('link:open', 'https://github.com/sponsors/saeedvaziry')
   }
 
   const openQueriesModal = () => {

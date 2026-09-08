@@ -63,7 +63,7 @@
   })
 
   onMounted(() => {
-    events.addEventListener('client.connect.reply', connectReply)
+    events.addEventListener('client:connect:reply', connectReply)
     if (props.id) {
       const connection = sshStore.getConnection(props.id)
       if (connection) {
@@ -73,13 +73,13 @@
   })
 
   onBeforeUnmount(() => {
-    events.removeEventListener('client.connect.reply', connectReply)
+    events.removeEventListener('client:connect:reply', connectReply)
     sshStore.setConnecting(false)
   })
 
   const connect = () => {
     sshStore.setConnecting(true)
-    window.ipcRenderer.send('client.connect', {
+    window.ipcRenderer.send('client:connect', {
       connection: { ...form.value },
       data: {
         state: props.id ? 'edit-ssh' : 'create-ssh',
