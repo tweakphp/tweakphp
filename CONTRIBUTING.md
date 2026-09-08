@@ -41,3 +41,15 @@ Then run `npm install` to install the dependencies.
 Now you may run `npm run dev` to start the app in development mode.
 
 Also set `DEV` env to `true`
+
+## Building
+
+### macOS (without Apple signing keys)
+
+If you don't have Apple Developer certificates, you can build locally by skipping code signing and notarization:
+
+```bash
+SKIP_NOTARIZE=true CSC_IDENTITY_AUTO_DISCOVERY=false npm run build-mac
+```
+
+The resulting DMG/app in `release/` will be unsigned — Gatekeeper may warn when opening it on other machines. For development/testing only.
