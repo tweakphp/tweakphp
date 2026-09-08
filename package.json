@@ -6,7 +6,7 @@
     "name": "Saeed Vaziry",
     "email": "mr.saeedvaziry@gmail.com"
   },
-  "version": "0.13.3",
+  "version": "0.14.0",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
@@ -125,11 +125,14 @@
   },
   "overrides": {
     "http-proxy-agent": "^7.0.2",
-    "@xmldom/xmldom": "0.8.12",
+    "@xmldom/xmldom": "^0.9.12",
     "defu": "^6.1.7",
     "lodash": "^4.18.1",
     "protobufjs": "^7.5.9",
-    "@protobufjs/utf8": "^1.1.1"
+    "@protobufjs/utf8": "^1.1.1",
+    "qs": "^6.16.0",
+    "@opentelemetry/core": "^2.11.0",
+    "applicationinsights": "^3.16.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
@@ -166,7 +169,7 @@
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vueuse/core": "^13.4.0",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "autoprefixer": "^10.4.19",
     "bufferutil": "^4.0.8",
     "concurrently": "^9.2.4",
