@@ -5,6 +5,7 @@ import { Settings } from '../types/settings.type'
 import os from 'os'
 import { isWindows } from './system/platform.ts'
 import { execSync } from 'child_process'
+import { DEFAULT_MCP_PORT, DISCOVERY_TIMEOUT_MS, WSL_PHP_LOOKUP_TIMEOUT_MS } from './constants'
 
 const homeDir = os.homedir()
 
@@ -52,7 +53,7 @@ const defaultSettings: Settings = {
   aiPromptTemplateCompleteCode: '',
   navigationDisplay: 'collapsed',
   mcpEnabled: false,
-  mcpPort: 3000,
+  mcpPort: DEFAULT_MCP_PORT,
   streaming: true,
   dockerKubectlExecutionTimeoutSeconds: DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
 }
@@ -181,7 +182,11 @@ export const detectPhpPaths = (): string[] => {
     })
 
     try {
-      const out = execSync('wsl -l -q', { encoding: 'utf16le', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 })
+      const out = execSync('wsl -l -q', {
+        encoding: 'utf16le',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: DISCOVERY_TIMEOUT_MS,
+      })
       let distrosStr = out.toString()
       if (distrosStr.includes('\u0000')) {
         distrosStr = distrosStr.replace(/\u0000/g, '')
@@ -197,7 +202,7 @@ export const detectPhpPaths = (): string[] => {
           const wslPhp = execSync(`wsl -d ${distro} which php`, {
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'ignore'],
-            timeout: 1500,
+            timeout: WSL_PHP_LOOKUP_TIMEOUT_MS,
           }).trim()
           if (wslPhp && !wslPhp.includes('not found') && wslPhp.startsWith('/')) {
             const uncPath = `\\\\wsl.localhost\\${distro}${wslPhp.replace(/\//g, '\\')}`

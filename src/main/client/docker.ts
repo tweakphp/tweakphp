@@ -9,9 +9,9 @@ import { assertMinPhpVersion } from '../utils/php'
 import { createStreamOutputParser, StreamEvent } from './stream-output'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
+import { SETUP_TIMEOUT_MS, DEFAULT_DOCKER_CLIENT_PATH, DEFAULT_DOCKER_WORKING_DIR } from '../constants'
 
 const dockerPathCache: Record<string, string> = {}
-const DOCKER_SETUP_TIMEOUT = 30_000
 
 const getExecutionTimeout = () => getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
 
@@ -95,8 +95,8 @@ export default class DockerClient extends BaseClient {
       cleanParam(projectPath) ||
       cleanParam(this.connection.working_directory) ||
       cleanParam(this.connection.path) ||
-      '/var/www/html'
-    const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
+      DEFAULT_DOCKER_WORKING_DIR
+    const clientPathVal = cleanParam(this.connection.client_path) || DEFAULT_DOCKER_CLIENT_PATH
 
     const commandArgs = [phpPathVal, clientPathVal, workingDirVal, command]
     if (command !== 'info') {
@@ -178,7 +178,7 @@ export default class DockerClient extends BaseClient {
         ).trim()
       } else {
         result = (
-          await this.runLocalDocker(['ps', '--format', '{{.ID}}|{{.Names}}|{{.Image}}'], DOCKER_SETUP_TIMEOUT)
+          await this.runLocalDocker(['ps', '--format', '{{.ID}}|{{.Names}}|{{.Image}}'], SETUP_TIMEOUT_MS)
         ).trim()
       }
 
@@ -211,7 +211,7 @@ export default class DockerClient extends BaseClient {
       if (this.ssh) {
         phpVersion = (await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args))).trim()
       } else {
-        phpVersion = (await this.runLocalDocker(args, DOCKER_SETUP_TIMEOUT)).trim()
+        phpVersion = (await this.runLocalDocker(args, SETUP_TIMEOUT_MS)).trim()
       }
       assertMinPhpVersion(phpVersion)
 
@@ -254,7 +254,7 @@ export default class DockerClient extends BaseClient {
         return (await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args))).trim()
       }
 
-      return (await this.runLocalDocker(args, DOCKER_SETUP_TIMEOUT)).trim()
+      return (await this.runLocalDocker(args, SETUP_TIMEOUT_MS)).trim()
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
@@ -285,7 +285,7 @@ export default class DockerClient extends BaseClient {
           buildPosixCommand(await this.getDockerPath(), ['cp', getClient, `${containerName}:${pharPath}`])
         )
       } else {
-        await this.runLocalDocker(['cp', getClient, `${containerName}:${pharPath}`], DOCKER_SETUP_TIMEOUT)
+        await this.runLocalDocker(['cp', getClient, `${containerName}:${pharPath}`], SETUP_TIMEOUT_MS)
       }
 
       return pharPath

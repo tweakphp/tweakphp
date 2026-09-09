@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import os from 'os'
+import { LSP_WEBSOCKET_DEFAULT_PORT } from '../shared/constants'
 
 export interface IpcRenderer {
   invoke: (channel: string, ...args: any[]) => Promise<any>
@@ -63,7 +64,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', ipcRendererHandler)
 
 contextBridge.exposeInMainWorld('platformInfo', {
   getPlatform: () => os.platform(),
-  getLspPort: () => parseInt(process.env.VITE_LSP_WEBSOCKET_PORT || '54331', 10),
+  getLspPort: () => parseInt(process.env.VITE_LSP_WEBSOCKET_PORT || String(LSP_WEBSOCKET_DEFAULT_PORT), 10),
   isDev: () => process.env.NODE_ENV === 'development',
 })
 

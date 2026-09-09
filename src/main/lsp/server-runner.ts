@@ -3,6 +3,7 @@ import express from 'express'
 import { upgradeWsServer } from './server-commons'
 import { Server } from 'http'
 import { RunConfig } from '../../types/run-config.type'
+import { SERVER_CLOSE_TIMEOUT_MS } from '../constants'
 
 let httpServer: Server | null = null
 
@@ -35,6 +36,6 @@ export const shutdown = async () => {
   await new Promise<void>(resolve => {
     server.close(() => resolve())
     server.closeAllConnections()
-    setTimeout(() => resolve(), 5000)
+    setTimeout(() => resolve(), SERVER_CLOSE_TIMEOUT_MS)
   })
 }

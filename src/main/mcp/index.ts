@@ -8,6 +8,7 @@ import { getMCPServer } from './server'
 import { MCPServerConfig } from './types'
 import { getSettings } from '../settings'
 import { setMcpConnectionManager } from '../ipc/connections-ipc'
+import { DEFAULT_MCP_EXECUTION_TIMEOUT_MS, DEFAULT_MCP_PORT, MCP_STATUS_BROADCAST_INTERVAL_MS } from '../constants'
 
 export { getMCPServer, MCPServerImpl } from './server'
 export type { MCPServer } from './server'
@@ -28,10 +29,10 @@ export const startServerFromSettings = async (): Promise<void> => {
   if (settings.mcpEnabled && !server.isRunning()) {
     const config: MCPServerConfig = {
       enabled: true,
-      port: settings.mcpPort || 3000,
+      port: settings.mcpPort || DEFAULT_MCP_PORT,
       host: '127.0.0.1',
       authEnabled: false,
-      timeout: 30000,
+      timeout: DEFAULT_MCP_EXECUTION_TIMEOUT_MS,
       maxConcurrentExecutions: 5,
     }
 
@@ -85,5 +86,5 @@ export const init = async () => {
     if (server.isRunning()) {
       broadcastStatusUpdate()
     }
-  }, 2000)
+  }, MCP_STATUS_BROADCAST_INTERVAL_MS)
 }

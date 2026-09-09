@@ -3,13 +3,15 @@ import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser, StreamEvent } from './stream-output'
-
-// Hard cap so a hung PHP process cannot leave the execution pending forever
-const LOCAL_EXECUTION_TIMEOUT_MS = 120_000
+import { LOCAL_EXECUTION_TIMEOUT_MS, DISCOVERY_TIMEOUT_MS } from '../constants'
 
 export const getWslDistros = (): string[] => {
   try {
-    const out = execSync('wsl -l -q', { encoding: 'utf16le', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 })
+    const out = execSync('wsl -l -q', {
+      encoding: 'utf16le',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: DISCOVERY_TIMEOUT_MS,
+    })
     let distrosStr = out.toString()
     if (distrosStr.includes('\u0000')) {
       distrosStr = distrosStr.replace(/\u0000/g, '')
@@ -21,7 +23,11 @@ export const getWslDistros = (): string[] => {
       .filter(d => !d.toLowerCase().includes('docker'))
   } catch (e) {
     try {
-      const out = execSync('wsl -l -q', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 })
+      const out = execSync('wsl -l -q', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: DISCOVERY_TIMEOUT_MS,
+      })
       return out
         .replace(/\u0000/g, '')
         .split(/\r?\n/)

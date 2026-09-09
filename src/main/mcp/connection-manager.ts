@@ -9,6 +9,7 @@ import { getSettings } from '../settings'
 import { ConnectionsRepository } from '../db/repositories/connections-repository'
 import { ConnectionType } from '../../types/connection.type'
 import { ClientConnectionConfig } from '../../types/client-connection.type'
+import { DEFAULT_DOCKER_WORKING_DIR } from '../constants'
 
 export interface ConnectionConfig {
   type: ConnectionType
@@ -103,7 +104,7 @@ export class ConnectionManager {
       normalized.php = normalized.php || defaultPhp
       normalized.php_path = normalized.php_path || defaultPhp
 
-      const defaultPath = normalized.working_directory || normalized.path || '/var/www/html'
+      const defaultPath = normalized.working_directory || normalized.path || DEFAULT_DOCKER_WORKING_DIR
       normalized.path = normalized.path || defaultPath
       normalized.working_directory = normalized.working_directory || defaultPath
     }

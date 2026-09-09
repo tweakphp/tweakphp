@@ -8,6 +8,7 @@ import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
 import { getErrorHandler } from '../error-handler'
 import { getSettings } from '../../settings'
+import { DEFAULT_DOCKER_WORKING_DIR } from '../../constants'
 
 interface SwitchConnectionResult {
   success: boolean
@@ -200,8 +201,8 @@ export class SwitchConnectionHandler {
         }
         connection.php = connection.php || connection.php_path || 'php'
         connection.php_path = connection.php_path || connection.php || 'php'
-        connection.path = connection.path || connection.working_directory || '/var/www/html'
-        connection.working_directory = connection.working_directory || connection.path || '/var/www/html'
+        connection.path = connection.path || connection.working_directory || DEFAULT_DOCKER_WORKING_DIR
+        connection.working_directory = connection.working_directory || connection.path || DEFAULT_DOCKER_WORKING_DIR
         break
       case 'ssh':
         if (!connection.host || !connection.username) {

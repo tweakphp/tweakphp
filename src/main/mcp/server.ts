@@ -30,6 +30,11 @@ import { SwitchConnectionHandler } from './tools/switch-connection'
 import { GetPhpInfoHandler } from './tools/get-php-info'
 import { ListConnectionsHandler } from './tools/list-connections'
 import { connectionTypes } from '../../types/connection.type'
+import {
+  DEFAULT_MCP_EXECUTION_TIMEOUT_MS,
+  MCP_LOADER_EXECUTION_TIMEOUT_MS,
+  SERVER_CLOSE_TIMEOUT_MS,
+} from '../constants'
 
 export interface MCPServer {
   start(config: MCPServerConfig): Promise<void>
@@ -123,7 +128,10 @@ export class MCPServerImpl implements MCPServer {
       {
         code: z.string().describe('PHP code to execute'),
         connectionId: z.string().optional().describe('Connection ID (uses active connection if omitted)'),
-        timeout: z.number().optional().describe('Timeout in milliseconds (default: 30000)'),
+        timeout: z
+          .number()
+          .optional()
+          .describe(`Timeout in milliseconds (default: ${DEFAULT_MCP_EXECUTION_TIMEOUT_MS})`),
       },
       async ({ code, connectionId, timeout }) => this.executePhpHandler.handle({ code, connectionId, timeout })
     )
@@ -137,7 +145,10 @@ export class MCPServerImpl implements MCPServer {
         loader: z.enum(['laravel', 'symfony']).describe('Framework loader to use'),
         projectPath: z.string().optional().describe('Path to the framework project root'),
         connectionId: z.string().optional().describe('Connection ID (uses active connection if omitted)'),
-        timeout: z.number().optional().describe('Timeout in milliseconds (default: 60000)'),
+        timeout: z
+          .number()
+          .optional()
+          .describe(`Timeout in milliseconds (default: ${MCP_LOADER_EXECUTION_TIMEOUT_MS})`),
       },
       async ({ code, loader, projectPath, connectionId, timeout }) =>
         this.executeWithLoaderHandler.handle({
@@ -372,7 +383,7 @@ export class MCPServerImpl implements MCPServer {
       ;(server as any).closeAllConnections?.()
 
       // Hard timeout in case close() stalls
-      setTimeout(() => finish(true), 5000)
+      setTimeout(() => finish(true), SERVER_CLOSE_TIMEOUT_MS)
     })
 
     this.running = false

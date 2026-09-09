@@ -1,15 +1,13 @@
 import { execFile, spawn } from 'child_process'
 import path from 'path'
-
-const KUBECTL_SETUP_TIMEOUT = 30_000
-const KUBECTL_EXECUTION_TIMEOUT = 60_000
+import { KUBECTL_EXECUTION_TIMEOUT_MS, SETUP_TIMEOUT_MS } from '../constants'
 
 export class Kubectl {
   constructor() {}
 
   async getContexts(): Promise<string[]> {
     try {
-      const result = (await this.run(['config', 'get-contexts', '-o', 'name'], KUBECTL_SETUP_TIMEOUT)).trim()
+      const result = (await this.run(['config', 'get-contexts', '-o', 'name'], SETUP_TIMEOUT_MS)).trim()
 
       if (result) {
         return result.split('\n')
@@ -33,7 +31,7 @@ export class Kubectl {
             'custom-columns=NAME:.metadata.name',
             '--no-headers',
           ],
-          KUBECTL_SETUP_TIMEOUT
+          SETUP_TIMEOUT_MS
         )
       ).trim()
 
@@ -61,7 +59,7 @@ export class Kubectl {
             'custom-columns=NAME:.metadata.name',
             '--no-headers',
           ],
-          KUBECTL_SETUP_TIMEOUT
+          SETUP_TIMEOUT_MS
         )
       ).trim()
 
@@ -78,7 +76,7 @@ export class Kubectl {
   async exec(
     command: string,
     params: { pod: string; context: string; namespace: string },
-    timeout = KUBECTL_EXECUTION_TIMEOUT
+    timeout = KUBECTL_EXECUTION_TIMEOUT_MS
   ): Promise<string> {
     try {
       return (await this.run(this.getExecArgs(command, params), timeout)).trim()
@@ -91,7 +89,7 @@ export class Kubectl {
     command: string,
     params: { pod: string; context: string; namespace: string },
     onData: (chunk: string) => void,
-    timeoutMs = KUBECTL_EXECUTION_TIMEOUT
+    timeoutMs = KUBECTL_EXECUTION_TIMEOUT_MS
   ): Promise<void> {
     const args = this.getExecArgs(command, params)
     return await new Promise((resolve, reject) => {
@@ -152,7 +150,7 @@ export class Kubectl {
           `--context=${params.context}`,
           `--namespace=${params.namespace}`,
         ],
-        KUBECTL_SETUP_TIMEOUT,
+        SETUP_TIMEOUT_MS,
         localPathApi.dirname(localPath)
       )
     } catch (error: any) {

@@ -3,9 +3,7 @@ import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser, StreamEvent } from './stream-output'
-
-// Hard cap so a hung PHP process cannot leave the execution pending forever
-const LOCAL_EXECUTION_TIMEOUT_MS = 120_000
+import { LOCAL_EXECUTION_TIMEOUT_MS } from '../constants'
 
 export const executeUnix = (
   connection: ConnectionConfig,

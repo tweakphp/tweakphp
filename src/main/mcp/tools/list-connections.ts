@@ -6,6 +6,7 @@
 import { ListConnectionsParams } from './schemas'
 import { ConnectionManager, ConnectionSummary } from '../connection-manager'
 import { execSync } from 'child_process'
+import { DISCOVERY_TIMEOUT_MS } from '../../constants'
 
 export interface DiscoveredEnvironment {
   type: string
@@ -53,7 +54,7 @@ export class ListConnectionsHandler {
     try {
       const output = execSync('docker ps --format "{{.ID}}|{{.Names}}|{{.Image}}"', {
         encoding: 'utf8',
-        timeout: 2000,
+        timeout: DISCOVERY_TIMEOUT_MS,
         stdio: ['ignore', 'pipe', 'ignore'],
       })
       const lines = output.trim().split('\n').filter(Boolean)

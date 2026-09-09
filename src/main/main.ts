@@ -21,6 +21,7 @@ import url from 'url'
 import { fixPath } from './utils/fix-path.ts'
 import { isWindows } from './system/platform.ts'
 import { initLogger } from './utils/logger.ts'
+import { DEV_SERVER_DEFAULT_PORT, WINDOW_INIT_DELAY_MS } from './constants.ts'
 
 runMigrations()
 initIpc()
@@ -66,7 +67,7 @@ const createMainWindow = async () => {
           await laravel.init(window)
           !isWindows() && (await lsp.init())
           await updater.checkForUpdates()
-        }, 1500)
+        }, WINDOW_INIT_DELAY_MS)
       })
 
       window.show()
@@ -92,7 +93,7 @@ const createMainWindow = async () => {
   const isDev: boolean = process.env.NODE_ENV === 'development'
 
   const route = isDev
-    ? `http://localhost:${process.env.VITE_SERVER_PORT || 4999}`
+    ? `http://localhost:${process.env.VITE_SERVER_PORT || DEV_SERVER_DEFAULT_PORT}`
     : url.format({
         pathname: join(__dirname, 'app', 'index.html'),
         protocol: 'file:',

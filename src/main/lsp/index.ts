@@ -3,6 +3,7 @@ import { killServerProcess } from './server-commons'
 import log from 'electron-log/main'
 
 import * as settings from '../settings'
+import { LSP_WEBSOCKET_DEFAULT_PORT } from '../constants'
 
 export const init = async () => {
   console.log('Initiating PHP language server (Intelephense)')
@@ -18,7 +19,7 @@ export const init = async () => {
     await runServer.runLanguageServer({
       serverName: 'Intelephense',
       pathName: '/',
-      serverPort: Number(process.env.VITE_LSP_WEBSOCKET_PORT || 54331),
+      serverPort: Number(process.env.VITE_LSP_WEBSOCKET_PORT || LSP_WEBSOCKET_DEFAULT_PORT),
       runCommand: process.execPath,
       runCommandArgs: [intelephenseEntry, '--stdio'],
       spawnOptions: {

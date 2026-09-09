@@ -11,6 +11,7 @@ import { ConnectionManager } from '../connection-manager'
 import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
 import { MCPError, MCPErrorCode } from '../types'
 import { getSettings } from '../../settings'
+import { MCP_LOADER_EXECUTION_TIMEOUT_MS } from '../../constants'
 
 interface ExecuteWithLoaderParams extends ExecuteParams {
   loader: string
@@ -29,7 +30,7 @@ export interface ExecuteWithLoaderResult extends ExecuteToolResult {
 
 export class ExecuteWithLoaderHandler extends BaseExecuteHandler<ExecuteWithLoaderParams, ExecuteWithLoaderContext> {
   protected readonly operation = 'execute_with_loader'
-  protected readonly defaultTimeout = 60000 // 60 seconds for framework bootstrapping
+  protected readonly defaultTimeout = MCP_LOADER_EXECUTION_TIMEOUT_MS // 60 seconds for framework bootstrapping
 
   constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryRepository) {
     super(connectionManager, historyDB)
