@@ -76,4 +76,21 @@ describe('ExecutePhpHandler Unit Tests', () => {
       })
     )
   })
+
+  it('marks TWEAKPHP_ERROR results as failures with exitCode 1 (shared result parsing)', async () => {
+    mockClient.execute.mockResolvedValue(
+      'TWEAKPHP_ERROR:{"class":"ParseError","message":"syntax error, unexpected end of file","line":3}'
+    )
+
+    const result = await handler.handle({ code: '<?php syntax error' })
+
+    expect(result.exitCode).toBe(1)
+    expect(result.output).toBe('ParseError: syntax error, unexpected end of file')
+    expect(mockHistoryDB.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        exitCode: 1,
+        error: 'ParseError: syntax error, unexpected end of file',
+      })
+    )
+  })
 })

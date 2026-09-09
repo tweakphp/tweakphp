@@ -86,12 +86,7 @@ const createMainWindow = async () => {
   })
 
   window.on('resize', (): void => {
-    const [width, height] = window.getSize()
-    settings.setSettings({
-      ...settings.getSettings(),
-      windowWidth: width,
-      windowHeight: height,
-    })
+    debounceSaveWindowSize()
   })
 
   const isDev: boolean = process.env.NODE_ENV === 'development'
@@ -125,6 +120,27 @@ app.on('window-all-closed', () => {
 })
 
 let isShuttingDown = false
+
+const WINDOW_RESIZE_SAVE_DELAY_MS = 300
+
+let resizeSaveTimer: ReturnType<typeof setTimeout> | undefined
+
+const debounceSaveWindowSize = (): void => {
+  if (resizeSaveTimer) {
+    clearTimeout(resizeSaveTimer)
+  }
+  resizeSaveTimer = setTimeout(() => {
+    resizeSaveTimer = undefined
+    if (!window.isDestroyed()) {
+      const [width, height] = window.getSize()
+      settings.setSettings({
+        ...settings.getSettings(),
+        windowWidth: width,
+        windowHeight: height,
+      })
+    }
+  }, WINDOW_RESIZE_SAVE_DELAY_MS)
+}
 
 const shutdownApp = async (): Promise<void> => {
   if (isShuttingDown) {

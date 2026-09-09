@@ -3,44 +3,40 @@
  * Executes PHP code with framework context (Laravel/Symfony)
  */
 
-import { ExecuteWithLoaderParams } from './schemas'
-import { MCPErrorCode } from '../types'
-import { ConnectionManager } from '../connection-manager'
-import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
-import { getErrorHandler } from '../error-handler'
-import { getSettings } from '../../settings'
 import * as fs from 'fs'
 import * as path from 'path'
+import { Client } from '../../client/client.interface'
+import { BaseExecuteHandler, ExecuteParams, ExecuteToolResult } from './execute-base'
+import { ConnectionManager } from '../connection-manager'
+import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
+import { MCPError, MCPErrorCode } from '../types'
+import { getSettings } from '../../settings'
 
-interface ExecuteWithLoaderResult {
-  output: unknown
-  exitCode: number
-  duration: number
-  connectionType: string
-  connectionName: string
+interface ExecuteWithLoaderParams extends ExecuteParams {
+  loader: string
+  projectPath?: string
+}
+
+interface ExecuteWithLoaderContext {
+  projectPath: string
+  frameworkDetected: boolean
+}
+
+export interface ExecuteWithLoaderResult extends ExecuteToolResult {
   loader: string
   frameworkDetected?: boolean
 }
 
-export class ExecuteWithLoaderHandler {
-  private connectionManager: ConnectionManager
-  private historyDB: ExecutionHistoryRepository
-  private errorHandler = getErrorHandler()
-  private defaultTimeout = 60000 // 60 seconds for framework bootstrapping
+export class ExecuteWithLoaderHandler extends BaseExecuteHandler<ExecuteWithLoaderParams, ExecuteWithLoaderContext> {
+  protected readonly operation = 'execute_with_loader'
+  protected readonly defaultTimeout = 60000 // 60 seconds for framework bootstrapping
 
   constructor(connectionManager: ConnectionManager, historyDB: ExecutionHistoryRepository) {
-    this.connectionManager = connectionManager
-    this.historyDB = historyDB
+    super(connectionManager, historyDB)
   }
 
-  async handle(params: ExecuteWithLoaderParams): Promise<ExecuteWithLoaderResult> {
-    // Validate parameters
-    if (!params.code || typeof params.code !== 'string') {
-      throw this.errorHandler.createError(
-        MCPErrorCode.INVALID_PARAMETERS,
-        'Parameter "code" is required and must be a string'
-      )
-    }
+  protected validate(params: ExecuteWithLoaderParams): void {
+    super.validate(params)
 
     if (!params.loader || !['laravel', 'symfony'].includes(params.loader)) {
       throw this.errorHandler.createError(
@@ -48,19 +44,9 @@ export class ExecuteWithLoaderHandler {
         'Parameter "loader" must be either "laravel" or "symfony"'
       )
     }
+  }
 
-    // Determine which connection to use
-    let connection = params.connectionId
-      ? this.connectionManager.getConnection(params.connectionId)
-      : this.connectionManager.getActiveConnection()
-
-    if (!connection) {
-      throw this.errorHandler.createError(
-        MCPErrorCode.CONNECTION_ERROR,
-        'No active connection available. Please specify a connectionId or set an active connection.'
-      )
-    }
-
+  protected async prepare(params: ExecuteWithLoaderParams, connection: any): Promise<ExecuteWithLoaderContext> {
     // Detect framework if no project path provided
     let projectPath = params.projectPath
     let frameworkDetected = false
@@ -89,141 +75,63 @@ export class ExecuteWithLoaderHandler {
       )
     }
 
-    // Get the appropriate client
-    const client = this.connectionManager.getClient(connection)
-    const timeout = params.timeout || this.defaultTimeout
-    const startTime = Date.now()
+    return { projectPath: projectPath!, frameworkDetected }
+  }
 
-    try {
-      // Connect to the client with retry logic
-      await this.errorHandler.executeWithRetry(
-        () => client.connect(),
-        'execute_with_loader:connect',
-        2, // max 2 retries for connection
-        1000 // 1 second base delay
-      )
+  protected async executeClient(
+    client: Client,
+    params: ExecuteWithLoaderParams,
+    _context: ExecuteWithLoaderContext
+  ): Promise<string> {
+    // Standard loader names ('laravel', 'symfony') are auto-detected by the phar from the
+    // project path — passing them as --loader would cause the phar to eval the string as PHP.
+    // Only pass loader when it is a custom base64-encoded PHP class.
+    const standardLoaders = ['laravel', 'symfony']
+    const loaderArg = standardLoaders.includes(params.loader) ? undefined : params.loader
+    return client.execute(params.code, loaderArg, params.projectPath)
+  }
 
-      // Execute with loader and timeout.
-      // Standard loader names ('laravel', 'symfony') are auto-detected by the phar from the
-      // project path — passing them as --loader would cause the phar to eval the string as PHP.
-      // Only pass loader when it is a custom base64-encoded PHP class.
-      const standardLoaders = ['laravel', 'symfony']
-      const loaderArg = standardLoaders.includes(params.loader) ? undefined : params.loader
-      const result = await this.executeWithTimeout(
-        () => client.execute(params.code, loaderArg, params.projectPath),
-        timeout
-      )
+  protected timeoutMessage(params: ExecuteWithLoaderParams, timeout: number): string {
+    return `PHP code execution with ${params.loader} loader exceeded timeout of ${timeout}ms`
+  }
 
-      const duration = Date.now() - startTime
-
-      // Parse the result
-      const trimmed = result.trim()
-      const tweakphpResult = trimmed.split('TWEAKPHP_RESULT:')[1]?.trim()
-      let output: unknown = trimmed
-
-      if (tweakphpResult) {
-        try {
-          output = JSON.parse(tweakphpResult)
-        } catch {
-          output = tweakphpResult
-        }
-      }
-
-      // Save to execution history
-      this.historyDB.insert({
-        code: params.code,
-        output: typeof output === 'string' ? output : JSON.stringify(output),
-        exitCode: 0,
-        connectionType: connection.type,
-        connectionName: this.connectionManager.getConnectionName(connection),
-        duration,
-        loader: params.loader,
-      })
-
-      return {
-        output,
-        exitCode: 0,
-        duration,
-        connectionType: connection.type,
-        connectionName: this.connectionManager.getConnectionName(connection),
-        loader: params.loader,
-        frameworkDetected,
-      }
-    } catch (err: any) {
-      const duration = Date.now() - startTime
-
-      // Save failed execution to history
-      this.historyDB.insert({
-        code: params.code,
-        error: err.message,
-        exitCode: 1,
-        connectionType: connection.type,
-        connectionName: this.connectionManager.getConnectionName(connection),
-        duration,
-        loader: params.loader,
-      })
-
-      // Check if it's a timeout error
-      if (err.message === 'TIMEOUT') {
-        const timeoutError = this.errorHandler.createError(
-          MCPErrorCode.TIMEOUT,
-          `PHP code execution with ${params.loader} loader exceeded timeout of ${timeout}ms`,
-          { timeout, duration, loader: params.loader, connectionType: connection.type }
-        )
-        throw this.errorHandler.enhanceErrorWithTroubleshooting(timeoutError)
-      }
-
-      // Check if it's a framework initialization error
-      if (
-        err.message &&
-        (err.message.includes('bootstrap') || err.message.includes('autoload') || err.message.includes('vendor'))
-      ) {
-        throw this.errorHandler.createError(
-          MCPErrorCode.EXECUTION_ERROR,
-          `Failed to initialize ${params.loader} framework`,
-          {
-            reason: err.message,
-            loader: params.loader,
-            projectPath,
-            duration,
-            troubleshooting: [
-              'Verify composer dependencies are installed',
-              'Check that vendor/autoload.php exists',
-              'Ensure the framework is properly configured',
-              'Verify file permissions on the project directory',
-            ],
-          }
-        )
-      }
-
-      // Check if it's a PHP syntax or execution error
-      if (err.message && (err.message.includes('Parse error') || err.message.includes('Fatal error'))) {
-        const execError = this.errorHandler.createError(MCPErrorCode.EXECUTION_ERROR, 'PHP execution error', {
-          phpError: err.message,
+  protected classifyError(err: any, params: ExecuteWithLoaderParams, duration: number): MCPError | null {
+    // Framework initialization errors
+    if (
+      err.message &&
+      (err.message.includes('bootstrap') || err.message.includes('autoload') || err.message.includes('vendor'))
+    ) {
+      return this.errorHandler.createError(
+        MCPErrorCode.EXECUTION_ERROR,
+        `Failed to initialize ${params.loader} framework`,
+        {
+          reason: err.message,
           loader: params.loader,
+          projectPath: params.projectPath,
           duration,
-          connectionType: connection.type,
-        })
-        throw this.errorHandler.enhanceErrorWithTroubleshooting(execError)
-      }
-
-      // Use error handler to classify and enhance the error
-      const mcpError = this.errorHandler.toMCPError(err)
-      mcpError.details = {
-        ...mcpError.details,
-        loader: params.loader,
-        duration,
-        connectionType: connection.type,
-      }
-      throw this.errorHandler.enhanceErrorWithTroubleshooting(mcpError, connection.type)
-    } finally {
-      try {
-        await client.disconnect()
-      } catch (disconnectErr) {
-        // Log disconnect errors but don't throw
-        console.error('Failed to disconnect client:', disconnectErr)
-      }
+          troubleshooting: [
+            'Verify composer dependencies are installed',
+            'Check that vendor/autoload.php exists',
+            'Ensure the framework is properly configured',
+            'Verify file permissions on the project directory',
+          ],
+        }
+      )
     }
+
+    return null
+  }
+
+  protected errorDetailsExtra(params: ExecuteWithLoaderParams): Record<string, unknown> {
+    return { loader: params.loader }
+  }
+
+  protected historyExtra(params: ExecuteWithLoaderParams): Record<string, unknown> {
+    return { loader: params.loader }
+  }
+
+  protected resultExtra(params: ExecuteWithLoaderParams, context: ExecuteWithLoaderContext): Record<string, unknown> {
+    return { loader: params.loader, frameworkDetected: context.frameworkDetected }
   }
 
   private detectFramework(loader: string, connection: any): string {
@@ -275,9 +183,5 @@ export class ExecuteWithLoaderHandler {
     } catch {
       return false
     }
-  }
-
-  private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Promise<T> {
-    return Promise.race([fn(), new Promise<T>((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeout))])
   }
 }

@@ -41,7 +41,7 @@ describe('KubectlClient', () => {
 
     const result = await client.remoteExec('echo hello')
     expect(result).toBe('output\n')
-    expect(mockKubectlInstance.exec).toHaveBeenCalledWith('echo hello', conn)
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith('echo hello', conn, 60_000)
   })
 
   it('uses execute-stream and emits structured events', async () => {

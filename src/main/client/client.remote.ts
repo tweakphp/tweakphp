@@ -2,6 +2,7 @@ import { app } from 'electron'
 import path from 'path'
 import { BaseClient } from './client.base'
 import { base64Encode } from '../utils/base64-encode'
+import { assertMinPhpVersion } from '../utils/php'
 import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 
@@ -18,9 +19,7 @@ export abstract class RemoteClient extends BaseClient {
     const phpVersion = (
       await this.remoteExec(`php -r "echo PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . PHP_EOL;"`)
     ).trim()
-    if (parseFloat(phpVersion) < 7.4) {
-      throw new Error('PHP version must be 7.4 or higher')
-    }
+    assertMinPhpVersion(phpVersion)
     this.connection.php = phpVersion
 
     const pharClientLocalPath = app.isPackaged
@@ -68,15 +67,21 @@ export abstract class RemoteClient extends BaseClient {
 
   remoteExecStream?(command: string, onData: (chunk: string) => void): Promise<void>
 
-  async execute(code: string, loader?: string): Promise<string> {
-    if (!this.connection.php) return 'PHP version not found'
-    if (!this.connection.client_path) return 'Client path not found'
-    const cmd = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
+  async execute(code: string, loader?: string, projectPath?: string): Promise<string> {
+    if (!this.connection.php) {
+      throw new Error('PHP version not found — run the connection setup first')
+    }
+    if (!this.connection.client_path) {
+      throw new Error('Client path not found — run the connection setup first')
+    }
+    const cmd = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
     return this.remoteExec(cmd)
   }
 
   async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
-    if (!this.connection.php || !this.connection.client_path) return
+    if (!this.connection.php || !this.connection.client_path) {
+      throw new Error('Client is not provisioned — run the connection setup first')
+    }
     if (typeof this.remoteExecStream !== 'function') {
       throw new Error('Streaming is not supported by this connection')
     }
@@ -90,6 +95,8 @@ export abstract class RemoteClient extends BaseClient {
   }
 
   async info(loader?: string): Promise<string> {
+    // Info is not an execution result: fall back to empty JSON so the renderer
+    // can safely JSON.parse the reply even when the connection is not provisioned
     if (!this.connection.php || !this.connection.client_path) return '{}'
     const cmd = `${this.command()} info ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
     return this.remoteExec(cmd)

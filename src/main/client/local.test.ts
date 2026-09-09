@@ -355,6 +355,26 @@ describe('LocalClient WSL Support', () => {
       )
     })
 
+    it('rejects when the PHP process fails instead of returning empty output', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const client = new LocalClient({
+        type: 'local',
+        path: '/home/david/project',
+        php: '/usr/bin/php',
+      })
+
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(new Error('spawn php ENOENT'), '', 'PHP fatal: missing phar')
+        }
+        return {} as any
+      })
+
+      await expect(client.execute('echo "hello";')).rejects.toThrow('PHP fatal: missing phar')
+      consoleSpy.mockRestore()
+    })
+
     it('retrieves project info with loader option', async () => {
       const client = new LocalClient({
         type: 'local',

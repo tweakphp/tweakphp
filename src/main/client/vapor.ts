@@ -29,23 +29,17 @@ export class VaporClient extends BaseClient {
     const encoded = Buffer.from(codeCleaned).toString('base64')
     const command = `vapor tinker ${env} -n --code 'eval(base64_decode("${encoded}"));'`
 
-    try {
-      const { stdout, stderr } = await execAsync(command, { cwd: clientPath })
+    const { stdout, stderr } = await execAsync(command, { cwd: clientPath })
 
-      if (stderr) {
-        return `Error: ${stderr}`
-      }
-
-      return stdout
-    } catch (err) {
-      return `Exception: ${(err as Error).message}`
+    if (stderr) {
+      return `Error: ${stderr}`
     }
+
+    return stdout
   }
 
   async info(_loader?: string): Promise<string> {
-    return new Promise(async resolve => {
-      resolve('{}')
-    })
+    return '{}'
   }
 
   /**

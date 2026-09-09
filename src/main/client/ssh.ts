@@ -1,5 +1,4 @@
 import { ConnectionConfig } from '../../types/ssh.type'
-import { base64Encode } from '../utils/base64-encode'
 import { SSH } from '../utils/ssh'
 import { RemoteClient } from './client.remote'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
@@ -32,22 +31,6 @@ export class SSHClient extends RemoteClient {
 
   async remoteExec(command: string): Promise<string> {
     return this.ssh.exec(command)
-  }
-
-  execute(code: string, loader?: string, projectPath?: string): Promise<string> {
-    return new Promise(async resolve => {
-      if (!this.connection.php) {
-        resolve('PHP version not found')
-        return
-      }
-      if (!this.connection.client_path) {
-        resolve('Client path not found')
-        return
-      }
-      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
-      const result = await this.ssh.exec(command)
-      resolve(result)
-    })
   }
 
   async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {

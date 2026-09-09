@@ -9,7 +9,9 @@ export const createStreamOutputParser = (onEvent?: (event: StreamEvent) => void)
       const rawJson = trimmed.substring('TWEAKPHP_STREAM:'.length)
       try {
         onEvent?.(JSON.parse(rawJson))
-      } catch {}
+      } catch (error) {
+        console.error('Failed to parse stream event:', error, rawJson)
+      }
       return
     }
 

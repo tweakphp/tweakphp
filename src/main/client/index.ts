@@ -1,11 +1,7 @@
 import { ipcMain, Notification } from 'electron'
-import { LocalClient } from './local'
-import { SSHClient } from './ssh'
 import { Client } from './client.interface'
-import { VaporClient } from './vapor'
-import DockerClient from './docker'
-import KubectlClient from './kubectl'
-import { parseTweakPhpError } from '../../shared/tweakphp-error'
+import { parseExecutionResult } from '../../shared/execution-result'
+import { createClient } from './factory'
 
 export const init = async () => {
   ipcMain.on('client:connect', connect)
@@ -66,26 +62,10 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       return
     }
 
-    let result = await client.execute(payload.code, payload.loader)
-    result = result.trim()
-    let output: any = null
+    const result = await client.execute(payload.code, payload.loader)
+    const parsed = parseExecutionResult(result)
 
-    if (result.includes('TWEAKPHP_RESULT:')) {
-      let outputStr = result.split('TWEAKPHP_RESULT:')[1]?.trim()
-      if (outputStr !== undefined) {
-        try {
-          output = JSON.parse(outputStr)
-        } catch (error: any) {
-          output = outputStr
-        }
-      }
-    } else if (result.includes('TWEAKPHP_ERROR:')) {
-      output = {
-        output: [parseTweakPhpError(result)],
-      }
-    }
-
-    event.reply('client:execute:reply', output ?? result)
+    event.reply('client:execute:reply', parsed.isError ? { output: parsed.output } : parsed.output)
   } catch (error: any) {
     event.reply('client:execute:reply', error)
   } finally {
@@ -128,29 +108,5 @@ const info = async (event: Electron.IpcMainEvent, data: any) => {
 }
 
 const getClient = (data: any): Client => {
-  if (!data.connection) {
-    throw new Error('Connection is required')
-  }
-
-  if (data.connection.type === 'local') {
-    return new LocalClient(data.connection)
-  }
-
-  if (data.connection.type === 'docker') {
-    return new DockerClient(data.connection)
-  }
-
-  if (data.connection.type === 'vapor') {
-    return new VaporClient(data.connection)
-  }
-
-  if (data.connection.type === 'ssh') {
-    return new SSHClient(data.connection)
-  }
-
-  if (data.connection.type === 'kubectl') {
-    return new KubectlClient(data.connection)
-  }
-
-  throw new Error('Type not supported')
+  return createClient(data.connection)
 }

@@ -5,6 +5,7 @@ import { BaseClient } from './client.base'
 import { app } from 'electron'
 import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
+import { assertMinPhpVersion } from '../utils/php'
 import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
@@ -71,30 +72,41 @@ export default class DockerClient extends BaseClient {
     return ['exec', ...(user ? ['-u', user] : []), containerName, ...commandArgs]
   }
 
+  /**
+   * Resolve the connection values and build the docker exec arguments shared by
+   * execute / executeStreaming / info.
+   */
+  private async buildExecArgs(
+    command: 'execute' | 'execute-stream' | 'info',
+    code?: string,
+    loader?: string,
+    projectPath?: string
+  ): Promise<string[]> {
+    await this.ensureConnectionConfig()
+
+    const containerName = cleanParam(this.connection.container_name)!
+    const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
+    const workingDirVal =
+      cleanParam(projectPath) ||
+      cleanParam(this.connection.working_directory) ||
+      cleanParam(this.connection.path) ||
+      '/var/www/html'
+    const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
+
+    const commandArgs = [phpPathVal, clientPathVal, workingDirVal, command]
+    if (command !== 'info') {
+      commandArgs.push(base64Encode(code!))
+    }
+    const args = this.getContainerExecArgs(containerName, ...commandArgs)
+    if (loader) {
+      args.push(`--loader=${base64Encode(loader)}`)
+    }
+    return args
+  }
+
   async execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     try {
-      await this.ensureConnectionConfig()
-
-      const containerName = cleanParam(this.connection.container_name)!
-      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
-      const workingDirVal =
-        cleanParam(projectPath) ||
-        cleanParam(this.connection.working_directory) ||
-        cleanParam(this.connection.path) ||
-        '/var/www/html'
-      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
-
-      const args = this.getContainerExecArgs(
-        containerName,
-        phpPathVal,
-        clientPathVal,
-        workingDirVal,
-        'execute',
-        base64Encode(code)
-      )
-      if (loader) {
-        args.push(`--loader=${base64Encode(loader)}`)
-      }
+      const args = await this.buildExecArgs('execute', code, loader, projectPath)
 
       if (this.ssh) {
         return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
@@ -108,24 +120,7 @@ export default class DockerClient extends BaseClient {
 
   async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
     try {
-      await this.ensureConnectionConfig()
-
-      const containerName = cleanParam(this.connection.container_name)!
-      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
-      const workingDirVal =
-        cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
-      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
-      const args = this.getContainerExecArgs(
-        containerName,
-        phpPathVal,
-        clientPathVal,
-        workingDirVal,
-        'execute-stream',
-        base64Encode(code)
-      )
-      if (loader) {
-        args.push(`--loader=${base64Encode(loader)}`)
-      }
+      const args = await this.buildExecArgs('execute-stream', code, loader)
 
       const parser = createStreamOutputParser(onEvent)
       if (this.ssh) {
@@ -149,18 +144,7 @@ export default class DockerClient extends BaseClient {
 
   async info(loader?: string): Promise<string> {
     try {
-      await this.ensureConnectionConfig()
-
-      const containerName = cleanParam(this.connection.container_name)!
-      const phpPathVal = cleanParam(this.connection.php_path) || cleanParam(this.connection.php) || 'php'
-      const workingDirVal =
-        cleanParam(this.connection.working_directory) || cleanParam(this.connection.path) || '/var/www/html'
-      const clientPathVal = cleanParam(this.connection.client_path) || '/tmp/client.phar'
-
-      const args = this.getContainerExecArgs(containerName, phpPathVal, clientPathVal, workingDirVal, 'info')
-      if (loader) {
-        args.push(`--loader=${base64Encode(loader)}`)
-      }
+      const args = await this.buildExecArgs('info', undefined, loader)
 
       if (this.ssh) {
         return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
@@ -230,9 +214,7 @@ export default class DockerClient extends BaseClient {
       } else {
         phpVersion = (await this.runLocalDocker(args, DOCKER_SETUP_TIMEOUT)).trim()
       }
-      if (parseFloat(phpVersion) < 7.4) {
-        throw new Error('PHP version must be 7.4 or higher')
-      }
+      assertMinPhpVersion(phpVersion)
 
       return phpVersion
     } catch (error) {

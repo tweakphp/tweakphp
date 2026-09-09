@@ -352,7 +352,7 @@ describe('IPC Router (index.ts)', () => {
 
       expect(mockEvent.reply).toHaveBeenCalledWith('client:info:reply', expect.any(Error))
       const reply = mockEvent.reply.mock.calls[0][1] as Error
-      expect(reply.message).toBe('Type not supported')
+      expect(reply.message).toBe('Unsupported connection type: unsupported')
     })
 
     it('replies with error if connection object is missing', async () => {

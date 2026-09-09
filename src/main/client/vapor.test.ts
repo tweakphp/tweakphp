@@ -72,15 +72,14 @@ describe('VaporClient', () => {
     expect(result).toBe('Error: tinker error')
   })
 
-  it('execute returns catch message on process exception', async () => {
+  it('execute rejects on process exception', async () => {
     const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
 
     vi.mocked(exec).mockImplementation(() => {
       throw new Error('Spawn failed')
     })
 
-    const result = await client.execute('echo "hello";')
-    expect(result).toContain('Exception: Spawn failed')
+    await expect(client.execute('echo "hello";')).rejects.toThrow('Spawn failed')
   })
 
   it('getEnvironmentsAction returns list of environments from vapor.yml', () => {

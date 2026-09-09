@@ -12,9 +12,13 @@
  */
 
 import * as http from 'http'
+import { app } from 'electron'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
+import type { RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ShapeOutput, ZodRawShapeCompat } from '@modelcontextprotocol/sdk/server/zod-compat.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { MCPServerConfig, MCPServerStatus } from './types'
 import { getErrorLogger } from './error-logger'
 import { ConnectionManager } from './connection-manager'
@@ -66,13 +70,54 @@ export class MCPServerImpl implements MCPServer {
   }
 
   /**
+   * Register a tool with the shared request-count/error-count envelope:
+   * successful results are JSON-serialized as text content, thrown errors are
+   * returned as `{error, details}` with `isError: true`.
+   */
+  private registerTool<Args extends ZodRawShapeCompat>(
+    server: McpServer,
+    name: string,
+    description: string,
+    schema: Args,
+    handler: (args: ShapeOutput<Args>) => Promise<unknown>
+  ): RegisteredTool {
+    const callback = async (args: ShapeOutput<Args>): Promise<CallToolResult> => {
+      this.requestCount++
+      try {
+        const result = await handler(args)
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] }
+      } catch (err: any) {
+        this.errorCount++
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
+            },
+          ],
+          isError: true,
+        }
+      }
+    }
+    // The SDK overloads confuse TS inference when Args is still generic here
+    type RegisterTool = <A extends ZodRawShapeCompat>(
+      name: string,
+      description: string,
+      schema: A,
+      cb: (args: ShapeOutput<A>) => Promise<CallToolResult>
+    ) => RegisteredTool
+    return (server.tool as unknown as RegisterTool)(name, description, schema, callback)
+  }
+
+  /**
    * Build a fresh McpServer for a single request.
    * Tool handlers close over the shared state on this instance.
    */
   private buildMcpServer(): McpServer {
-    const server = new McpServer({ name: 'tweakphp', version: '0.12.1' })
+    const server = new McpServer({ name: 'tweakphp', version: app.getVersion() })
 
-    server.tool(
+    this.registerTool(
+      server,
       'execute_php',
       'Execute PHP code in the active TweakPHP connection (local, Docker, SSH, kubectl, or Vapor)',
       {
@@ -80,27 +125,11 @@ export class MCPServerImpl implements MCPServer {
         connectionId: z.string().optional().describe('Connection ID (uses active connection if omitted)'),
         timeout: z.number().optional().describe('Timeout in milliseconds (default: 30000)'),
       },
-      async ({ code, connectionId, timeout }) => {
-        this.requestCount++
-        try {
-          const result = await this.executePhpHandler.handle({ code, connectionId, timeout })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ code, connectionId, timeout }) => this.executePhpHandler.handle({ code, connectionId, timeout })
     )
 
-    server.tool(
+    this.registerTool(
+      server,
       'execute_with_loader',
       'Execute PHP code with a Laravel or Symfony framework context loaded',
       {
@@ -110,33 +139,18 @@ export class MCPServerImpl implements MCPServer {
         connectionId: z.string().optional().describe('Connection ID (uses active connection if omitted)'),
         timeout: z.number().optional().describe('Timeout in milliseconds (default: 60000)'),
       },
-      async ({ code, loader, projectPath, connectionId, timeout }) => {
-        this.requestCount++
-        try {
-          const result = await this.executeWithLoaderHandler.handle({
-            code,
-            loader,
-            projectPath,
-            connectionId,
-            timeout,
-          })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ code, loader, projectPath, connectionId, timeout }) =>
+        this.executeWithLoaderHandler.handle({
+          code,
+          loader,
+          projectPath,
+          connectionId,
+          timeout,
+        })
     )
 
-    server.tool(
+    this.registerTool(
+      server,
       'get_execution_history',
       'Retrieve past PHP execution records from TweakPHP',
       {
@@ -152,27 +166,11 @@ export class MCPServerImpl implements MCPServer {
           .optional()
           .describe('Optional filter criteria'),
       },
-      async ({ limit, offset, filter }) => {
-        this.requestCount++
-        try {
-          const result = await this.getExecutionHistoryHandler.handle({ limit, offset, filter })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ limit, offset, filter }) => this.getExecutionHistoryHandler.handle({ limit, offset, filter })
     )
 
-    server.tool(
+    this.registerTool(
+      server,
       'switch_connection',
       'Switch TweakPHP to a different execution environment (local, Docker, SSH, kubectl, Vapor)',
       {
@@ -180,27 +178,12 @@ export class MCPServerImpl implements MCPServer {
         connectionType: z.enum(connectionTypes).optional().describe('Type of new connection to create'),
         connectionConfig: z.record(z.unknown()).optional().describe('Configuration object for the new connection'),
       },
-      async ({ connectionId, connectionType, connectionConfig }) => {
-        this.requestCount++
-        try {
-          const result = await this.switchConnectionHandler.handle({ connectionId, connectionType, connectionConfig })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ connectionId, connectionType, connectionConfig }) =>
+        this.switchConnectionHandler.handle({ connectionId, connectionType, connectionConfig })
     )
 
-    server.tool(
+    this.registerTool(
+      server,
       'get_php_info',
       'Get PHP version and configuration details from the active connection',
       {
@@ -209,27 +192,11 @@ export class MCPServerImpl implements MCPServer {
           .optional()
           .describe('Section to retrieve (default: all)'),
       },
-      async ({ section }) => {
-        this.requestCount++
-        try {
-          const result = await this.getPhpInfoHandler.handle({ section })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ section }) => this.getPhpInfoHandler.handle({ section })
     )
 
-    server.tool(
+    this.registerTool(
+      server,
       'list_connections',
       'List all currently configured, stored, or active execution environments (local, Docker, SSH, kubectl, Vapor)',
       {
@@ -239,24 +206,7 @@ export class MCPServerImpl implements MCPServer {
           .optional()
           .describe('Set to true to auto-discover active Docker containers on the host'),
       },
-      async ({ typeFilter, includeDiscovered }) => {
-        this.requestCount++
-        try {
-          const result = await this.listConnectionsHandler.handle({ typeFilter, includeDiscovered })
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
-        } catch (err: any) {
-          this.errorCount++
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: err?.message ?? String(err), details: err?.details }),
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
+      async ({ typeFilter, includeDiscovered }) => this.listConnectionsHandler.handle({ typeFilter, includeDiscovered })
     )
 
     return server

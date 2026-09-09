@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createStreamOutputParser } from './stream-output'
 
 describe('createStreamOutputParser', () => {
@@ -15,5 +15,18 @@ describe('createStreamOutputParser', () => {
       { type: 'output', index: 0, data: 'first' },
       { type: 'error', error: { message: 'second' } },
     ])
+  })
+
+  it('logs invalid TWEAKPHP_STREAM JSON payloads instead of swallowing them', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const events: any[] = []
+    const parser = createStreamOutputParser(event => events.push(event))
+
+    parser.push('TWEAKPHP_STREAM:not-json\n')
+    parser.finish()
+
+    expect(events).toEqual([])
+    expect(consoleError).toHaveBeenCalledWith('Failed to parse stream event:', expect.any(Error), 'not-json')
+    consoleError.mockRestore()
   })
 })

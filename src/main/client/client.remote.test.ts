@@ -87,6 +87,29 @@ describe('RemoteClient Shared Logic', () => {
     expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/remote/project' execute")
   })
 
+  it('execute forwards the project path to the remote command', async () => {
+    const client = new TestRemoteClient({
+      path: '/remote/project',
+      php: '8.2.0',
+      client_path: '/home/mock_user/.tweakphp/client-8.2.0.phar',
+    })
+
+    client.mockExec.mockResolvedValue('output')
+
+    await client.execute('echo "test";', undefined, '/other/project')
+    const commandSent = client.mockExec.mock.calls[0][0]
+    expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/other/project' execute")
+  })
+
+  it('execute throws when the connection is not provisioned (no error-string results)', async () => {
+    const client = new TestRemoteClient({ path: '/remote/project' })
+
+    await expect(client.execute('echo "test";')).rejects.toThrow(/PHP version not found/)
+
+    const client2 = new TestRemoteClient({ path: '/remote/project', php: '8.2.0' })
+    await expect(client2.execute('echo "test";')).rejects.toThrow(/Client path not found/)
+  })
+
   it('info runs remote command to retrieve project info', async () => {
     const client = new TestRemoteClient({
       path: '/remote/project',

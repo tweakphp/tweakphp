@@ -3,12 +3,8 @@
  * Manages connections and integrates with TweakPHP's existing infrastructure
  */
 
-import { LocalClient } from '../client/local'
-import DockerClient from '../client/docker'
-import { SSHClient } from '../client/ssh'
-import KubectlClient from '../client/kubectl'
-import { VaporClient } from '../client/vapor'
 import { Client } from '../client/client.interface'
+import { createClient } from '../client/factory'
 import { getSettings } from '../settings'
 import { ConnectionsRepository } from '../db/repositories/connections-repository'
 import { ConnectionType } from '../../types/connection.type'
@@ -114,21 +110,7 @@ export class ConnectionManager {
   }
 
   getClient(connection: ConnectionConfig): Client {
-    const normalized = this.normalizeConnection(connection)
-    switch (normalized.type) {
-      case 'local':
-        return new LocalClient(normalized as any)
-      case 'docker':
-        return new DockerClient(normalized as any)
-      case 'ssh':
-        return new SSHClient(normalized as any)
-      case 'kubectl':
-        return new KubectlClient(normalized as any)
-      case 'vapor':
-        return new VaporClient(normalized as any)
-      default:
-        throw new Error(`Unsupported connection type: ${normalized.type}`)
-    }
+    return createClient(this.normalizeConnection(connection))
   }
 
   generateConnectionId(connection: ConnectionConfig): string {

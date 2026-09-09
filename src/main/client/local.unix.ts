@@ -2,6 +2,10 @@ import { execFile, execFileSync, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
+import { createStreamOutputParser } from './stream-output'
+
+// Hard cap so a hung PHP process cannot leave the execution pending forever
+const LOCAL_EXECUTION_TIMEOUT_MS = 120_000
 
 export const executeUnix = (
   connection: ConnectionConfig,
@@ -10,7 +14,7 @@ export const executeUnix = (
   loader?: string,
   projectPath?: string
 ): Promise<string> => {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const targetPath = projectPath || connection.path
     const phpPath = connection.php || 'php'
     const args = [pharPath, targetPath, 'execute', base64Encode(code)]
@@ -18,7 +22,13 @@ export const executeUnix = (
       args.push(`--loader=${base64Encode(loader)}`)
     }
 
-    execFile(phpPath, args, { shell: false }, (_err, stdout) => {
+    execFile(phpPath, args, { shell: false, timeout: LOCAL_EXECUTION_TIMEOUT_MS }, (error, stdout, stderr) => {
+      if (error) {
+        const message = stderr?.toString().trim() || error.message
+        console.error('PHP execution failed', { phpPath, message })
+        reject(new Error(message))
+        return
+      }
       resolve(stdout || '')
     })
   })
@@ -43,37 +53,10 @@ export const executeStreamingUnix = (
       shell: false,
     })
 
-    let buffer = ''
-    child.stdout.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString('utf8')
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
+    const parser = createStreamOutputParser(onEvent)
 
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (trimmed.startsWith('TWEAKPHP_STREAM:')) {
-          const rawJson = trimmed.substring('TWEAKPHP_STREAM:'.length)
-          try {
-            const eventData = JSON.parse(rawJson)
-            if (onEvent) {
-              onEvent(eventData)
-            }
-          } catch (e) {
-            console.error('Failed to parse stream event:', e, rawJson)
-          }
-        } else if (trimmed.startsWith('TWEAKPHP_ERROR:')) {
-          const errorJson = trimmed.substring('TWEAKPHP_ERROR:'.length)
-          let parsed: any = null
-          try {
-            parsed = JSON.parse(errorJson)
-          } catch (e) {
-            parsed = errorJson
-          }
-          if (onEvent) {
-            onEvent({ type: 'error', error: parsed })
-          }
-        }
-      }
+    child.stdout.on('data', (chunk: Buffer) => {
+      parser.push(chunk.toString('utf8'))
     })
 
     child.stderr.on('data', (chunk: Buffer) => {
@@ -84,14 +67,7 @@ export const executeStreamingUnix = (
     })
 
     child.on('close', () => {
-      if (buffer.trim().startsWith('TWEAKPHP_STREAM:')) {
-        try {
-          const eventData = JSON.parse(buffer.trim().substring('TWEAKPHP_STREAM:'.length))
-          if (onEvent) {
-            onEvent(eventData)
-          }
-        } catch (e) {}
-      }
+      parser.finish()
       resolve()
     })
 
