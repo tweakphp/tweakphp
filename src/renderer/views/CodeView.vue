@@ -266,7 +266,7 @@
         <Editor
           :key="`code-${tab.id}`"
           ref="codeEditor"
-          :editor-id="`${tab.id}-${Date.now()}-code`"
+          :editor-id="`${tab.id}-code`"
           v-model:value="tab.code"
           language="php"
           :wrap="true"

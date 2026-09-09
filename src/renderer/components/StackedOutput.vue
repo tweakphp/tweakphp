@@ -1,6 +1,7 @@
 <script lang="ts" setup>
   import { nextTick, PropType, watch } from 'vue'
   import { QueryItem, Result } from '../../types/tab.type'
+  import { escapeHtml } from '../../shared/tweakphp-error'
   import { useSettingsStore } from '../stores/settings'
 
   const props = defineProps({
@@ -40,6 +41,13 @@
     const time = typeof rawTime === 'string' ? parseFloat(rawTime) : rawTime
     if (!time || isNaN(time)) return ''
     return time < 1 ? `${(time * 1000).toFixed(2)} μs` : `${time.toFixed(2)} ms`
+  }
+
+  const itemHtml = (item: Result): string => {
+    const html = item.html && item.html !== '' ? item.html : ''
+    if (item.htmlReady !== false && html) return html
+    if (!item.output) return ''
+    return `<pre class="whitespace-pre-wrap break-words">${escapeHtml(item.output)}</pre>`
   }
 
   const applyDump = async () => {
@@ -102,7 +110,7 @@
       <div
         :id="`dump-${item.line}`"
         class="text-sm"
-        v-html="item.htmlReady === false ? item.output : item.html || item.output"
+        v-html="itemHtml(item)"
         :style="{
           // fontSize: settingsStore.settings.editorFontSize + 'px !important',
         }"

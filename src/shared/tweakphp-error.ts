@@ -1,5 +1,13 @@
 import { Result } from '../types/tab.type'
 
+export const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
 export const parseTweakPhpError = (raw: unknown): Result => {
   let parsedError: any = raw
   let errorContent = typeof raw === 'string' ? raw : ''
@@ -38,12 +46,7 @@ export const parseTweakPhpError = (raw: unknown): Result => {
     }
   }
 
-  const escapedMessage = message
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+  const escapedMessage = escapeHtml(message)
 
   return {
     line,

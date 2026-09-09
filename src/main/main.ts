@@ -50,7 +50,6 @@ const createMainWindow = async () => {
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
       devTools: !app.isPackaged,
     },
     alwaysOnTop: false,

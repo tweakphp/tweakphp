@@ -70,6 +70,10 @@
 
   let languageClient: MonacoLanguageClient | null = null
   let editor: monaco.editor.IStandaloneCodeEditor | null = null
+  let lspRetryInterval: ReturnType<typeof setInterval> | null = null
+  let lspWebSocket: WebSocket | null = null
+  let aiCompletionRegistration: ReturnType<typeof registerCompletion> | null = null
+  let isUnmounted = false
   const emit = defineEmits(['update:value'])
 
   if (props.language === 'php') {
@@ -185,12 +189,14 @@
       let editorModel = monaco.editor.getModel(monaco.Uri.file(file))
       if (!editorModel) {
         editorModel = monaco.editor.createModel(props.value, props.language, monaco.Uri.file(file))
+      } else if (editorModel.getValue() !== props.value) {
+        editorModel.setValue(props.value)
       }
 
       editor.setModel(editorModel)
 
       if (props.withAiCompletion && settingsStore.settings.aiStatus) {
-        registerCompletion(monaco, editor, {
+        aiCompletionRegistration = registerCompletion(monaco, editor, {
           language: 'php',
           trigger: 'onIdle',
           enableCaching: false,
@@ -221,25 +227,33 @@
       }
 
       if (window.platformInfo.getPlatform() !== 'win32' && !props.readonly && props.path && props.language === 'php') {
-        const interval = setInterval(async () => {
-          try {
-            await createWebSocketClient(`ws://127.0.0.1:${window.platformInfo.getLspPort()}`)
-            clearInterval(interval)
-          } catch (error) {
-            console.error('WebSocket connection failed, retrying...', error)
-          }
-        }, 1000)
+        startLspRetryInterval()
       }
     }
   })
 
   onBeforeUnmount(async () => {
+    isUnmounted = true
+    stopLspRetryInterval()
+
+    if (lspWebSocket) {
+      try {
+        lspWebSocket.close()
+      } catch {}
+      lspWebSocket = null
+    }
+
     if (props.language === 'php' && !props.readonly) {
       lspStore.setDisconnected()
     }
 
     if (props.enableHistory) {
       window.historyApi.removeAllListeners()
+    }
+
+    if (aiCompletionRegistration) {
+      aiCompletionRegistration.deregister()
+      aiCompletionRegistration = null
     }
 
     if (editor) {
@@ -249,12 +263,8 @@
 
       editor.dispose()
     }
-    if (languageClient && languageClient.isRunning()) {
-      if (languageClient) {
-        await languageClient.stop()
-      }
-      await languageClient.dispose()
-    }
+
+    await disposeLanguageClient()
   })
 
   const updateValue = (value: any) => {
@@ -281,43 +291,101 @@
     }
   }
 
-  const reconnectLsp = async () => {
-    if (languageClient && languageClient.isRunning()) {
-      await languageClient.stop()
-      await languageClient.dispose()
+  const stopLspRetryInterval = () => {
+    if (lspRetryInterval) {
+      clearInterval(lspRetryInterval)
+      lspRetryInterval = null
     }
+  }
 
-    await createWebSocketClient(`ws://127.0.0.1:${window.platformInfo.getLspPort()}`)
+  const startLspRetryInterval = () => {
+    if (lspRetryInterval || isUnmounted) return
+    const lspUrl = `ws://127.0.0.1:${window.platformInfo.getLspPort()}`
+    lspRetryInterval = setInterval(async () => {
+      try {
+        await createWebSocketClient(lspUrl)
+        stopLspRetryInterval()
+      } catch (error) {
+        console.error('WebSocket connection failed, retrying...', error)
+      }
+    }, 1000)
+  }
+
+  const disposeLanguageClient = async () => {
+    const client = languageClient
+    languageClient = null
+    if (!client) return
+    try {
+      if (client.isRunning()) {
+        await client.stop()
+      }
+    } catch {}
+    try {
+      await client.dispose()
+    } catch {}
+  }
+
+  const reconnectLsp = async () => {
+    stopLspRetryInterval()
+    await disposeLanguageClient()
+    try {
+      await createWebSocketClient(`ws://127.0.0.1:${window.platformInfo.getLspPort()}`)
+    } catch {
+      startLspRetryInterval()
+    }
   }
 
   const createWebSocketClient = (url: string) => {
     return new Promise<void>((resolve, reject) => {
+      if (lspWebSocket) {
+        const stale = lspWebSocket
+        lspWebSocket = null
+        try {
+          stale.close()
+        } catch {}
+      }
+
       lspStore.setConnecting()
       const webSocket = new WebSocket(url)
+      lspWebSocket = webSocket
 
       webSocket.onopen = async () => {
+        if (isUnmounted || lspWebSocket !== webSocket) {
+          try {
+            webSocket.close()
+          } catch {}
+          reject(new Error('LSP connection superseded'))
+          return
+        }
+
         const socket = toSocket(webSocket)
         const messageTransports = {
           reader: new WebSocketMessageReader(socket),
           writer: new WebSocketMessageWriter(socket),
         }
-        languageClient = createLanguageClient(messageTransports)
+        const client = createLanguageClient(messageTransports)
+        languageClient = client
 
         messageTransports.reader.onClose(async () => {
-          if (languageClient && languageClient.isRunning()) {
-            await languageClient.stop()
+          if (languageClient === client) {
+            languageClient = null
           }
+          try {
+            if (client.isRunning()) await client.stop()
+          } catch {}
+          try {
+            await client.dispose()
+          } catch {}
         })
 
         try {
-          await languageClient.start()
+          await client.start()
           lspStore.setConnected()
+          resolve()
         } catch (e) {
           lspStore.setDisconnected()
-          // reject(error)
+          reject(e instanceof Error ? e : new Error(String(e)))
         }
-
-        resolve()
       }
 
       // webSocket.onmessage = message => {
@@ -330,6 +398,7 @@
       }
 
       webSocket.onclose = () => {
+        if (lspWebSocket === webSocket) lspWebSocket = null
         lspStore.setDisconnected()
       }
     })

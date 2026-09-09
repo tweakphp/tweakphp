@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { computed, ref } from 'vue'
   import PrimaryButton from './PrimaryButton.vue'
   import { useUpdateStore } from '../stores/update.ts'
   import { ArrowPathIcon, XMarkIcon } from '@heroicons/vue/24/outline'
@@ -13,6 +13,13 @@
   const updateStore = useUpdateStore()
   const updating = ref(false)
   const isDev = window.platformInfo.isDev()
+
+  const releaseNotesText = computed(() => {
+    const notes = updateStore.update?.releaseNotes
+    if (!notes) return ''
+    if (typeof notes === 'string') return notes
+    return notes.map(note => (typeof note === 'string' ? note : (note?.note ?? ''))).join('\n')
+  })
 
   const checkForUpdates = () => {
     updateStore.setChecking(true)
@@ -117,7 +124,7 @@
       </div>
     </div>
     <Modal :title="`Version ${updateStore.update?.version} Changelog`" ref="changelogModal">
-      <div class="prose max-w-none" v-html="updateStore.update?.releaseNotes"></div>
+      <div class="prose max-w-none whitespace-pre-line">{{ releaseNotesText }}</div>
       <SecondaryButton class="mt-5" @click="openInBrowser(updateStore.update)" :autofocus="false"
         >Open in Browser</SecondaryButton
       >
