@@ -15,6 +15,7 @@
   import Modal from '../components/Modal.vue'
   import SSHConnectView from './SSHConnectView.vue'
   import eventBus from '../events'
+  import { errorMessage } from '../../shared/error-message'
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
@@ -67,8 +68,9 @@
     if (reply.data?.state !== 'connect-docker') {
       return
     }
+    connecting.value = false
     if (reply.error) {
-      errorResponse.value = reply.error
+      errorResponse.value = errorMessage(reply.error)
       return
     }
     errorResponse.value = ''
@@ -115,13 +117,19 @@
 
   const actionReply = (e: any) => {
     const reply = e.detail as ActionReply
+    // Ignore replies this view did not request (e.g. getEnvironments sent by
+    // the CodeView mounted underneath) instead of throwing on a missing handler
+    const handler = actionReplyHandlers[reply.type as keyof typeof actionReplyHandlers]
+    if (!handler) {
+      return
+    }
     loading.value = false
     if (reply.error) {
-      errorResponse.value = reply.error
+      errorResponse.value = errorMessage(reply.error)
       return
     }
     errorResponse.value = ''
-    actionReplyHandlers[reply.type as keyof typeof actionReplyHandlers](reply.result)
+    handler(reply.result)
   }
 
   const actionReplyHandlers = {
@@ -134,6 +142,10 @@
   }
 
   const getConnection = () => {
+    // The native <select> yields DOM strings; coerce back to a numeric id
+    // ("0" / 0 = local docker daemon) so persisted refs and store lookups stay
+    // representation-consistent
+    form.value.ssh_id = Number(form.value.ssh_id) || 0
     if (form.value.ssh_id) {
       form.value.ssh = sshStore.getConnection(form.value.ssh_id)
     }

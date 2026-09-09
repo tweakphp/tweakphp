@@ -1,7 +1,7 @@
 export interface Settings {
   version: string
   laravelPath: string
-  php: string | ''
+  php: string
   theme: string
   editorFontSize: number
   editorWordWrap: string
@@ -13,9 +13,9 @@ export interface Settings {
   windowHeight: number
   intelephenseLicenseKey?: string
   aiStatus: boolean
-  aiProvider?: string | null
-  aiModelId?: string | null
-  aiApiKey?: string | null
+  aiProvider?: string
+  aiModelId?: string
+  aiApiKey?: string
   aiPromptTemplateGenerateCodeFromComment: string
   aiPromptTemplateCompleteComment: string
   aiPromptTemplateCompleteCode: string

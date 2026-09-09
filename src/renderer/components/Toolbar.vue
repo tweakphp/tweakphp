@@ -22,6 +22,7 @@
   import { useVaporStore } from '../stores/vapor.ts'
   import Divider from './Divider.vue'
   import { useRouter } from 'vue-router'
+  import { errorMessage } from '../../shared/error-message'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -34,8 +35,6 @@
   const sshModal = ref()
   const kubectlModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
-  const sshConnecting = ref(false)
-  const kubectlConnecting = ref(false)
   const connecting = ref('')
 
   onMounted(() => {
@@ -74,7 +73,7 @@
     let execution = connecting.value
     connecting.value = ''
     if (reply.error) {
-      alert(reply.error)
+      alert(errorMessage(reply.error))
       return
     }
     if (!tabStore.current) {
@@ -233,12 +232,6 @@
               <div v-if="tab && tab.execution === 'ssh' && tab.ssh && sshStore.getConnection(tab.ssh.id)">
                 {{ sshStore.getConnection(tab.ssh.id)?.name }}
               </div>
-              <div
-                v-else-if="tab && tab.ssh && sshConnecting && sshStore.getConnection(tab.ssh.id)"
-                class="flex items-center"
-              >
-                {{ sshStore.getConnection(tab.ssh.id)?.name }}
-              </div>
               <div v-else>SSH</div>
             </div>
             <ChevronDownIcon class="size-4 ml-1" />
@@ -273,12 +266,6 @@
             <div class="text-xs max-w-[150px] truncate">
               <div
                 v-if="tab && tab.execution === 'kubectl' && tab.kubectl && kubectlStore.getConnection(tab.kubectl.id)"
-              >
-                {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
-              </div>
-              <div
-                v-else-if="tab && tab.kubectl && kubectlConnecting && kubectlStore.getConnection(tab.kubectl.id)"
-                class="flex items-center"
               >
                 {{ kubectlStore.getConnection(tab.kubectl.id)?.name }}
               </div>

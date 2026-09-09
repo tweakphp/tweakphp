@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { db } from '../db_manager'
-import { connectionTypes, ConnectionConfig, ConnectionType } from '../../../types/connection.type'
+import { connectionTypes, ConnectionType } from '../../../types/connection.type'
 
 type ConnectionInput = Record<string, any> & {
   id?: string | number | null
@@ -8,7 +8,11 @@ type ConnectionInput = Record<string, any> & {
   name?: string | null
 }
 
-export type StoredConnection = ConnectionConfig & Record<string, any>
+export type StoredConnection = Record<string, any> & {
+  id: string
+  type: ConnectionType
+  name?: string
+}
 
 export interface ConnectionRow {
   id: string
@@ -45,7 +49,7 @@ const normalizeConnection = (input: ConnectionInput): StoredConnection => {
   if (input.type === 'ssh') {
     normalized.color = input.color ?? ''
     normalized.host = input.host ?? ''
-    normalized.port = input.port ?? 22
+    normalized.port = Number(input.port) || 22
     normalized.username = input.username ?? ''
     normalized.auth_type = input.auth_type ?? 'password'
     normalized.password = input.password ?? ''

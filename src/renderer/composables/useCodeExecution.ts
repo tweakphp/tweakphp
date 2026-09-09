@@ -9,6 +9,7 @@ import type { Settings } from '../../types/settings.type'
 import type { ConnectionConfig as SSHConnectionConfig } from '../../types/ssh.type'
 import type { ConnectionConfig as VaporConnectionConfig } from '../../types/vapor.type'
 import { normalizeVaporOutput, stripAnsi } from '../utils/output'
+import events from '../events'
 
 type ConnectionConfig =
   LocalConnectionConfig | SSHConnectionConfig | VaporConnectionConfig | DockerConnectionConfig | KubectlConnectionConfig
@@ -38,10 +39,6 @@ interface RecordValue {
   [key: string]: unknown
 }
 
-interface DetailEvent extends Event {
-  detail: unknown
-}
-
 type StreamEvent =
   | { type: 'started' }
   | { type: 'statement.started'; index: number; line: number; code: string }
@@ -50,8 +47,6 @@ type StreamEvent =
   | { type: 'error'; error?: unknown }
 
 const isRecord = (value: unknown): value is RecordValue => typeof value === 'object' && value !== null
-
-const isDetailEvent = (event: Event): event is DetailEvent => 'detail' in event
 
 type ResultPayload = Omit<Result, 'html'> & { html?: string }
 
@@ -105,6 +100,132 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
   }
 }
 
+const stringifyReply = (value: unknown): string => {
+  if (typeof value === 'string') return stripAnsi(value)
+  if (value instanceof Error) return value.message
+
+  try {
+    return JSON.stringify(value) ?? String(value)
+  } catch {
+    return String(value)
+  }
+}
+
+const syncTabQueries = (tab: Tab) => {
+  tab.queries = tab.result.flatMap(result => (Array.isArray(result.queries) ? result.queries : []))
+}
+
+const notifyResultsApplied = (tab: Tab) => {
+  events.dispatchEvent(new CustomEvent('client:execute:applied', { detail: { tabId: tab.id } }))
+}
+
+export interface ExecuteApplyContext {
+  getConnectionConfig: (tab: Tab) => ConnectionConfig | undefined
+  updateTab: (tab: Tab) => void
+}
+
+/**
+ * Apply a final `client:execute:reply` payload to the tab it belongs to.
+ *
+ * The reply envelope is `{ tabId, streamingDone? , output? , error? }` — the
+ * `tabId` correlation is done by the caller (execute store), so results land
+ * on the originating tab even when it is not the currently mounted view.
+ */
+export const applyExecuteReply = (tab: Tab, detail: RecordValue, ctx: ExecuteApplyContext) => {
+  if (detail.streamingDone === true) return
+
+  const connection = ctx.getConnectionConfig(tab)
+  const payload = detail.output !== undefined ? detail.output : detail.error
+
+  const results = parseResults(payload)
+  if (results) {
+    tab.result = results
+    syncTabQueries(tab)
+  } else if (typeof payload === 'string' && payload.includes('TWEAKPHP_ERROR:')) {
+    tab.result = [parseTweakPhpError(payload)]
+    tab.queries = []
+  } else {
+    const output = stringifyReply(payload ?? '')
+    tab.result = [
+      {
+        code: '',
+        line: 0,
+        output: connection?.type === 'vapor' ? normalizeVaporOutput(output) : output,
+        html: '',
+      },
+    ]
+    tab.queries = []
+  }
+
+  ctx.updateTab(tab)
+  notifyResultsApplied(tab)
+}
+
+/**
+ * Apply a `client:execute:stream` event to the tab it belongs to
+ * (the event envelope carries `tabId`).
+ */
+export const applyStreamEvent = (tab: Tab, detail: RecordValue, ctx: ExecuteApplyContext) => {
+  if (detail.tabId !== tab.id) return
+
+  const streamEvent = parseStreamEvent(detail.event)
+  if (!streamEvent) return
+
+  if (streamEvent.type === 'started') {
+    tab.result = []
+    tab.queries = []
+    return
+  }
+
+  if (streamEvent.type === 'statement.started') {
+    const existingIndex = tab.result.findIndex((_result, index) => index === streamEvent.index)
+    if (existingIndex === -1) {
+      tab.result.push({
+        line: streamEvent.line,
+        code: streamEvent.code,
+        output: '',
+        html: '',
+        htmlReady: false,
+        queries: [],
+        query_errors: [],
+      })
+    }
+  } else if (streamEvent.type === 'output') {
+    const index = streamEvent.index ?? 0
+    if (!tab.result[index]) {
+      tab.result[index] = {
+        line: 0,
+        code: '',
+        output: '',
+        html: '',
+        htmlReady: false,
+        queries: [],
+      }
+    }
+
+    tab.result[index].output += stripAnsi(streamEvent.data)
+    if (streamEvent.html !== undefined) {
+      tab.result[index].html += streamEvent.html
+    }
+  } else if (streamEvent.type === 'statement.completed') {
+    const index = streamEvent.index ?? 0
+    const result = tab.result[index]
+
+    if (result) {
+      if (streamEvent.queries) result.queries = streamEvent.queries
+      if (streamEvent.query_errors) result.query_errors = streamEvent.query_errors
+      if (streamEvent.html !== undefined && !result.html) result.html = streamEvent.html
+      result.htmlReady = true
+    }
+  } else if (streamEvent.type === 'error') {
+    tab.result.push(parseTweakPhpError(streamEvent.error ?? 'Error'))
+  }
+
+  syncTabQueries(tab)
+  ctx.updateTab(tab)
+  notifyResultsApplied(tab)
+}
+
 interface CodeEditor {
   getSelectedText: () => string
 }
@@ -119,17 +240,6 @@ export function useCodeExecution(options: {
   tabsStore: TabsStore
   loadersStore: LoadersStore
 }) {
-  const stringifyReply = (value: unknown): string => {
-    if (typeof value === 'string') return stripAnsi(value)
-    if (value instanceof Error) return value.message
-
-    try {
-      return JSON.stringify(value) ?? String(value)
-    } catch {
-      return String(value)
-    }
-  }
-
   const getLoader = (name: string) => options.loadersStore.get(name)?.code ?? ''
 
   const updateResultEditor = () => {
@@ -138,109 +248,16 @@ export function useCodeExecution(options: {
     }
   }
 
-  const syncTabQueries = () => {
-    options.tab.value.queries = options.tab.value.result.flatMap(result =>
-      Array.isArray(result.queries) ? result.queries : []
-    )
-  }
-
-  const executeReplyListener = (event: Event) => {
-    const detail = isDetailEvent(event) ? event.detail : undefined
-    const connection = options.tabsStore.getConnectionConfig(options.tab.value)
-    if (isRecord(detail) && detail.streamingDone === true) {
-      options.executeStore.setExecuting(false)
-      return
-    }
-
-    const results = isRecord(detail) ? parseResults(detail.output) : null
-    if (results) {
-      options.tab.value.result = results
-      syncTabQueries()
-    } else if (typeof detail === 'string' && detail.includes('TWEAKPHP_ERROR:')) {
-      options.tab.value.result = [parseTweakPhpError(detail)]
-      options.tab.value.queries = []
-    } else {
-      const output = stringifyReply(detail ?? '')
-      options.tab.value.result = [
-        {
-          code: '',
-          line: 0,
-          output: connection?.type === 'vapor' ? normalizeVaporOutput(output) : output,
-          html: '',
-        },
-      ]
-      options.tab.value.queries = []
-    }
-
-    updateResultEditor()
-    options.tabsStore.updateTab(options.tab.value)
-    options.executeStore.setExecuting(false)
-  }
-
-  const executeStreamListener = (event: Event) => {
-    const detail = isDetailEvent(event) && isRecord(event.detail) ? event.detail : null
-    if (!detail || detail.tabId !== options.tab.value.id) return
-
-    const streamEvent = parseStreamEvent(detail.event)
-    if (!streamEvent) return
-
-    if (streamEvent.type === 'started') {
-      options.tab.value.result = []
-      options.tab.value.queries = []
-      return
-    }
-
-    if (streamEvent.type === 'statement.started') {
-      const existingIndex = options.tab.value.result.findIndex((_result, index) => index === streamEvent.index)
-      if (existingIndex === -1) {
-        options.tab.value.result.push({
-          line: streamEvent.line,
-          code: streamEvent.code,
-          output: '',
-          html: '',
-          htmlReady: false,
-          queries: [],
-          query_errors: [],
-        })
-      }
-    } else if (streamEvent.type === 'output') {
-      const index = streamEvent.index ?? 0
-      if (!options.tab.value.result[index]) {
-        options.tab.value.result[index] = {
-          line: 0,
-          code: '',
-          output: '',
-          html: '',
-          htmlReady: false,
-          queries: [],
-        }
-      }
-
-      options.tab.value.result[index].output += stripAnsi(streamEvent.data)
-      if (streamEvent.html !== undefined) {
-        options.tab.value.result[index].html += streamEvent.html
-      }
-    } else if (streamEvent.type === 'statement.completed') {
-      const index = streamEvent.index ?? 0
-      const result = options.tab.value.result[index]
-
-      if (result) {
-        if (streamEvent.queries) result.queries = streamEvent.queries
-        if (streamEvent.query_errors) result.query_errors = streamEvent.query_errors
-        if (streamEvent.html !== undefined && !result.html) result.html = streamEvent.html
-        result.htmlReady = true
-      }
-    } else if (streamEvent.type === 'error') {
-      options.tab.value.result.push(parseTweakPhpError(streamEvent.error ?? 'Error'))
-    }
-
-    syncTabQueries()
-    updateResultEditor()
-    options.tabsStore.updateTab(options.tab.value)
-  }
-
   const executeHandler = () => {
     const connection = options.tabsStore.getConnectionConfig(options.tab.value)
+    if (!connection) {
+      // Tab with execution 'docker'|'ssh'|'kubectl'|'vapor' but its config is
+      // missing/removed: without this guard JSON.stringify(undefined) throws
+      console.error(
+        `No connection config for execution "${options.tab.value.execution}" on tab ${options.tab.value.id}`
+      )
+      return
+    }
     const { loader } = options.tab.value
     const selected = options.codeEditor?.value?.getSelectedText() ?? ''
     const code = selected !== '' ? selected : options.tab.value.code
@@ -263,5 +280,5 @@ export function useCodeExecution(options: {
     })
   }
 
-  return { executeHandler, executeReplyListener, executeStreamListener, getLoader }
+  return { executeHandler, updateResultEditor, getLoader }
 }

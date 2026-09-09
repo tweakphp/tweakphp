@@ -77,10 +77,6 @@ const createMainWindow = async () => {
     }
   })
 
-  window.on('close', (): void => {
-    window.webContents.send('ssh:disconnect')
-  })
-
   window.on('closed', (): void => {
     void shutdownApp().finally(() => app.exit(0))
   })

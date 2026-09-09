@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { onMounted, ref, Ref, watch } from 'vue'
+  import { computed, ref, Ref } from 'vue'
   import { useHistoryStore } from '../stores/history'
   import { TrashIcon } from '@heroicons/vue/24/outline'
   import { useTabsStore } from '../stores/tabs'
@@ -19,7 +19,13 @@
   const emit = defineEmits(['opened'])
   const laravelHistory: History = { path: settingsStore.settings.laravelPath }
   const filter: Ref<string> = ref('')
-  const history: Ref<History[]> = ref([laravelHistory].concat(historyStore.history))
+
+  // Computed instead of a setup-time snapshot: the history store resolves its
+  // stored entries asynchronously, a plain ref would render an empty (stale)
+  // list until the filter changes
+  const history = computed<History[]>(() =>
+    [laravelHistory].concat(historyStore.history).filter(h => h.path.toLowerCase().includes(filter.value.toLowerCase()))
+  )
 
   const addTab = (history: History) => {
     let tab: Tab = tabsStore.addTab({
@@ -33,8 +39,6 @@
     emit('opened')
   }
 
-  onMounted(() => {})
-
   const openProject = () => {
     window.ipcRenderer.send('source:open')
   }
@@ -45,16 +49,7 @@
 
   const removeHistory = (h: History) => {
     historyStore.removeHistory(h)
-    history.value = historyStore.history.filter(history => {
-      return history.path.toLowerCase().includes(filter.value.toLowerCase())
-    })
   }
-
-  watch(filter, newValue => {
-    history.value = [laravelHistory].concat(historyStore.history).filter(history => {
-      return history.path.toLowerCase().includes(newValue.toLowerCase())
-    })
-  })
 </script>
 
 <template>

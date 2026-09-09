@@ -37,12 +37,13 @@ export function registerCodeHistoryIpc(): void {
       tabIdSchema.parse(tabId)
       const previousState = codeHistoryRepository.undo(tabId)
       event.reply('code-history:undo:reply', {
+        tabId,
         data: previousState,
         error: previousState ? null : 'No previous state to undo.',
       })
     } catch (error) {
       console.error('Failed to undo:', error)
-      event.reply('code-history:undo:reply', { data: null, error: 'Failed to undo' })
+      event.reply('code-history:undo:reply', { tabId, data: null, error: 'Failed to undo' })
     }
   })
 
@@ -51,12 +52,13 @@ export function registerCodeHistoryIpc(): void {
       tabIdSchema.parse(tabId)
       const nextState = codeHistoryRepository.redo(tabId)
       event.reply('code-history:redo:reply', {
+        tabId,
         data: nextState,
         error: nextState ? null : 'No next state to redo.',
       })
     } catch (error) {
       console.error('Failed to redo:', error)
-      event.reply('code-history:redo:reply', { data: null, error: 'Failed to redo' })
+      event.reply('code-history:redo:reply', { tabId, data: null, error: 'Failed to redo' })
     }
   })
 }

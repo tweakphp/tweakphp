@@ -39,7 +39,7 @@
     </div>
     <Divider class="mt-3" />
     <div class="mx-auto space-y-3">
-      <div v-if="Object.values(loadersStore.loaders).length > 0" class="space-y-3 mt-3">
+      <div v-if="loadersStore.loaders.length > 0" class="space-y-3 mt-3">
         <template v-for="loader in loadersStore.loaders">
           <div class="grid grid-cols-2 gap-2 items-center">
             <div class="flex items-center">
@@ -57,7 +57,7 @@
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(loadersStore.loaders).length === 0" class="grid grid-cols-1 items-center mt-3">
+      <div v-if="loadersStore.loaders.length === 0" class="grid grid-cols-1 items-center mt-3">
         <div>No custom loader yet!</div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useSettingsStore } from '../stores/settings.ts'
 
   const settingsStore = useSettingsStore()
@@ -7,9 +7,17 @@
   const title = ref<string>('')
   const progress = ref<number>(0)
 
-  window.ipcRenderer.on('statusbar:progress', e => {
+  const progressListener = (e: any) => {
     title.value = e.title
     progress.value = e.progress
+  }
+
+  onMounted(() => {
+    window.ipcRenderer.on('statusbar:progress', progressListener)
+  })
+
+  onBeforeUnmount(() => {
+    window.ipcRenderer.removeListener('statusbar:progress', progressListener)
   })
 </script>
 

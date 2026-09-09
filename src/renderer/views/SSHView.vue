@@ -74,7 +74,7 @@
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(sshStore.connections).length === 0" class="grid grid-cols-1 items-center">
+      <div v-if="sshStore.connections.length === 0" class="grid grid-cols-1 items-center">
         <div>No connections yet!</div>
       </div>
     </div>

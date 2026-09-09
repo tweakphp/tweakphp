@@ -12,6 +12,7 @@
   import DropDownItem from '../components/DropDownItem.vue'
   import { ActionReply } from '../../types/client.type'
   import { useConnectionView } from '../composables/useConnectionView'
+  import { errorMessage } from '../../shared/error-message'
 
   const kubectlStore = useKubectlStore()
   const loadingPods = ref(false)
@@ -50,7 +51,7 @@
   const actionReply = (e: any) => {
     const reply = e.detail as ActionReply
     if (reply.error) {
-      alert(reply.error)
+      alert(errorMessage(reply.error))
       return
     }
 
@@ -135,7 +136,7 @@
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(kubectlStore.connections).length === 0" class="grid grid-cols-1 items-center">
+      <div v-if="kubectlStore.connections.length === 0" class="grid grid-cols-1 items-center">
         <div>No connections yet!</div>
       </div>
     </div>

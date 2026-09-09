@@ -1,6 +1,7 @@
 export interface ConnectionConfig {
   type: 'kubectl'
-  id: number
+  /** Numeric for renderer-created connections; may be a string id in legacy rows. */
+  id: number | string
   name: string
   color: string
   context: string

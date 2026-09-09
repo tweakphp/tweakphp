@@ -23,9 +23,9 @@ const settingsSchema = z.object({
   windowHeight: z.coerce.number(),
   intelephenseLicenseKey: z.string().optional(),
   aiStatus: z.boolean(),
-  aiProvider: z.string().nullable().optional(),
-  aiModelId: z.string().nullable().optional(),
-  aiApiKey: z.string().nullable().optional(),
+  aiProvider: z.string().optional(),
+  aiModelId: z.string().optional(),
+  aiApiKey: z.string().optional(),
   aiPromptTemplateGenerateCodeFromComment: z.string(),
   aiPromptTemplateCompleteComment: z.string(),
   aiPromptTemplateCompleteCode: z.string(),
@@ -54,7 +54,14 @@ const handlePhpExecutable = (event: IpcMainInvokeEvent, phpPath: string) => {
 }
 
 const persistSettings = (event: IpcMainInvokeEvent, data: Settings) => {
-  const saved = { ...data, php: handlePhpExecutable(event, data.php) }
+  const saved = {
+    ...data,
+    php: handlePhpExecutable(event, data.php),
+    // normalize the optional AI fields to the '' = unset convention
+    aiProvider: data.aiProvider ?? '',
+    aiModelId: data.aiModelId ?? '',
+    aiApiKey: data.aiApiKey ?? '',
+  }
   setSettings(saved)
 }
 

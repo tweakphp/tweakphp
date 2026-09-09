@@ -1,10 +1,10 @@
 import * as lsp from './index'
 
-export const initLsp = (): Promise<void> => {
+export const initLsp = (): Promise<boolean> => {
   return lsp.init()
 }
 
-export const restartLsp = async (): Promise<void> => {
+export const restartLsp = async (): Promise<boolean> => {
   await lsp.shutdown()
-  await lsp.init()
+  return lsp.init()
 }

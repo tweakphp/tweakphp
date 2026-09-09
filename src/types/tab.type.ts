@@ -45,9 +45,9 @@ export interface Tab {
   }
   docker?: ConnectionConfig
   ssh?: {
-    id: number
+    id: number | string
   }
   kubectl?: {
-    id: number
+    id: number | string
   }
 }

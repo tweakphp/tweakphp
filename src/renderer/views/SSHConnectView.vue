@@ -12,6 +12,7 @@
   import DropDownItem from '../components/DropDownItem.vue'
   import { useSettingsStore } from '../stores/settings'
   import { ConnectReply } from '../../types/client.type'
+  import { errorMessage } from '../../shared/error-message'
 
   const platform = window.platformInfo.getPlatform()
   const sshStore = useSSHStore()
@@ -19,7 +20,7 @@
   const emit = defineEmits(['connected'])
   const props = defineProps({
     id: {
-      type: Number,
+      type: [Number, String],
       required: false,
     },
   })
@@ -95,6 +96,9 @@
       if (reply.connected) {
         sshStore.addConnection(reply.connection)
         emit('connected')
+      } else if (reply.error) {
+        // A failed connect would otherwise be completely silent
+        alert(errorMessage(reply.error))
       }
     }
 
@@ -103,6 +107,8 @@
       if (reply.connected) {
         sshStore.updateConnection(reply.connection.id, reply.connection)
         emit('connected')
+      } else if (reply.error) {
+        alert(errorMessage(reply.error))
       }
     }
   }

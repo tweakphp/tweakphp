@@ -145,7 +145,11 @@
           }
         })
 
-        window.historyApi.onUndoReply(data => {
+        // Replies carry the originating tabId: with more than one editor with
+        // history alive (e.g. during tab transitions) only the editor of the
+        // tab the reply belongs to may apply it
+        window.historyApi.onUndoReply((data, tabId) => {
+          if (tabId !== tabsStore.current?.id) return
           if (editor) {
             isUpdatingFromHistory.value = true
             editor.setValue(data.code)
@@ -158,7 +162,8 @@
           }
         })
 
-        window.historyApi.onRedoReply(data => {
+        window.historyApi.onRedoReply((data, tabId) => {
+          if (tabId !== tabsStore.current?.id) return
           if (editor) {
             isUpdatingFromHistory.value = true
             editor.setValue(data.code)
@@ -216,11 +221,9 @@
         })
       }
 
-      editor.onDidChangeModelContent(() => {
-        if (editor) {
-          emit('update:value', editor.getValue())
-        }
-      })
+      // Note: `onDidChangeModelContent` is registered exactly once, either in
+      // the history branch above or in the plain branch (emit only). A second
+      // unconditional registration here caused double work on every keystroke.
 
       if (props.autoFocus) {
         focusEditor()
@@ -388,10 +391,6 @@
         }
       }
 
-      // webSocket.onmessage = message => {
-      //   console.log(message)
-      // }
-
       webSocket.onerror = error => {
         lspStore.setDisconnected()
         reject(error)
@@ -469,11 +468,6 @@
 
 <template>
   <div ref="editorContainer" class="w-full h-full">
-    <ToastAlert
-      :key="new Date().getTime()"
-      v-if="errorAiCompletion"
-      title="AI Completions Error"
-      :message="errorAiCompletion"
-    />
+    <ToastAlert v-if="errorAiCompletion" title="AI Completions Error" :message="errorAiCompletion" />
   </div>
 </template>

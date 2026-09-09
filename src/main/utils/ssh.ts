@@ -11,7 +11,9 @@ export class SSH {
   constructor(connectionConfig: ConnectionConfig) {
     this.config = {
       host: connectionConfig.host,
-      port: connectionConfig.port,
+      // `port` is bound to a text input in the renderer: it can arrive as a
+      // string ("2222") — ssh2's ConnectConfig expects a number
+      port: Number(connectionConfig.port) || 22,
       username: connectionConfig.username,
       password: '',
       privateKey: '',

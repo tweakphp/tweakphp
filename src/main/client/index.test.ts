@@ -176,7 +176,7 @@ describe('IPC Router (index.ts)', () => {
   describe('execute handler', () => {
     it('successfully executes command and parses TWEAKPHP_RESULT payload', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;', loader: 'my-loader' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', loader: 'my-loader', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Some output\nTWEAKPHP_RESULT:{"val": 42}\n')
@@ -185,37 +185,37 @@ describe('IPC Router (index.ts)', () => {
 
       expect(mockConnect).toHaveBeenCalled()
       expect(mockExecute).toHaveBeenCalledWith('echo 1;', 'my-loader')
-      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { val: 42 })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { tabId: 1, output: { val: 42 } })
       expect(mockDisconnect).toHaveBeenCalled()
     })
 
     it('replies with raw execution results if TWEAKPHP_RESULT format is missing', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Raw output\n')
 
       await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', 'Raw output')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { tabId: 1, output: 'Raw output' })
     })
 
     it('replies with raw string payload when TWEAKPHP_RESULT is not valid JSON', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_RESULT:not-json-payload\n')
 
       await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', 'not-json-payload')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { tabId: 1, output: 'not-json-payload' })
     })
 
     it('parses TWEAKPHP_ERROR JSON payload and replies with structured error result', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue(
@@ -225,6 +225,7 @@ describe('IPC Router (index.ts)', () => {
       await ipcHandlers['client:execute'](mockEvent, payload)
 
       expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', {
+        tabId: 1,
         output: [
           {
             line: 3,
@@ -238,7 +239,7 @@ describe('IPC Router (index.ts)', () => {
 
     it('parses TWEAKPHP_ERROR plain-text payload and extracts the line number', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_ERROR:PHP Fatal error: something bad on line 7\n')
@@ -246,6 +247,7 @@ describe('IPC Router (index.ts)', () => {
       await ipcHandlers['client:execute'](mockEvent, payload)
 
       expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', {
+        tabId: 1,
         output: [
           {
             line: 7,
@@ -259,20 +261,20 @@ describe('IPC Router (index.ts)', () => {
 
     it('replies with error on failure', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 1 }
 
       mockConnect.mockRejectedValue(new Error('Exec failed'))
 
       await ipcHandlers['client:execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client:execute:reply', { tabId: 1, error: expect.any(Error) })
     })
   })
 
   describe('action handler', () => {
     it('successfully runs actions and replies', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, type: 'myAction', data: 'myData' }
+      const payload = { connection: { type: 'local' }, type: 'myAction', data: 'myData', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockAction.mockResolvedValue('actionResult')
@@ -283,12 +285,13 @@ describe('IPC Router (index.ts)', () => {
       expect(mockEvent.reply).toHaveBeenCalledWith('client:action:reply', {
         type: 'myAction',
         result: 'actionResult',
+        tabId: 1,
       })
     })
 
     it('replies with error on action failure', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, type: 'myAction' }
+      const payload = { connection: { type: 'local' }, type: 'myAction', tabId: 1 }
 
       mockConnect.mockResolvedValue(undefined)
       mockAction.mockRejectedValue(new Error('Action failed'))
@@ -298,6 +301,7 @@ describe('IPC Router (index.ts)', () => {
       expect(mockEvent.reply).toHaveBeenCalledWith('client:action:reply', {
         type: 'myAction',
         error: expect.any(Error),
+        tabId: 1,
       })
     })
   })

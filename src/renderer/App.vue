@@ -7,6 +7,7 @@
   import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
+  import { useExecuteStore } from './stores/execute'
   import router from './router/index'
   import events from './events'
   import { useSettingsStore } from './stores/settings'
@@ -32,6 +33,7 @@
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
   const updateStore = useUpdateStore()
+  const executeStore = useExecuteStore()
 
   const newProjectModal = ref()
 
@@ -53,8 +55,10 @@
   onMounted(async () => {
     colorSchemeSetup()
     let media = window.matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', () => {
-      colorSchemeStore.change()
+    media.addEventListener('change', e => {
+      // Follow the OS AND persist: a UI-only update would be reverted at the
+      // next launch by the stored preference
+      colorSchemeStore.change(e.matches ? 'dark' : 'light')
       colorSchemeSetup()
     })
     window.ipcRenderer.on('update:available', (e: UpdateInfo) => {
@@ -78,6 +82,11 @@
       updateStore.setDownloading(false)
       updateStore.resetDownloadProgress()
     })
+    // Editor/LSP clients are created as soon as the UI mounts (isAppReady
+    // flips after app:init resolves); monaco services must be initialized
+    // BEFORE that, otherwise they can be created against uninitialized
+    // services
+    await initEditor()
     try {
       const initResult = await window.ipcRenderer.invoke('app:init')
       if (initResult?.error) {
@@ -102,10 +111,10 @@
       events.dispatchEvent(new CustomEvent('client:connect:reply', { detail: e }))
     })
     window.ipcRenderer.on('client:execute:reply', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client:execute:reply', { detail: e }))
+      executeStore.handleExecuteReply(e)
     })
     window.ipcRenderer.on('client:execute:stream', (e: any) => {
-      events.dispatchEvent(new CustomEvent('client:execute:stream', { detail: e }))
+      executeStore.handleExecuteStream(e)
     })
     window.ipcRenderer.on('client:action:reply', (e: any) => {
       events.dispatchEvent(new CustomEvent('client:action:reply', { detail: e }))

@@ -13,7 +13,7 @@ export interface IpcRenderer {
 
 export interface PlatformInfo {
   getPlatform: () => NodeJS.Platform
-  getLspPort: () => Number
+  getLspPort: () => number
   isDev: () => boolean
 }
 
@@ -24,6 +24,7 @@ const invokeAllowList = new Set<string>([
   'ai:get-completion',
   'lsp:restart',
   'settings:save',
+  'settings:store',
   'settings:detect-php',
   'mcp:get-status',
   'mcp:start',
@@ -74,7 +75,6 @@ const onAllowList = new Set<string>([
   'statusbar:progress',
   'settings:php-located',
   'mcp:status-update',
-  'ssh:disconnect',
 ])
 
 const assertAllowedChannel = (method: string, allowList: Set<string>, channel: string): void => {
@@ -86,29 +86,58 @@ const assertAllowedChannel = (method: string, allowList: Set<string>, channel: s
 // Map from user callback → per-channel wrapper, so removeListener can find the right wrapper
 const listenerWrappers = new Map<(...args: any[]) => void, Map<string, (...args: any[]) => void>>()
 
-const toCloneable = <T>(value: T): T => {
+/**
+ * Prepare a value for the structured clone used by Electron IPC.
+ *
+ * Functions and circular references cannot cross the bridge: they are rejected
+ * here (with a clear error) instead of throwing a bare DataCloneError later or
+ * hanging forever. Date/Map/Set are left untouched — the structured clone
+ * algorithm serializes them natively, while a deep copy would silently
+ * downgrade them (Date → {}).
+ */
+const toCloneable = <T>(value: T, seen: WeakSet<object> = new WeakSet()): T => {
+  if (typeof value === 'function') {
+    throw new TypeError('toCloneable: functions cannot be passed over IPC')
+  }
+
+  if (value === null || typeof value !== 'object') {
+    return value
+  }
+
+  if (value instanceof Date || value instanceof Map || value instanceof Set || value instanceof RegExp) {
+    return value
+  }
+
+  if (seen.has(value as unknown as object)) {
+    throw new TypeError('toCloneable: circular reference cannot be passed over IPC')
+  }
+  seen.add(value as unknown as object)
+
   if (Array.isArray(value)) {
-    return value.map(item => toCloneable(item)) as T
+    return value.map(item => toCloneable(item, seen)) as T
   }
 
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, toCloneable(item)])) as T
-  }
-
-  return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, toCloneable(item, seen)])
+  ) as T
 }
 
 const ipcRendererHandler: IpcRenderer = {
   invoke: (channel: string, ...args: any[]) => {
     assertAllowedChannel('invoke', invokeAllowList, channel)
-    return ipcRenderer.invoke(channel, ...args.map(toCloneable))
+    return ipcRenderer.invoke(channel, ...args.map(arg => toCloneable(arg)))
   },
   send: (channel: string, ...args: any[]) => {
     assertAllowedChannel('send', sendAllowList, channel)
-    ipcRenderer.send(channel, ...args.map(toCloneable))
+    ipcRenderer.send(channel, ...args.map(arg => toCloneable(arg)))
   },
   on: (channel: string, callback: (...args: any[]) => void) => {
     assertAllowedChannel('on', onAllowList, channel)
+    // Idempotent like DOM addEventListener: registering the same callback on
+    // the same channel twice must not leak a second permanent subscription
+    if (listenerWrappers.get(callback)?.has(channel)) {
+      return
+    }
     const wrapper = (_: Electron.IpcRendererEvent, ...args: any[]) => callback(...args)
     if (!listenerWrappers.has(callback)) {
       listenerWrappers.set(callback, new Map())
@@ -134,11 +163,26 @@ const ipcRendererHandler: IpcRenderer = {
 
 contextBridge.exposeInMainWorld('ipcRenderer', ipcRendererHandler)
 
+const resolveLspPort = (): number => {
+  const parsed = parseInt(process.env.VITE_LSP_WEBSOCKET_PORT || String(LSP_WEBSOCKET_DEFAULT_PORT), 10)
+  // A malformed env must not produce ws://127.0.0.1:NaN (retried forever)
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 65535) {
+    return LSP_WEBSOCKET_DEFAULT_PORT
+  }
+  return parsed
+}
+
 contextBridge.exposeInMainWorld('platformInfo', {
   getPlatform: () => process.platform,
-  getLspPort: () => parseInt(process.env.VITE_LSP_WEBSOCKET_PORT || String(LSP_WEBSOCKET_DEFAULT_PORT), 10),
+  getLspPort: resolveLspPort,
   isDev: () => process.env.NODE_ENV === 'development',
 })
+
+interface HistoryReply {
+  tabId: number
+  data: { code: string; cursor: monaco.IPosition } | null
+  error: string | null
+}
 
 /**
  * Exposes the `historyApi` to the renderer process.
@@ -153,17 +197,25 @@ contextBridge.exposeInMainWorld('historyApi', {
   redo: (tabId: number) => {
     ipcRenderer.send('code-history:redo', tabId)
   },
-  onUndoReply: (callback: (data: { code: string; cursor: monaco.IPosition }) => void) => {
-    ipcRenderer.on('code-history:undo:reply', (_event, args) => {
+  onUndoReply: (callback: (data: { code: string; cursor: monaco.IPosition }, tabId: number) => void) => {
+    ipcRenderer.on('code-history:undo:reply', (_event, args: HistoryReply) => {
+      if (args.error) {
+        console.error(`Code history undo failed: ${args.error}`)
+        return
+      }
       if (args.data) {
-        callback(args.data)
+        callback(args.data, args.tabId)
       }
     })
   },
-  onRedoReply: (callback: (data: { code: string; cursor: monaco.IPosition }) => void) => {
-    ipcRenderer.on('code-history:redo:reply', (_event, args) => {
+  onRedoReply: (callback: (data: { code: string; cursor: monaco.IPosition }, tabId: number) => void) => {
+    ipcRenderer.on('code-history:redo:reply', (_event, args: HistoryReply) => {
+      if (args.error) {
+        console.error(`Code history redo failed: ${args.error}`)
+        return
+      }
       if (args.data) {
-        callback(args.data)
+        callback(args.data, args.tabId)
       }
     })
   },

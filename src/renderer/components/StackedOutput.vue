@@ -1,7 +1,8 @@
 <script lang="ts" setup>
   import { nextTick, PropType, watch } from 'vue'
-  import { QueryItem, Result } from '../../types/tab.type'
+  import { Result } from '../../types/tab.type'
   import { escapeHtml } from '../../shared/tweakphp-error'
+  import { formatQueryTime, interpolateSql } from '../../shared/queries'
   import { useSettingsStore } from '../stores/settings'
 
   const props = defineProps({
@@ -14,34 +15,7 @@
   const settingsStore = useSettingsStore()
   const initializedDumps = new WeakSet<HTMLElement>()
 
-  const getSql = (item: QueryItem): string => {
-    if (typeof item === 'string') return item
-    return item.sql || item.query || item.raw_sql || item.statement || ''
-  }
-
-  const interpolateSql = (item: QueryItem): string => {
-    const sql = getSql(item)
-    if (typeof item === 'string' || !Array.isArray(item.bindings) || item.bindings.length === 0) return sql
-
-    let bindingIndex = 0
-    return sql.replace(/\?/g, () => {
-      if (bindingIndex >= item.bindings!.length) return '?'
-      const value = item.bindings![bindingIndex++]
-      if (value === null || value === undefined) return 'NULL'
-      if (typeof value === 'boolean') return value ? '1' : '0'
-      if (typeof value === 'number') return String(value)
-      if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`
-      return `'${JSON.stringify(value)}'`
-    })
-  }
-
-  const formatTime = (item: QueryItem): string => {
-    if (typeof item === 'string') return ''
-    const rawTime = item.time ?? item.duration ?? item.execution_time
-    const time = typeof rawTime === 'string' ? parseFloat(rawTime) : rawTime
-    if (!time || isNaN(time)) return ''
-    return time < 1 ? `${(time * 1000).toFixed(2)} μs` : `${time.toFixed(2)} ms`
-  }
+  const formatTime = formatQueryTime
 
   const itemHtml = (item: Result): string => {
     const html = item.html && item.html !== '' ? item.html : ''

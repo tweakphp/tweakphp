@@ -5,21 +5,25 @@ import log from 'electron-log/main'
 import * as settings from '../settings'
 import { LSP_WEBSOCKET_DEFAULT_PORT } from '../constants'
 
-export const init = async () => {
+export const init = async (): Promise<boolean> => {
   console.log('Initiating PHP language server (Intelephense)')
 
   let intelephenseEntry = ''
   try {
     intelephenseEntry = require.resolve('intelephense')
   } catch (e) {
-    return
+    log.error('Intelephense is not available: PHP language server cannot start')
+    return false
   }
+
+  const envPort = Number(process.env.VITE_LSP_WEBSOCKET_PORT)
+  const serverPort = Number.isFinite(envPort) && envPort > 0 ? envPort : LSP_WEBSOCKET_DEFAULT_PORT
 
   try {
     await runServer.runLanguageServer({
       serverName: 'Intelephense',
       pathName: '/',
-      serverPort: Number(process.env.VITE_LSP_WEBSOCKET_PORT || LSP_WEBSOCKET_DEFAULT_PORT),
+      serverPort,
       runCommand: process.execPath,
       runCommandArgs: [intelephenseEntry, '--stdio'],
       spawnOptions: {
@@ -40,7 +44,10 @@ export const init = async () => {
     })
   } catch (error) {
     log.error('Error starting PHP language server', error)
+    return false
   }
+
+  return true
 }
 
 export const shutdown = async () => {

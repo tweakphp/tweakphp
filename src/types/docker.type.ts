@@ -5,12 +5,14 @@ export interface ConnectionConfig {
   working_directory: string
   container_id: string
   container_name: string
-  php_version: string
-  php_path: string
-  client_path: string
+  // Resolved lazily by DockerClient.setup(): the DB may store '' / null
+  php_version?: string | null
+  php_path?: string | null
+  client_path?: string | null
   php?: string
   path?: string
-  ssh_id: number
+  /** Id of the SSH host used to reach docker; 0 = local docker daemon */
+  ssh_id?: number | string
   user?: string
   ssh?: SSHConnectionConfig
 }

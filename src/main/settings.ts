@@ -45,9 +45,9 @@ const defaultSettings: Settings = {
   windowHeight: 700,
   intelephenseLicenseKey: '',
   aiStatus: false,
-  aiProvider: null,
-  aiModelId: null,
-  aiApiKey: null,
+  aiProvider: '',
+  aiModelId: '',
+  aiApiKey: '',
   aiPromptTemplateGenerateCodeFromComment: '',
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
@@ -104,9 +104,9 @@ export const getSettings = () => {
       windowHeight: settingsJson.windowHeight || defaultSettings.windowHeight,
       intelephenseLicenseKey: settingsJson.intelephenseLicenseKey || '',
       aiStatus: settingsJson.aiStatus || defaultSettings.aiStatus,
-      aiProvider: settingsJson.aiProvider || null,
-      aiModelId: settingsJson.aiModelId || null,
-      aiApiKey: settingsJson.aiApiKey || null,
+      aiProvider: settingsJson.aiProvider || '',
+      aiModelId: settingsJson.aiModelId || '',
+      aiApiKey: settingsJson.aiApiKey || '',
       aiPromptTemplateGenerateCodeFromComment:
         settingsJson.aiPromptTemplateGenerateCodeFromComment !== undefined
           ? settingsJson.aiPromptTemplateGenerateCodeFromComment

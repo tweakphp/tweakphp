@@ -66,4 +66,61 @@ describe('parseTweakPhpError (tweakphp-error.ts)', () => {
     expect(result.output).toBe('Some unexpected raw output')
     expect(result.line).toBe(0)
   })
+
+  it('does not truncate the message when the marker appears twice', () => {
+    const raw =
+      'TWEAKPHP_ERROR:{"message":"TWEAKPHP_ERROR: marker echoed inside message","line":5} TWEAKPHP_ERROR: trailer'
+
+    const result = parseTweakPhpError(raw)
+
+    // Slicing keeps everything after the FIRST marker; JSON.parse then fails
+    // on the echoed marker and the full content is preserved as text
+    expect(result.output).toContain('marker echoed inside message')
+    expect(result.output).toContain('TWEAKPHP_ERROR: trailer')
+    expect(result.line).toBe(0)
+  })
+
+  it('does not produce NaN line for a non-numeric line field', () => {
+    const raw = 'TWEAKPHP_ERROR:{"message":"bad input","line":"NaN-garbage"}'
+
+    const result = parseTweakPhpError(raw)
+
+    expect(result.line).toBe(0)
+    expect(Number.isFinite(result.line)).toBe(true)
+  })
+
+  it('handles undefined input without rendering the literal string', () => {
+    const result = parseTweakPhpError(undefined)
+
+    expect(result.output).toBe('')
+    expect(result.line).toBe(0)
+  })
+
+  it('handles null input without rendering the literal string', () => {
+    const result = parseTweakPhpError(null)
+
+    expect(result.output).toBe('')
+    expect(result.line).toBe(0)
+  })
+
+  it('handles an empty string input', () => {
+    const result = parseTweakPhpError('')
+
+    expect(result.output).toBe('')
+    expect(result.line).toBe(0)
+  })
+
+  it('handles a marker-only payload', () => {
+    const result = parseTweakPhpError('TWEAKPHP_ERROR:')
+
+    expect(result.output).toBe('')
+    expect(result.line).toBe(0)
+  })
+
+  it('handles a numeric error payload', () => {
+    const result = parseTweakPhpError(42)
+
+    expect(result.output).toBe('42')
+    expect(result.line).toBe(0)
+  })
 })

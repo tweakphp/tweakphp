@@ -7,9 +7,10 @@
   import PrimaryButton from '../../components/PrimaryButton.vue'
   import SecondaryButton from '../../components/SecondaryButton.vue'
   import { useSettingsStore } from '../../stores/settings'
+  import { useSavedToast } from '../../composables/useSavedToast'
 
   const settingsStore = useSettingsStore()
-  const saved = ref(false)
+  const { saved, markSaved } = useSavedToast()
   const serverStatus = ref({
     running: false,
     port: 0,
@@ -79,11 +80,8 @@
   }
 
   const saveSettings = () => {
-    saved.value = true
     settingsStore.update()
-    setTimeout(() => {
-      saved.value = false
-    }, 2000)
+    markSaved()
   }
 
   const fetchServerStatus = async () => {

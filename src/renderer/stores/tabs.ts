@@ -76,15 +76,16 @@ export const useTabsStore = defineStore('tabs', () => {
       return tabExists
     }
     tabs.value.push(tab)
-    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    saveAllNow()
     setCurrent(tab)
     return tab
   }
 
   const removeTab = async (id: number) => {
     let index = tabs.value.findIndex(tab => tab.id === id)
+    if (index === -1) return null
     tabs.value.splice(index, 1)
-    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    saveAllNow()
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
       let activeTab = tabs.value[tabs.value.length - 1]
@@ -96,10 +97,34 @@ export const useTabsStore = defineStore('tabs', () => {
     return null
   }
 
-  const updateTab = (tab: Tab) => {
-    let index = tabs.value.findIndex(t => t.id === tab.id)
-    tabs.value[index] = tab
+  const SAVE_ALL_DEBOUNCE_MS = 400
+  let saveAllTimer: ReturnType<typeof setTimeout> | null = null
+
+  const saveAllNow = () => {
+    if (saveAllTimer) {
+      clearTimeout(saveAllTimer)
+      saveAllTimer = null
+    }
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+  }
+
+  // Persisting serializes every tab (code + results + query log): coalesce
+  // bursts like keystrokes and streaming chunks into a single SQLite write
+  const scheduleSaveAll = () => {
+    if (saveAllTimer) {
+      clearTimeout(saveAllTimer)
+    }
+    saveAllTimer = setTimeout(() => {
+      saveAllTimer = null
+      void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    }, SAVE_ALL_DEBOUNCE_MS)
+  }
+
+  const updateTab = (tab: Tab) => {
+    const index = tabs.value.findIndex(t => t.id === tab.id)
+    if (index === -1) return
+    tabs.value[index] = tab
+    scheduleSaveAll()
   }
 
   const findTab = (id: number | null = null) => {
@@ -228,7 +253,7 @@ const normalize = (tab: any): Tab => {
       php_version: tab.docker.php_version ?? '',
       php_path: tab.docker.php_path ?? '',
       client_path: tab.docker.client_path ?? tab.docker.phar_path,
-      ssh_id: tab.docker.ssh_id ?? 0,
+      ssh_id: Number(tab.docker.ssh_id) || 0,
       user: tab.docker.user ?? '',
     }
   }

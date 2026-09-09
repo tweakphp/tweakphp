@@ -6,12 +6,12 @@
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
   import SecondaryButton from '../../components/SecondaryButton.vue'
-  import { ref, onMounted } from 'vue'
+  import { ref, onMounted, onBeforeUnmount } from 'vue'
   import UpdateApp from '../../components/UpdateApp.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
+  import { useSavedToast } from '../../composables/useSavedToast'
 
-  const saved = ref(false)
-  const showToast = ref(false)
+  const { showToast, markSaved } = useSavedToast()
   const detecting = ref(false)
   const detectedPaths = ref<string[]>([])
   const settingsStore = useSettingsStore()
@@ -21,18 +21,17 @@
     window.ipcRenderer.on('settings:php-located', updatePhpSetting)
   })
 
+  onBeforeUnmount(() => {
+    window.ipcRenderer.removeListener('settings:php-located', updatePhpSetting)
+  })
+
   const updatePhpSetting = (newPhpSetting: string) => {
     settingsStore.settings.php = newPhpSetting
   }
 
   const saveSettings = () => {
-    saved.value = true
-    showToast.value = true
     settingsStore.update()
-    setTimeout(() => {
-      saved.value = false
-      showToast.value = false
-    }, 2000)
+    markSaved()
   }
 
   const detectPhp = async () => {

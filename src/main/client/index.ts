@@ -16,13 +16,14 @@ interface ConnectPayload extends ClientRequestPayload {
 interface ExecutePayload extends ClientRequestPayload {
   code: string
   loader?: string
-  tabId?: string
+  tabId?: string | number
   streaming?: boolean
 }
 
 interface ActionPayload extends ClientRequestPayload {
   type: string
   data?: unknown
+  tabId?: string | number
 }
 
 interface InfoPayload extends ClientRequestPayload {
@@ -90,16 +91,18 @@ const execute = async (event: Electron.IpcMainEvent, payload: ExecutePayload) =>
         })
       })
 
-      event.reply('client:execute:reply', { streamingDone: true })
+      // Final replies carry the originating tabId so the renderer can route
+      // them to the right tab (stream events already do)
+      event.reply('client:execute:reply', { tabId: payload.tabId, streamingDone: true })
       return
     }
 
     const result = await client.execute(payload.code, payload.loader)
     const parsed = parseExecutionResult(result)
 
-    event.reply('client:execute:reply', parsed.isError ? { output: parsed.output } : parsed.output)
+    event.reply('client:execute:reply', { tabId: payload.tabId, output: parsed.output })
   } catch (error: unknown) {
-    event.reply('client:execute:reply', error)
+    event.reply('client:execute:reply', { tabId: payload.tabId, error })
   } finally {
     client?.disconnect()
   }
@@ -114,11 +117,13 @@ const action = async (event: Electron.IpcMainEvent, payload: ActionPayload) => {
     event.reply('client:action:reply', {
       type: payload.type,
       result,
+      tabId: payload.tabId,
     })
   } catch (error: unknown) {
     event.reply('client:action:reply', {
       type: payload.type,
       error,
+      tabId: payload.tabId,
     })
   } finally {
     client?.disconnect()

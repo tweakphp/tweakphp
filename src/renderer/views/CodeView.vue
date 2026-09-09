@@ -49,6 +49,10 @@
   })
   const route = useRoute()
 
+  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+  const isDetailEvent = (event: Event): event is CustomEvent => 'detail' in event
+
   const rawOutput = computed(() => {
     const output = [...tab.value.result].reverse().find(item => item.output.trim() !== '')
     return output ? output.output : ''
@@ -65,7 +69,7 @@
     }
   })
 
-  const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
+  const { executeHandler, updateResultEditor, getLoader } = useCodeExecution({
     tab,
     rawOutput,
     resultEditor,
@@ -76,14 +80,28 @@
     loadersStore,
   })
 
+  // Results are applied globally by the execute store; this only refreshes the
+  // result editor when the applied tab is the one currently mounted
+  const executeAppliedListener = (event: Event) => {
+    const detail = isDetailEvent(event) && isRecord(event.detail) ? event.detail : null
+    if (detail && detail.tabId === tab.value.id) {
+      updateResultEditor()
+    }
+  }
+
   const handleLspReconnect = async () => {
+    let restartError: string | null = null
     try {
       const result = await window.ipcRenderer.invoke('lsp:restart')
       if (result?.error) {
-        console.error('Failed to restart LSP server:', result.error)
+        restartError = typeof result.error === 'string' ? result.error : String(result.error.message ?? result.error)
       }
-    } catch (error) {
-      console.error('Failed to restart LSP server:', error)
+    } catch (error: any) {
+      restartError = error?.message ? String(error.message) : String(error)
+    }
+    if (restartError) {
+      // Restart failures are otherwise completely silent for the user
+      alert(`Failed to restart the PHP language server: ${restartError}`)
     }
     try {
       // @ts-ignore - template ref typed at runtime
@@ -92,26 +110,31 @@
   }
 
   const vaporRequestEnvironmentTab = () => {
-    if (!tabsStore.current?.id || !tabsStore.current?.path) {
+    if (!tab.value.id || !tab.value.path) {
       console.warn('No current tab or path set, cannot request environments.')
       return
     }
-    vaporStore.setClientPath(tab.value.id, String(tabsStore.current?.path))
-    const config = JSON.parse(JSON.stringify(vaporStore.getConnectionConfig(tabsStore.current?.id)))
+    vaporStore.setClientPath(tab.value.id, String(tab.value.path))
+    const config = vaporStore.getConnectionConfig(tab.value.id)
+    if (!config) {
+      console.warn(`No vapor connection config for tab ${tab.value.id}, cannot request environments.`)
+      return
+    }
     window.ipcRenderer.send('client:action', {
       type: 'getEnvironments',
-      connection: config,
+      connection: JSON.parse(JSON.stringify(config)),
+      tabId: tab.value.id,
     })
   }
 
   const vaporResponseEnvironmentTab = (e: any) => {
-    if (!tabsStore.current?.id) {
-      console.warn('No current tab or path set, cannot request environments.')
-      return
-    }
-    const reply = e.detail
-    if (reply.type === 'getEnvironments') {
-      vaporStore.setEnviroments(tabsStore.current?.id, e.detail.result)
+    const reply = e?.detail
+    if (!isRecord(reply) || reply.type !== 'getEnvironments') return
+    // Correlate the reply to the tab that requested it, not to whichever tab
+    // happens to be current when the (possibly delayed) reply arrives
+    if (reply.tabId !== tab.value.id) return
+    if (Array.isArray(reply.result)) {
+      vaporStore.setEnviroments(tab.value.id, reply.result)
     }
   }
 
@@ -132,12 +155,32 @@
   }
 
   const infoReplyListener = (e: any) => {
-    tab.value.info = JSON.parse(e.detail)
-    tabsStore.updateTab(tab.value)
+    // The reply can be a JSON string (success) or an arbitrary error payload
+    // (e.g. a serialized Error): never throw on it, just keep the stale info
+    try {
+      const parsed = typeof e?.detail === 'string' ? JSON.parse(e.detail) : e?.detail
+      if (!isRecord(parsed)) return
+      const hasValidField =
+        typeof parsed.name === 'string' || typeof parsed.php_version === 'string' || typeof parsed.version === 'string'
+      if (!hasValidField) return
+      tab.value.info = {
+        name: typeof parsed.name === 'string' ? parsed.name : tab.value.info.name,
+        php_version: typeof parsed.php_version === 'string' ? parsed.php_version : tab.value.info.php_version,
+        version: typeof parsed.version === 'string' ? parsed.version : tab.value.info.version,
+      }
+      tabsStore.updateTab(tab.value)
+    } catch {
+      // Non-JSON stdout (e.g. PHP warnings before the JSON payload): ignore
+    }
   }
 
   const getInfo = () => {
-    vaporRequestEnvironmentTab()
+    // Only vapor tabs need the environments request: calling it for
+    // local/ssh/docker/kubectl tabs would create and persist a vapor config
+    // row (keyed by tab id) on every mount / execution change
+    if (tab.value.execution === 'vapor') {
+      vaporRequestEnvironmentTab()
+    }
     let connection = tabsStore.getConnectionConfig(tab.value)
     const { loader } = tab.value
     const loaderCode = getLoader(loader ?? '')
@@ -195,8 +238,7 @@
 
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
-    events.addEventListener('client:execute:reply', executeReplyListener)
-    events.addEventListener('client:execute:stream', executeStreamListener)
+    events.addEventListener('client:execute:applied', executeAppliedListener)
     events.addEventListener('client:info:reply', infoReplyListener)
     events.addEventListener('client:action:reply', vaporResponseEnvironmentTab)
     if (tabsContainer.value) {
@@ -207,8 +249,7 @@
 
   onBeforeUnmount(async () => {
     window.removeEventListener('keydown', keydownListener)
-    events.removeEventListener('client:execute:reply', executeReplyListener)
-    events.removeEventListener('client:execute:stream', executeStreamListener)
+    events.removeEventListener('client:execute:applied', executeAppliedListener)
     events.removeEventListener('client:info:reply', infoReplyListener)
     events.removeEventListener('client:action:reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)

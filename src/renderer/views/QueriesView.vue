@@ -4,6 +4,8 @@
   import { useSettingsStore } from '../stores/settings'
   import { QueryItem, Result } from '../../types/tab.type'
   import { MagnifyingGlassIcon, ClipboardDocumentIcon, CheckIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
+  import { formatQueryTime, getQueryTime, getQuerySql, interpolateSql } from '../../shared/queries'
+  import { escapeHtml } from '../../shared/tweakphp-error'
 
   type StatementGroup = {
     result: Result | null
@@ -35,25 +37,8 @@
 
   const queries = computed<QueryItem[]>(() => statementGroups.value.flatMap(group => group.queries))
 
-  function getSql(item: QueryItem): string {
-    if (typeof item === 'string') return item
-    return item.sql || item.query || item.raw_sql || item.statement || ''
-  }
-
-  function getTimeNumber(item: QueryItem): number {
-    if (typeof item === 'string') return 0
-    const rawTime = item.time ?? item.duration ?? item.execution_time
-    if (rawTime === undefined || rawTime === null) return 0
-    const parsed = typeof rawTime === 'string' ? parseFloat(rawTime) : rawTime
-    return isNaN(parsed) ? 0 : parsed
-  }
-
-  function formatTime(item: QueryItem): string {
-    const num = getTimeNumber(item)
-    if (num === 0) return ''
-    if (num < 1) return `${(num * 1000).toFixed(2)} μs`
-    return `${num.toFixed(2)} ms`
-  }
+  const formatTime = formatQueryTime
+  const getTimeNumber = getQueryTime
 
   function getTimeBadgeClass(item: QueryItem): string {
     const num = getTimeNumber(item)
@@ -62,29 +47,10 @@
     return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
   }
 
-  function interpolateSql(item: QueryItem): string {
-    const sql = getSql(item)
-    if (typeof item === 'string') return sql
-    const bindings = item.bindings
-    if (!sql) return ''
-    if (!bindings || !Array.isArray(bindings) || bindings.length === 0) return sql
-
-    let index = 0
-    return sql.replace(/\?/g, () => {
-      if (index >= bindings.length) return '?'
-      const val = bindings[index++]
-      if (val === null || val === undefined) return 'NULL'
-      if (typeof val === 'boolean') return val ? '1' : '0'
-      if (typeof val === 'number') return String(val)
-      if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`
-      return `'${JSON.stringify(val)}'`
-    })
-  }
-
   function queryMatches(item: QueryItem, query: string): boolean {
     const queryItem = item as QueryItem | string
     if (typeof queryItem === 'string') return queryItem.toLowerCase().includes(query)
-    const rawSql = getSql(item).toLowerCase()
+    const rawSql = getQuerySql(item).toLowerCase()
     const interpSql = interpolateSql(item).toLowerCase()
     const connStr = (item.connection || item.connection_name || '').toLowerCase()
     const bindingsStr = (item.bindings || [])
@@ -109,10 +75,6 @@
   })
 
   const totalTime = computed(() => queries.value.reduce((acc, query) => acc + getTimeNumber(query), 0))
-
-  function escapeHtml(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  }
 
   function highlightSql(item: QueryItem): string {
     const sql = interpolateSql(item)

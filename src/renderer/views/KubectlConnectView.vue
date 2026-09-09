@@ -17,7 +17,7 @@
   const emit = defineEmits(['done'])
   const props = defineProps({
     id: {
-      type: Number,
+      type: [Number, String],
       required: false,
     },
   })

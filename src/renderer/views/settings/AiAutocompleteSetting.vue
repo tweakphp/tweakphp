@@ -5,7 +5,7 @@
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
   import { useOpenRouter } from '../../composables/useOpenrouter'
-  import { ref, onMounted } from 'vue'
+  import { onMounted } from 'vue'
   import SwitchInput from '@/components/SwitchInput.vue'
   import TextareaInput from '@/components/TextareaInput.vue'
   import {
@@ -15,9 +15,9 @@
   } from '../../../types/ai/prompts.ts'
   import PrimaryButton from '@/components/PrimaryButton.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
+  import { useSavedToast } from '../../composables/useSavedToast'
 
-  const saved = ref(false)
-  const showToast = ref(false)
+  const { showToast, markSaved } = useSavedToast()
   const settingsStore = useSettingsStore()
 
   const { models, loading, error, fetchModels } = useOpenRouter()
@@ -48,13 +48,8 @@
   }
 
   const saveSettings = () => {
-    saved.value = true
-    showToast.value = true
     settingsStore.update()
-    setTimeout(() => {
-      saved.value = false
-      showToast.value = false
-    }, 2000)
+    markSaved()
   }
 
   function resetAiPromptTemplateCompleteComment() {

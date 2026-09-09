@@ -75,7 +75,7 @@ describe('Code History IPC', () => {
     ipcHandlers['code-history:undo'](event, 1)
 
     expect(mockUndo).toHaveBeenCalledWith(1)
-    expect(event.reply).toHaveBeenCalledWith('code-history:undo:reply', { data: state, error: null })
+    expect(event.reply).toHaveBeenCalledWith('code-history:undo:reply', { tabId: 1, data: state, error: null })
   })
 
   it('replies with an error when undo has no previous state', () => {
@@ -85,6 +85,7 @@ describe('Code History IPC', () => {
     ipcHandlers['code-history:undo'](event, 1)
 
     expect(event.reply).toHaveBeenCalledWith('code-history:undo:reply', {
+      tabId: 1,
       data: null,
       error: 'No previous state to undo.',
     })
@@ -98,7 +99,7 @@ describe('Code History IPC', () => {
     ipcHandlers['code-history:redo'](event, 1)
 
     expect(mockRedo).toHaveBeenCalledWith(1)
-    expect(event.reply).toHaveBeenCalledWith('code-history:redo:reply', { data: state, error: null })
+    expect(event.reply).toHaveBeenCalledWith('code-history:redo:reply', { tabId: 1, data: state, error: null })
   })
 
   it('replies with an error when redo has no next state', () => {
@@ -108,6 +109,7 @@ describe('Code History IPC', () => {
     ipcHandlers['code-history:redo'](event, 1)
 
     expect(event.reply).toHaveBeenCalledWith('code-history:redo:reply', {
+      tabId: 1,
       data: null,
       error: 'No next state to redo.',
     })

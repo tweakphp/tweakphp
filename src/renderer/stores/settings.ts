@@ -43,7 +43,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const isNavigationExpanded = computed(() => settings.value.navigationDisplay === 'expanded')
 
   const setSettings = (s: any) => {
-    settings.value = s
+    // Merge over the defaults: the main-process reply is unvalidated `any`
+    // (and legacy settings.json may be missing keys) — never let it punch
+    // holes in the settings shape
+    settings.value = { ...defaultSettings, ...s }
   }
 
   const update = () => {

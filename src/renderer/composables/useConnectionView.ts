@@ -3,26 +3,26 @@ import events from '../events'
 import { ConnectReply } from '../../types/client.type'
 
 export function useConnectionView(options: {
-  store: { remove: (id: number) => void }
+  store: { remove: (id: number | string) => void }
   connectState: string
   emit: (event: 'connected' | 'removed', ...args: any[]) => void
   onConnectReply?: (reply: ConnectReply) => void
 }) {
   const connectModal = ref()
   const connecting = ref()
-  const editId = ref()
+  const editId = ref<number | string | undefined>(undefined)
 
   const add = () => {
-    editId.value = null
+    editId.value = undefined
     connectModal.value.openModal()
   }
 
-  const edit = (id: number) => {
+  const edit = (id: number | string) => {
     editId.value = id
     connectModal.value.openModal()
   }
 
-  const remove = (id: number) => {
+  const remove = (id: number | string) => {
     if (confirm('Are you sure you want to remove it?')) {
       options.store.remove(id)
       options.emit('removed', id)

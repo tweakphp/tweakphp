@@ -7,7 +7,7 @@ export const useSSHStore = createConnectionStore<ConnectionConfig>('ssh', 'ssh-c
   name: connection.name ?? '',
   color: connection.color ?? '',
   host: connection.host ?? '',
-  port: connection.port ?? 22,
+  port: Number(connection.port) || 22,
   username: connection.username ?? '',
   auth_type: connection.auth_type ?? 'password',
   password: connection.password ?? '',
