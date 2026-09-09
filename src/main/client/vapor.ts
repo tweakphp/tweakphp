@@ -1,4 +1,4 @@
-import { BaseClient } from './client.base'
+import { BaseClient, ClientActionHandler } from './client.base'
 import { readFileSync } from 'fs'
 import { load as yamlParse } from 'js-yaml'
 import { exec } from 'child_process'
@@ -10,6 +10,10 @@ const execAsync = promisify(exec)
 
 export class VaporClient extends BaseClient {
   protected blackListToken = ['<?php', '?>']
+
+  protected actions: Record<string, ClientActionHandler> = {
+    getEnvironments: async () => this.getEnvironments(),
+  }
 
   constructor(public connection: ConnectionConfig) {
     super(connection)
@@ -45,7 +49,7 @@ export class VaporClient extends BaseClient {
   /**
    * Get the list of environments defined in the vapor.yml file.
    */
-  getEnvironmentsAction(): string[] {
+  getEnvironments(): string[] {
     const clientPath = this.connection.client_path
     if (!clientPath) return []
 

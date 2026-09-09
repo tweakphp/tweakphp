@@ -1,12 +1,12 @@
 import { execFile, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/docker.type'
 import { SSH } from '../utils/ssh'
-import { BaseClient } from './client.base'
+import { BaseClient, ClientActionHandler } from './client.base'
 import { app } from 'electron'
 import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
 import { assertMinPhpVersion } from '../utils/php'
-import { createStreamOutputParser } from './stream-output'
+import { createStreamOutputParser, StreamEvent } from './stream-output'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
 
@@ -24,6 +24,11 @@ const cleanParam = (val?: any): string | undefined => {
 
 export default class DockerClient extends BaseClient {
   private ssh: SSH | undefined
+
+  protected actions: Record<string, ClientActionHandler> = {
+    getContainers: () => this.getContainers(),
+    getPHPVersion: () => this.getPHPVersion(),
+  }
 
   constructor(public connection: ConnectionConfig) {
     super(connection)
@@ -118,7 +123,7 @@ export default class DockerClient extends BaseClient {
     }
   }
 
-  async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+  async executeStreaming(code: string, loader?: string, onEvent?: (event: StreamEvent) => void): Promise<void> {
     try {
       const args = await this.buildExecArgs('execute-stream', code, loader)
 
@@ -162,8 +167,7 @@ export default class DockerClient extends BaseClient {
     })
   }
 
-  // @ts-ignore
-  private async getContainersAction(_data: any): Promise<any> {
+  private async getContainers(): Promise<unknown> {
     try {
       let result
       if (this.ssh) {
@@ -189,11 +193,6 @@ export default class DockerClient extends BaseClient {
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
-  }
-
-  // @ts-ignore
-  private async getPHPVersionAction(_data: any): Promise<any> {
-    return await this.getPHPVersion()
   }
 
   private async getPHPVersion(): Promise<string> {

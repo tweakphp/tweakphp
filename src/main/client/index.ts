@@ -1,7 +1,33 @@
 import { ipcMain, Notification } from 'electron'
 import { Client } from './client.interface'
+import type { ClientConnectionConfig } from '../../types/client-connection.type'
 import { parseExecutionResult } from '../../shared/execution-result'
 import { createClient } from './factory'
+import type { StreamEvent } from './stream-output'
+
+interface ClientRequestPayload {
+  connection: ClientConnectionConfig
+}
+
+interface ConnectPayload extends ClientRequestPayload {
+  data?: { setup?: boolean }
+}
+
+interface ExecutePayload extends ClientRequestPayload {
+  code: string
+  loader?: string
+  tabId?: string
+  streaming?: boolean
+}
+
+interface ActionPayload extends ClientRequestPayload {
+  type: string
+  data?: unknown
+}
+
+interface InfoPayload extends ClientRequestPayload {
+  loader?: string
+}
 
 export const init = async () => {
   ipcMain.on('client:connect', connect)
@@ -10,7 +36,13 @@ export const init = async () => {
   ipcMain.on('client:info', info)
 }
 
-const connect = async (event: Electron.IpcMainEvent, payload: any) => {
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return String(error)
+}
+
+const connect = async (event: Electron.IpcMainEvent, payload: ConnectPayload) => {
   let client: Client | null = null
   try {
     client = getClient(payload)
@@ -23,7 +55,7 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
       connection: client.getConnection(),
       data: payload.data,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     event.reply('client:connect:reply', {
       connected: false,
       connection: client?.getConnection() ?? null,
@@ -32,14 +64,14 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
     })
     new Notification({
       title: 'Error',
-      body: error.message ?? error,
+      body: toErrorMessage(error),
     }).show()
   } finally {
     client?.disconnect()
   }
 }
 
-const execute = async (event: Electron.IpcMainEvent, payload: any) => {
+const execute = async (event: Electron.IpcMainEvent, payload: ExecutePayload) => {
   let client: Client | null = null
   try {
     client = getClient(payload)
@@ -51,7 +83,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
         event: { type: 'started' },
       })
 
-      await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
+      await client.executeStreaming(payload.code, payload.loader, (streamEvent: StreamEvent) => {
         event.reply('client:execute:stream', {
           tabId: payload.tabId,
           event: streamEvent,
@@ -66,14 +98,14 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
     const parsed = parseExecutionResult(result)
 
     event.reply('client:execute:reply', parsed.isError ? { output: parsed.output } : parsed.output)
-  } catch (error: any) {
+  } catch (error: unknown) {
     event.reply('client:execute:reply', error)
   } finally {
     client?.disconnect()
   }
 }
 
-const action = async (event: Electron.IpcMainEvent, payload: any) => {
+const action = async (event: Electron.IpcMainEvent, payload: ActionPayload) => {
   let client: Client | null = null
   try {
     client = getClient(payload)
@@ -83,7 +115,7 @@ const action = async (event: Electron.IpcMainEvent, payload: any) => {
       type: payload.type,
       result,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     event.reply('client:action:reply', {
       type: payload.type,
       error,
@@ -93,20 +125,20 @@ const action = async (event: Electron.IpcMainEvent, payload: any) => {
   }
 }
 
-const info = async (event: Electron.IpcMainEvent, data: any) => {
+const info = async (event: Electron.IpcMainEvent, payload: InfoPayload) => {
   let client: Client | null = null
   try {
-    client = getClient(data)
+    client = getClient(payload)
     await client.connect()
-    const result = await client.info(data.loader)
+    const result = await client.info(payload.loader)
     event.reply('client:info:reply', result)
-  } catch (error: any) {
+  } catch (error: unknown) {
     event.reply('client:info:reply', error)
   } finally {
     client?.disconnect()
   }
 }
 
-const getClient = (data: any): Client => {
-  return createClient(data.connection)
+const getClient = (payload: ClientRequestPayload): Client => {
+  return createClient(payload.connection)
 }

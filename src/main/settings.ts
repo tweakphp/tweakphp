@@ -42,7 +42,7 @@ const defaultSettings: Settings = {
   stackedDump: 'extended',
   windowWidth: 1100,
   windowHeight: 700,
-  intelephenseLicenseKey: '' as any,
+  intelephenseLicenseKey: '',
   aiStatus: false,
   aiProvider: null,
   aiModelId: null,

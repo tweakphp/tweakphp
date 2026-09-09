@@ -1,4 +1,5 @@
 import { Client } from './client.interface'
+import type { ClientConnectionConfig } from '../../types/client-connection.type'
 import { LocalClient } from './local'
 import DockerClient from './docker'
 import { SSHClient } from './ssh'
@@ -9,7 +10,7 @@ import KubectlClient from './kubectl'
  * Single client factory shared by the IPC router (client/index.ts) and the MCP
  * ConnectionManager so every caller builds clients the same way.
  */
-export const createClient = (connection: any): Client => {
+export const createClient = (connection: ClientConnectionConfig): Client => {
   if (!connection) {
     throw new Error('Connection is required')
   }
@@ -26,6 +27,6 @@ export const createClient = (connection: any): Client => {
     case 'kubectl':
       return new KubectlClient(connection)
     default:
-      throw new Error(`Unsupported connection type: ${connection.type}`)
+      throw new Error(`Unsupported connection type: ${(connection as { type: string }).type}`)
   }
 }

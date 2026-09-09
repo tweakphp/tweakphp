@@ -1,12 +1,21 @@
 import { app } from 'electron'
 import path from 'path'
 import { BaseClient } from './client.base'
+import { ClientConnection } from './client.interface'
 import { base64Encode } from '../utils/base64-encode'
 import { assertMinPhpVersion } from '../utils/php'
-import { createStreamOutputParser } from './stream-output'
+import { createStreamOutputParser, StreamEvent } from './stream-output'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 
+export interface RemoteClientConnection extends ClientConnection {
+  path: string
+  php?: string | undefined
+  client_path?: string | undefined
+}
+
 export abstract class RemoteClient extends BaseClient {
+  declare connection: RemoteClientConnection
+
   abstract remoteExec(command: string): Promise<string>
   abstract remoteUploadFile(localPath: string, remotePath: string): Promise<void>
   abstract getHomePath(): Promise<string>
@@ -62,7 +71,7 @@ export abstract class RemoteClient extends BaseClient {
   }
 
   protected command(projectPath?: string): string {
-    return buildPosixCommand('php', [this.connection.client_path, projectPath || this.connection.path])
+    return buildPosixCommand('php', [this.connection.client_path || '', projectPath || this.connection.path])
   }
 
   remoteExecStream?(command: string, onData: (chunk: string) => void): Promise<void>
@@ -78,7 +87,7 @@ export abstract class RemoteClient extends BaseClient {
     return this.remoteExec(cmd)
   }
 
-  async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+  async executeStreaming(code: string, loader?: string, onEvent?: (event: StreamEvent) => void): Promise<void> {
     if (!this.connection.php || !this.connection.client_path) {
       throw new Error('Client is not provisioned — run the connection setup first')
     }

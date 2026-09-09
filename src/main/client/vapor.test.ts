@@ -82,7 +82,7 @@ describe('VaporClient', () => {
     await expect(client.execute('echo "hello";')).rejects.toThrow('Spawn failed')
   })
 
-  it('getEnvironmentsAction returns list of environments from vapor.yml', () => {
+  it('getEnvironments returns list of environments from vapor.yml', () => {
     const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
 
     vi.mocked(readFileSync).mockReturnValue('vapor yaml content')
@@ -93,26 +93,26 @@ describe('VaporClient', () => {
       },
     })
 
-    const envs = client.getEnvironmentsAction()
+    const envs = client.getEnvironments()
     expect(envs).toEqual(['staging', 'production'])
     expect(readFileSync).toHaveBeenCalled()
     expect(yamlParse).toHaveBeenCalledWith('vapor yaml content')
   })
 
-  it('getEnvironmentsAction returns empty array on exception', () => {
+  it('getEnvironments returns empty array on exception', () => {
     const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
 
     vi.mocked(readFileSync).mockImplementation(() => {
       throw new Error('File not found')
     })
 
-    const envs = client.getEnvironmentsAction()
+    const envs = client.getEnvironments()
     expect(envs).toEqual([])
   })
 
-  it('getEnvironmentsAction returns empty array if no client_path configured', () => {
+  it('getEnvironments returns empty array if no client_path configured', () => {
     const client = new VaporClient({ type: 'vapor' } as any)
-    const envs = client.getEnvironmentsAction()
+    const envs = client.getEnvironments()
     expect(envs).toEqual([])
   })
 })

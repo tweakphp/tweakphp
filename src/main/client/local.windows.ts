@@ -2,7 +2,7 @@ import { execFile, execFileSync, execSync, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
-import { createStreamOutputParser } from './stream-output'
+import { createStreamOutputParser, StreamEvent } from './stream-output'
 
 // Hard cap so a hung PHP process cannot leave the execution pending forever
 const LOCAL_EXECUTION_TIMEOUT_MS = 120_000
@@ -243,7 +243,7 @@ export const executeStreamingWindows = (
   pharPath: string,
   code: string,
   loader?: string,
-  onEvent?: (event: any) => void
+  onEvent?: (event: StreamEvent) => void
 ): Promise<void> => {
   return new Promise(resolve => {
     const targetPath = connection.path

@@ -3,6 +3,7 @@ import path from 'path'
 import { app } from 'electron'
 import { ConnectionConfig } from '../../types/local.type'
 import { BaseClient } from './client.base'
+import { StreamEvent } from './stream-output'
 import {
   executeWindows,
   executeStreamingWindows,
@@ -39,7 +40,7 @@ export class LocalClient extends BaseClient {
     return executeUnix(this.connection, pharPath, code, loader, targetPath)
   }
 
-  executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+  executeStreaming(code: string, loader?: string, onEvent?: (event: StreamEvent) => void): Promise<void> {
     const pharPath = getLocalPharClient(this.connection)
 
     if (isWindowsOrWsl(this.connection.path)) {

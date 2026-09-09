@@ -1,11 +1,18 @@
 import { ConnectionConfig } from '../../types/kubectl.type'
 import { Kubectl } from '../utils/kubectl'
 import { RemoteClient } from './client.remote'
+import { ClientActionHandler } from './client.base'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
 
 export default class KubectlClient extends RemoteClient {
   private kubectl: Kubectl
+
+  protected actions: Record<string, ClientActionHandler> = {
+    getContexts: () => this.getContexts(),
+    getNamespaces: () => this.getNamespaces(),
+    getPods: () => this.getPods(),
+  }
 
   constructor(public connection: ConnectionConfig) {
     super(connection)
@@ -47,18 +54,15 @@ export default class KubectlClient extends RemoteClient {
     ]
   }
 
-  // @ts-ignore
-  private async getContextsAction(_data: any): Promise<any> {
+  private async getContexts(): Promise<unknown> {
     return this.kubectl.getContexts()
   }
 
-  // @ts-ignore
-  private async getNamespacesAction(_data: any): Promise<any> {
+  private async getNamespaces(): Promise<unknown> {
     return this.kubectl.getNamespaces(this.connection)
   }
 
-  // @ts-ignore
-  private async getPodsAction(_data: any): Promise<any> {
+  private async getPods(): Promise<unknown> {
     return this.kubectl.getPods(this.connection)
   }
 }

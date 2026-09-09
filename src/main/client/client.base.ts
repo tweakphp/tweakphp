@@ -1,7 +1,15 @@
-import { Client } from './client.interface'
+import { Client, ClientConnection } from './client.interface'
+
+export type ClientActionHandler = (data: unknown) => Promise<unknown>
 
 export abstract class BaseClient implements Client {
-  constructor(public connection: any) {}
+  /**
+   * Actions callable through `action(type, data)`. Subclasses override this map
+   * with the handlers they expose (no more `this['${type}Action']` reflection).
+   */
+  protected actions: Record<string, ClientActionHandler> = {}
+
+  constructor(public connection: ClientConnection) {}
 
   async connect(): Promise<void> {
     return
@@ -11,12 +19,12 @@ export abstract class BaseClient implements Client {
     return
   }
 
-  async action(type: string, data: any): Promise<any> {
-    const action = `${type}Action`
-    if (typeof (this as any)[action] === 'function') {
-      return await (this as any)[action](data)
+  async action(type: string, data?: unknown): Promise<unknown> {
+    const handler = this.actions[type]
+    if (!handler) {
+      throw new Error(`Method ${type} does not exist.`)
     }
-    throw new Error(`Method ${type} does not exist.`)
+    return await handler(data)
   }
 
   abstract execute(code: string, loader?: string, projectPath?: string): Promise<string>
@@ -27,7 +35,7 @@ export abstract class BaseClient implements Client {
     return
   }
 
-  getConnection(): any {
+  getConnection(): ClientConnection {
     return this.connection
   }
 }

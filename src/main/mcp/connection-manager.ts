@@ -8,6 +8,7 @@ import { createClient } from '../client/factory'
 import { getSettings } from '../settings'
 import { ConnectionsRepository } from '../db/repositories/connections-repository'
 import { ConnectionType } from '../../types/connection.type'
+import { ClientConnectionConfig } from '../../types/client-connection.type'
 
 export interface ConnectionConfig {
   type: ConnectionType
@@ -110,7 +111,9 @@ export class ConnectionManager {
   }
 
   getClient(connection: ConnectionConfig): Client {
-    return createClient(this.normalizeConnection(connection))
+    // The MCP connection config is a loose superset of the typed configs
+    // (runtime data comes from the same DB/renderer payloads)
+    return createClient(this.normalizeConnection(connection) as ClientConnectionConfig)
   }
 
   generateConnectionId(connection: ConnectionConfig): string {
