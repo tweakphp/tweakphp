@@ -2,7 +2,7 @@ import type { IpcMainInvokeEvent } from 'electron'
 import path from 'path'
 import * as fs from 'node:fs'
 import { z } from 'zod'
-import { detectPhpPaths, setSettings } from '../settings'
+import { detectPhpPaths, getSettings, setSettings } from '../settings'
 import { Settings } from '../../types/settings.type'
 import { isWindows } from '../system/platform'
 import { initLsp } from '../lsp/coordinator'
@@ -63,14 +63,25 @@ const persistSettings = (event: IpcMainInvokeEvent, data: Settings) => {
     aiApiKey: data.aiApiKey ?? '',
   }
   setSettings(saved)
+  return saved
+}
+
+/**
+ * Only LSP-relevant settings (php binary, intelephense license) require a
+ * language server restart — cosmetic toggles (streaming, theme, layout, ...)
+ * must not bounce the websocket server (it caused EADDRINUSE on restarts)
+ */
+const lspRelevantSettingsChanged = (previous: Settings, next: Settings): boolean => {
+  return previous.php !== next.php || (previous.intelephenseLicenseKey ?? '') !== (next.intelephenseLicenseKey ?? '')
 }
 
 export function registerSettingsIpc(): void {
   registerIpcHandler(
     'settings:store',
     async (data, event) => {
-      persistSettings(event, data)
-      if (!isWindows()) {
+      const previous = getSettings()
+      const saved = persistSettings(event, data)
+      if (!isWindows() && lspRelevantSettingsChanged(previous, saved)) {
         await initLsp()
       }
       return { success: true }

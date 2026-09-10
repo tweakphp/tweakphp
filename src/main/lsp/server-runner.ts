@@ -13,11 +13,17 @@ export const runLanguageServer = async (languageServerRunConfig: RunConfig) => {
   await shutdown()
 
   const server = app.listen(languageServerRunConfig.serverPort)
-  server.on('error', (error: NodeJS.ErrnoException) => {
-    console.error('Error starting language server', error)
-  })
-
   httpServer = server
+
+  // Surface listen failures (e.g. EADDRINUSE) to the caller instead of
+  // leaving a broken server registered in the module state
+  await new Promise<void>((resolve, reject) => {
+    server.once('listening', () => resolve())
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      httpServer = null
+      reject(error)
+    })
+  })
 
   // create the web socket
   const wss = new WebSocketServer(languageServerRunConfig.wsServerOptions)

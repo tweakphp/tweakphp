@@ -3,14 +3,16 @@ import { registerSettingsIpc } from './settings-ipc'
 import type { IpcResult } from './ipc-utils'
 import * as fs from 'node:fs'
 
-const { mockSetSettings, mockDetectPhpPaths, mockInitLsp } = vi.hoisted(() => ({
+const { mockSetSettings, mockGetSettings, mockDetectPhpPaths, mockInitLsp } = vi.hoisted(() => ({
   mockSetSettings: vi.fn(),
+  mockGetSettings: vi.fn(),
   mockDetectPhpPaths: vi.fn(),
   mockInitLsp: vi.fn(),
 }))
 
 vi.mock('../settings', () => ({
   setSettings: mockSetSettings,
+  getSettings: mockGetSettings,
   detectPhpPaths: mockDetectPhpPaths,
 }))
 
@@ -74,6 +76,7 @@ describe('Settings IPC', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(isWindows).mockReturnValue(false)
+    mockGetSettings.mockReturnValue({ ...validPayload })
     registerSettingsIpc()
   })
 
@@ -83,15 +86,29 @@ describe('Settings IPC', () => {
     expect(mockIpcHandle).toHaveBeenCalledWith('settings:detect-php', expect.any(Function))
   })
 
-  it('stores settings and re-initializes the LSP on non-Windows platforms', async () => {
-    const result: IpcResult<{ success: boolean }> = await ipcHandlers['settings:store'](mockEvent, { ...validPayload })
+  it('stores settings and re-initializes the LSP when LSP-relevant settings change', async () => {
+    mockGetSettings.mockReturnValue({ ...validPayload, php: '/old/php' })
+
+    const result: IpcResult<{ success: boolean }> = await ipcHandlers['settings:store'](mockEvent, {
+      ...validPayload,
+    })
 
     expect(mockSetSettings).toHaveBeenCalledWith(expect.objectContaining({ php: '/usr/bin/php' }))
     expect(mockInitLsp).toHaveBeenCalled()
     expect(result).toEqual({ data: { success: true }, error: null })
   })
 
+  it('skips the LSP re-initialization when only unrelated settings changed', async () => {
+    mockGetSettings.mockReturnValue({ ...validPayload })
+
+    await ipcHandlers['settings:store'](mockEvent, { ...validPayload, streaming: false, theme: 'light' })
+
+    expect(mockSetSettings).toHaveBeenCalledWith(expect.objectContaining({ streaming: false }))
+    expect(mockInitLsp).not.toHaveBeenCalled()
+  })
+
   it('skips the LSP re-initialization on Windows', async () => {
+    mockGetSettings.mockReturnValue({ ...validPayload, php: '/old/php' })
     vi.mocked(isWindows).mockReturnValue(true)
 
     await ipcHandlers['settings:store'](mockEvent, { ...validPayload })
@@ -102,7 +119,9 @@ describe('Settings IPC', () => {
   it('saves settings and always re-initializes the LSP', async () => {
     vi.mocked(isWindows).mockReturnValue(true)
 
-    const result: IpcResult<{ success: boolean }> = await ipcHandlers['settings:save'](mockEvent, { ...validPayload })
+    const result: IpcResult<{ success: boolean }> = await ipcHandlers['settings:save'](mockEvent, {
+      ...validPayload,
+    })
 
     expect(mockSetSettings).toHaveBeenCalled()
     expect(mockInitLsp).toHaveBeenCalled()
@@ -141,6 +160,7 @@ describe('Settings IPC', () => {
   })
 
   it('replies with an error envelope when the LSP re-initialization fails', async () => {
+    mockGetSettings.mockReturnValue({ ...validPayload, php: '/old/php' })
     mockInitLsp.mockRejectedValueOnce(new Error('lsp boom'))
 
     const result: IpcResult<null> = await ipcHandlers['settings:store'](mockEvent, { ...validPayload })

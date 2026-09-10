@@ -58,9 +58,13 @@ const isResultPayload = (value: unknown): value is ResultPayload =>
   (value.html === undefined || typeof value.html === 'string')
 
 const parseResults = (value: unknown): Result[] | null => {
-  if (!Array.isArray(value) || !value.every(isResultPayload)) return null
+  // The non-streaming phar client replies with the envelope
+  // `{ output: Result[], queries: unknown[] }` — unwrap it
+  const results = isRecord(value) && Array.isArray(value.output) ? value.output : value
 
-  return value.map(result => ({
+  if (!Array.isArray(results) || !results.every(isResultPayload)) return null
+
+  return results.map(result => ({
     ...result,
     output: stripAnsi(result.output),
     html: result.html ?? '',
