@@ -99,20 +99,48 @@ describe('VaporClient', () => {
     expect(yamlParse).toHaveBeenCalledWith('vapor yaml content')
   })
 
-  it('getEnvironments returns empty array on exception', () => {
+  it('getEnvironments returns empty array when no environment is defined', () => {
+    const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
+
+    vi.mocked(readFileSync).mockReturnValue('vapor yaml content')
+    vi.mocked(yamlParse).mockReturnValue({ environments: {} })
+
+    const envs = client.getEnvironments()
+    expect(envs).toEqual([])
+  })
+
+  it('getEnvironments throws descriptive error when vapor.yml is missing', () => {
     const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
 
     vi.mocked(readFileSync).mockImplementation(() => {
       throw new Error('File not found')
     })
 
-    const envs = client.getEnvironments()
-    expect(envs).toEqual([])
+    expect(() => client.getEnvironments()).toThrow('vapor.yml not found in "/my-project"')
   })
 
-  it('getEnvironments returns empty array if no client_path configured', () => {
+  it('getEnvironments throws descriptive error when vapor.yml cannot be parsed', () => {
+    const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
+
+    vi.mocked(readFileSync).mockReturnValue('vapor yaml content')
+    vi.mocked(yamlParse).mockImplementation(() => {
+      throw new Error('bad yaml')
+    })
+
+    expect(() => client.getEnvironments()).toThrow('Unable to parse vapor.yml in "/my-project": bad yaml')
+  })
+
+  it('getEnvironments throws error when vapor.yml has no environments section', () => {
+    const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
+
+    vi.mocked(readFileSync).mockReturnValue('vapor yaml content')
+    vi.mocked(yamlParse).mockReturnValue({ id: 1 })
+
+    expect(() => client.getEnvironments()).toThrow('No "environments" section found in vapor.yml')
+  })
+
+  it('getEnvironments throws error if no client_path configured', () => {
     const client = new VaporClient({ type: 'vapor' } as any)
-    const envs = client.getEnvironments()
-    expect(envs).toEqual([])
+    expect(() => client.getEnvironments()).toThrow('Missing client path in connection configuration.')
   })
 })

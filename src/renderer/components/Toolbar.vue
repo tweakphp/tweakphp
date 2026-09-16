@@ -20,6 +20,7 @@
   import { ConnectReply } from '../../types/client.type'
   import { useLoadersStore } from '../stores/loaders'
   import { useVaporStore } from '../stores/vapor.ts'
+  import { useVaporEnvironments } from '../composables/useVaporEnvironments'
   import Divider from './Divider.vue'
   import { useRouter } from 'vue-router'
   import { errorMessage } from '../../shared/error-message'
@@ -39,10 +40,12 @@
 
   onMounted(() => {
     events.addEventListener('client:connect:reply', connectReply)
+    events.addEventListener('client:action:reply', vaporReplyListener)
   })
 
   onBeforeUnmount(() => {
     events.removeEventListener('client:connect:reply', connectReply)
+    events.removeEventListener('client:action:reply', vaporReplyListener)
   })
 
   const connect = (execution: string) => {
@@ -104,6 +107,20 @@
   }
 
   const vaporConfig = computed(() => vaporStore.getConnectionConfig(tabStore?.current?.id))
+  const {
+    fetchEnvironments: fetchVaporEnvironments,
+    replyListener: vaporReplyListener,
+    loading: vaporLoading,
+    errors: vaporErrors,
+  } = useVaporEnvironments()
+  const vaporIsLoading = computed(() => (tab.value ? !!vaporLoading.value[tab.value.id] : false))
+  const vaporError = computed(() => (tab.value ? (vaporErrors.value[tab.value.id] ?? null) : null))
+
+  const vaporTriggerClick = () => {
+    // Environments are read from the project's vapor.yml: fetch them on demand
+    // every time the dropdown is opened so the list is always fresh
+    fetchVaporEnvironments(tab.value)
+  }
 
   const vaporConnected = (environment: string) => {
     if (!tabStore.current) return
@@ -189,8 +206,10 @@
       <!-- vapor -->
       <DropDown>
         <template v-slot:trigger>
-          <SecondaryButton class="!px-2">
+          <SecondaryButton class="!px-2" @click="vaporTriggerClick()">
+            <ArrowPathIcon v-if="vaporIsLoading" class="size-4 mr-1 animate-spin" />
             <VaporIcon
+              v-else
               class="size-4 mr-1"
               :class="{ '!text-[#25C4F2]': tabStore.getCurrent()?.execution === 'vapor' }"
             />
@@ -209,7 +228,10 @@
               {{ capitalize(env) }}
             </DropDownItem>
           </template>
-          <DropDownItem v-if="vaporConfig?.environments.length == 0">
+          <DropDownItem v-if="vaporError">
+            <span class="text-xs text-red-500">{{ vaporError }}</span>
+          </DropDownItem>
+          <DropDownItem v-else-if="!vaporIsLoading && !vaporConfig?.environments?.length">
             <span>No environments found</span>
           </DropDownItem>
           <DropDownItem v-if="vaporConfig?.environment" @click="vaporRemoved()"> Disconnect </DropDownItem>

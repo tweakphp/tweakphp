@@ -2,7 +2,6 @@
   import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
-  import { useVaporStore } from '../stores/vapor'
   import { useLspStore } from '../stores/lsp'
   import Container from '../components/Container.vue'
   import events from '../events'
@@ -17,10 +16,10 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { useVaporEnvironments } from '../composables/useVaporEnvironments'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
-  const vaporStore = useVaporStore()
   const tabsStore = useTabsStore()
   const lspStore = useLspStore()
   const codeEditor = ref<InstanceType<typeof Editor> | null>(null)
@@ -79,6 +78,7 @@
     tabsStore,
     loadersStore,
   })
+  const { fetchEnvironments: fetchVaporEnvironments, replyListener: vaporReplyListener } = useVaporEnvironments()
 
   // Results are applied globally by the execute store; this only refreshes the
   // result editor when the applied tab is the one currently mounted
@@ -107,35 +107,6 @@
       // @ts-ignore - template ref typed at runtime
       codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
     } catch (e) {}
-  }
-
-  const vaporRequestEnvironmentTab = () => {
-    if (!tab.value.id || !tab.value.path) {
-      console.warn('No current tab or path set, cannot request environments.')
-      return
-    }
-    vaporStore.setClientPath(tab.value.id, String(tab.value.path))
-    const config = vaporStore.getConnectionConfig(tab.value.id)
-    if (!config) {
-      console.warn(`No vapor connection config for tab ${tab.value.id}, cannot request environments.`)
-      return
-    }
-    window.ipcRenderer.send('client:action', {
-      type: 'getEnvironments',
-      connection: JSON.parse(JSON.stringify(config)),
-      tabId: tab.value.id,
-    })
-  }
-
-  const vaporResponseEnvironmentTab = (e: any) => {
-    const reply = e?.detail
-    if (!isRecord(reply) || reply.type !== 'getEnvironments') return
-    // Correlate the reply to the tab that requested it, not to whichever tab
-    // happens to be current when the (possibly delayed) reply arrives
-    if (reply.tabId !== tab.value.id) return
-    if (Array.isArray(reply.result)) {
-      vaporStore.setEnviroments(tab.value.id, reply.result)
-    }
   }
 
   const keydownListener = (event: any) => {
@@ -175,11 +146,10 @@
   }
 
   const getInfo = () => {
-    // Only vapor tabs need the environments request: calling it for
-    // local/ssh/docker/kubectl tabs would create and persist a vapor config
-    // row (keyed by tab id) on every mount / execution change
+    // Refetch environments when a tab is connected to vapor; the initial fetch
+    // for a tab happens on demand when the Vapor dropdown is opened
     if (tab.value.execution === 'vapor') {
-      vaporRequestEnvironmentTab()
+      fetchVaporEnvironments(tab.value)
     }
     let connection = tabsStore.getConnectionConfig(tab.value)
     const { loader } = tab.value
@@ -240,7 +210,7 @@
     events.addEventListener('execute', executeHandler)
     events.addEventListener('client:execute:applied', executeAppliedListener)
     events.addEventListener('client:info:reply', infoReplyListener)
-    events.addEventListener('client:action:reply', vaporResponseEnvironmentTab)
+    events.addEventListener('client:action:reply', vaporReplyListener)
     if (tabsContainer.value) {
       tabsContainer.value.scrollLeft = tabsStore.scrollPosition
       tabsContainer.value.addEventListener('wheel', tabsContainerWheelListener)
@@ -251,7 +221,7 @@
     window.removeEventListener('keydown', keydownListener)
     events.removeEventListener('client:execute:applied', executeAppliedListener)
     events.removeEventListener('client:info:reply', infoReplyListener)
-    events.removeEventListener('client:action:reply', vaporResponseEnvironmentTab)
+    events.removeEventListener('client:action:reply', vaporReplyListener)
     events.removeEventListener('execute', executeHandler)
     if (tabsContainer.value) {
       tabsContainer.value.removeEventListener('wheel', tabsContainerWheelListener)
