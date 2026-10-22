@@ -4,13 +4,16 @@
   import { CogIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
   import router from './router/index'
   import events from './events'
   import { useSettingsStore } from './stores/settings'
   import { initServices } from 'monaco-languageclient/vscode/services'
+  import getConfigurationServiceOverride, {
+    initUserConfiguration,
+  } from '@codingame/monaco-vscode-configuration-service-override'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
   import ProjectTile from './components/ProjectTile.vue'
@@ -35,7 +38,13 @@
 
   const newProjectModal = ref()
 
-  const isAppReady = ref(false)
+  const isSettingsReady = ref(false)
+  const isEditorReady = ref(false)
+  // Render views only when both settings and editor services are ready:
+  // mounting editors triggers monaco API calls that would initialize the
+  // standalone services before initServices() gets a chance to install
+  // the vscode service overrides
+  const isAppReady = computed(() => isSettingsReady.value && isEditorReady.value)
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -80,7 +89,7 @@
     })
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
-      isAppReady.value = true
+      isSettingsReady.value = true
     })
     window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
@@ -111,7 +120,13 @@
     window.addEventListener('keydown', keydownListener)
     window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
-    await initEditor()
+    try {
+      await initEditor()
+    } catch (error) {
+      console.error('Failed to initialize editor services', error)
+    } finally {
+      isEditorReady.value = true
+    }
   })
 
   onBeforeUnmount(() => {
@@ -120,9 +135,20 @@
   })
 
   const initEditor = async () => {
+    // Seed the vscode user configuration before services start.
+    // The PHP language server pulls these settings via workspace/configuration:
+    // triggerParameterHints makes function/method completions insert parentheses
+    await initUserConfiguration(
+      JSON.stringify({
+        'intelephense.completion.triggerParameterHints': true,
+      })
+    )
     await initServices({
       serviceConfig: {
         debugLogging: true,
+        userServices: {
+          ...getConfigurationServiceOverride(),
+        },
       },
     })
   }
