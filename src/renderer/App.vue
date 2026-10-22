@@ -1,9 +1,10 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon, PlusIcon } from '@heroicons/vue/24/outline'
+  import { CogIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
+  import WorkspaceList from './components/WorkspaceList.vue'
   import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
@@ -13,11 +14,9 @@
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import ProjectTile from './components/ProjectTile.vue'
   import Modal from './components/Modal.vue'
   import CloseTabModal from './components/CloseTabModal.vue'
   import NewProjectView from './views/NewProjectView.vue'
-  import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -135,10 +134,6 @@
       }
     }
   }
-
-  const requestCloseTab = (id: number) => {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
-  }
 </script>
 
 <template>
@@ -156,44 +151,7 @@
       }"
     >
       <div class="relative h-full flex flex-col justify-between pb-[70px]">
-        <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
-          <button @click="newProjectModal.openModal()" class="w-full">
-            <ProjectTile
-              tooltip="Add new project"
-              tooltip-placement="right"
-              :expanded="settingsStore.isNavigationExpanded"
-            >
-              <PlusIcon class="w-4 h-4 flex-shrink-0" />
-              <span v-if="settingsStore.isNavigationExpanded" class="ml-2 text-sm truncate block min-w-0 flex-1">
-                Add new project
-              </span>
-            </ProjectTile>
-          </button>
-          <template v-for="tab in tabStore.tabs" :key="tab.id">
-            <button
-              @click="router.replace({ name: 'code', params: { id: tab.id } })"
-              @mousedown.middle="requestCloseTab(tab.id)"
-              class="w-full"
-            >
-              <ProjectMenuContext :tab="tab">
-                <ProjectTile
-                  :active="router.currentRoute.value.name === 'code' && tabStore.getCurrent()?.id === tab.id"
-                  :name="tab.name"
-                  :tooltip="settingsStore.isNavigationExpanded ? '' : tab.name"
-                  :expanded="settingsStore.isNavigationExpanded"
-                  tooltip-placement="right"
-                >
-                  <span v-if="settingsStore.isNavigationExpanded" class="text-sm truncate block min-w-0 flex-1">
-                    {{ tab.name }}
-                  </span>
-                  <span v-else class="flex-shrink-0">
-                    {{ tab.name[0] }}
-                  </span>
-                </ProjectTile>
-              </ProjectMenuContext>
-            </button>
-          </template>
-        </div>
+        <WorkspaceList @open-new-project="newProjectModal.openModal()" />
         <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
           <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
             <span

@@ -5,10 +5,8 @@
   import SecondaryButton from './SecondaryButton.vue'
   import events from '../events'
   import { useTabsStore } from '../stores/tabs'
-  import { useVaporStore } from '../stores/vapor'
 
   const tabsStore = useTabsStore()
-  const vaporStore = useVaporStore()
   const closeTabModal = ref<InstanceType<typeof Modal> | null>(null)
   const tabPendingClose = ref<number | null>(null)
   const pendingTab = computed(() => (tabPendingClose.value ? tabsStore.findTab(tabPendingClose.value) : null))
@@ -35,7 +33,6 @@
     tabPendingClose.value = null
     closeTabModal.value?.closeModal()
     await tabsStore.removeTab(id)
-    vaporStore.removeVaporConfig(id)
   }
 
   watch(pendingTab, newTab => {
@@ -54,15 +51,15 @@
 </script>
 
 <template>
-  <Modal title="Remove this tab" ref="closeTabModal" size="md">
+  <Modal title="Remove this project" ref="closeTabModal" size="md">
     <div class="space-y-5">
       <p class="text-sm">
         Are you sure you want to remove
-        <span class="font-semibold">{{ nameTab }}</span> tab?
+        <span class="font-semibold">{{ nameTab }}</span> project?
       </p>
       <div class="flex justify-end gap-2">
         <SecondaryButton @click="cancelCloseTab">Cancel</SecondaryButton>
-        <PrimaryButton @click="confirmCloseTab">Remove tab</PrimaryButton>
+        <PrimaryButton @click="confirmCloseTab">Remove project</PrimaryButton>
       </div>
     </div>
   </Modal>

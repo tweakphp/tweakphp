@@ -33,4 +33,5 @@ export const repositoryStorageKeys = {
   colorScheme: 'renderer.color-scheme',
   update: 'renderer.update',
   currentTab: 'renderer.current-tab',
+  collapsedFolders: 'renderer.collapsed-folders',
 }
