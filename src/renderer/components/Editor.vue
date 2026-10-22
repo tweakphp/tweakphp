@@ -11,6 +11,7 @@
   import { useTabsStore } from '../stores/tabs'
   import { registerCompletion } from 'monacopilot'
   import ToastAlert from '@/components/ToastAlert.vue'
+  import events from '../events'
 
   const settingsStore = useSettingsStore()
   const lspStore = useLspStore()
@@ -100,6 +101,28 @@
         scrollBeyondLastLine: false,
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
       })
+
+      if (!props.readonly) {
+        editor.addAction({
+          id: 'save-snippet',
+          label: 'Save Snippet',
+          keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS],
+          contextMenuGroupId: '9_snippets',
+          contextMenuOrder: 1,
+          run: ed => {
+            const selection = ed.getSelection()
+            const model = ed.getModel()
+            if (!model) {
+              return
+            }
+            const code = selection && !selection.isEmpty() ? model.getValueInRange(selection) : ed.getValue()
+            if (!code.trim()) {
+              return
+            }
+            events.dispatchEvent(new CustomEvent('snippet.save.request', { detail: { code } }))
+          },
+        })
+      }
 
       if (props.enableHistory) {
         editor.addAction({
@@ -386,11 +409,42 @@
     return model.getValueInRange(selection)
   }
 
+  const getPosition = (): monaco.IPosition | null => {
+    return editor ? editor.getPosition() : null
+  }
+
+  const insertTextAtPosition = (text: string, position: monaco.IPosition | null) => {
+    if (!editor) return
+    const model = editor.getModel()
+    if (!model) return
+
+    let pos = position
+    if (!pos || pos.lineNumber > model.getLineCount()) {
+      const lineCount = model.getLineCount()
+      pos = { lineNumber: lineCount, column: model.getLineContent(lineCount).length + 1 }
+    } else {
+      const lineLength = model.getLineContent(pos.lineNumber).length
+      pos = { lineNumber: pos.lineNumber, column: Math.min(pos.column, lineLength + 1) }
+    }
+
+    editor.executeEdits('snippet', [
+      {
+        range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+        text,
+        forceMoveMarkers: true,
+      },
+    ])
+    editor.pushUndoStop()
+    editor.focus()
+  }
+
   defineExpose({
     updateValue,
     focusEditor,
     reconnectLsp,
     getSelectedText,
+    getPosition,
+    insertTextAtPosition,
   })
 </script>
 

@@ -6,6 +6,10 @@
       type: String,
       default: '',
     },
+    type: {
+      type: String as () => 'button' | 'submit',
+      default: 'button',
+    },
   })
 
   const classes = computed(() => {
@@ -16,7 +20,7 @@
 </script>
 
 <template>
-  <button type="button" :class="classes">
+  <button :type="props.type" :class="classes">
     <slot></slot>
   </button>
 </template>

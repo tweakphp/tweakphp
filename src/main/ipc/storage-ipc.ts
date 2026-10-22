@@ -4,6 +4,7 @@ import { registerMigrationIpc } from './migration-ipc'
 import { registerTabsIpc } from './tabs-ipc'
 import { registerCodeHistoryIpc } from './code-history-ipc'
 import { registerAppStorageIpc } from './app-storage-ipc'
+import { registerSnippetsIpc } from './snippets-ipc'
 
 export { setMcpConnectionManager }
 
@@ -14,4 +15,5 @@ export function initStorageIpc(): void {
   registerLoadersIpc()
   registerCodeHistoryIpc()
   registerAppStorageIpc()
+  registerSnippetsIpc()
 }

@@ -8,6 +8,7 @@
     HeartIcon,
     CircleStackIcon,
     BoltIcon,
+    BookmarkIcon,
   } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
@@ -102,11 +103,21 @@
       }"
     >
       <div
-        class="flex-grow-0 transition-all duration-300"
+        class="flex-grow-0 transition-all duration-300 flex items-center space-x-2"
         :class="{
           'pl-[70px]': platform === 'darwin',
         }"
       >
+        <SecondaryButton
+          class="!px-2"
+          v-tippy="{ content: 'Snippets', placement: 'bottom' }"
+          @click="router.push({ name: 'snippets' })"
+        >
+          <BookmarkIcon
+            class="size-4 cursor-pointer hover:text-primary-500"
+            :class="{ 'text-primary-500': router.currentRoute.value.name === 'snippets' }"
+          />
+        </SecondaryButton>
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
       <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>

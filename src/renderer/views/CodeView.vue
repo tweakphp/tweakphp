@@ -17,6 +17,11 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { useSnippetsStore } from '../stores/snippets'
+  import Modal from '../components/Modal.vue'
+  import TextInput from '../components/TextInput.vue'
+  import PrimaryButton from '../components/PrimaryButton.vue'
+  import SecondaryButton from '../components/SecondaryButton.vue'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -26,6 +31,11 @@
   const codeEditor = ref<InstanceType<typeof Editor> | null>(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
   const loadersStore = useLoadersStore()
+  const snippetsStore = useSnippetsStore()
+
+  const saveSnippetModal = ref()
+  const snippetTitle = ref('')
+  const snippetCode = ref('')
 
   const tabsContainer = ref<HTMLDivElement | null>(null)
 
@@ -136,6 +146,32 @@
     tabsStore.updateTab(tab.value)
   }
 
+  const snippetSaveRequestListener = (e: any) => {
+    snippetCode.value = e.detail.code
+    snippetTitle.value = ''
+    saveSnippetModal.value.openModal()
+  }
+
+  const saveSnippet = async () => {
+    await snippetsStore.add({ title: snippetTitle.value, code: snippetCode.value })
+    saveSnippetModal.value.closeModal()
+  }
+
+  const applyPendingSnippetInsert = async () => {
+    const pending = snippetsStore.pendingInsert
+    if (!pending || pending.tabId !== tab.value.id) {
+      return
+    }
+    snippetsStore.consumePendingInsert()
+    await nextTick()
+    if (pending.mode === 'replace') {
+      codeEditor.value?.updateValue(pending.code)
+    } else {
+      codeEditor.value?.insertTextAtPosition(pending.code, pending.position)
+    }
+    codeEditor.value?.focusEditor()
+  }
+
   const getInfo = () => {
     vaporRequestEnvironmentTab()
     let connection = tabsStore.getConnectionConfig(tab.value)
@@ -195,12 +231,15 @@
 
     getInfo()
 
+    await applyPendingSnippetInsert()
+
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
     events.addEventListener('client.execute.reply', executeReplyListener)
     events.addEventListener('client.execute.stream', executeStreamListener)
     events.addEventListener('client.info.reply', infoReplyListener)
     events.addEventListener('client.action.reply', vaporResponseEnvironmentTab)
+    events.addEventListener('snippet.save.request', snippetSaveRequestListener)
     if (tabsContainer.value) {
       tabsContainer.value.scrollLeft = tabsStore.scrollPosition
       tabsContainer.value.addEventListener('wheel', tabsContainerWheelListener)
@@ -215,6 +254,10 @@
     events.removeEventListener('client.info.reply', infoReplyListener)
     events.removeEventListener('client.action.reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)
+    events.removeEventListener('snippet.save.request', snippetSaveRequestListener)
+    if (tab.value.id && codeEditor.value) {
+      snippetsStore.setLastCursor(tab.value.id, codeEditor.value.getPosition())
+    }
     if (tabsContainer.value) {
       tabsContainer.value.removeEventListener('wheel', tabsContainerWheelListener)
     }
@@ -329,5 +372,23 @@
         <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
       </div>
     </div>
+
+    <Modal title="Save Snippet" ref="saveSnippetModal" size="2xl">
+      <form class="space-y-3" @submit.prevent="saveSnippet">
+        <TextInput v-model="snippetTitle" placeholder="Title (optional)" class="w-full" />
+        <pre
+          class="p-3 rounded-md border font-mono text-xs overflow-auto max-h-[40vh] whitespace-pre-wrap break-all"
+          :style="{
+            backgroundColor: settingsStore.colors.backgroundLight,
+            borderColor: settingsStore.colors.border,
+            color: settingsStore.colors.foreground,
+          }"
+          >{{ snippetCode }}</pre>
+        <div class="flex justify-end gap-2">
+          <SecondaryButton @click="saveSnippetModal.closeModal()">Cancel</SecondaryButton>
+          <PrimaryButton type="submit">Save Snippet</PrimaryButton>
+        </div>
+      </form>
+    </Modal>
   </Container>
 </template>

@@ -177,7 +177,7 @@
             >
               <ProjectMenuContext :tab="tab">
                 <ProjectTile
-                  :active="router.currentRoute.value.name === 'code' && tabStore.getCurrent()?.id === tab.id"
+                  :active="tabStore.getCurrent()?.id === tab.id"
                   :name="tab.name"
                   :tooltip="settingsStore.isNavigationExpanded ? '' : tab.name"
                   :expanded="settingsStore.isNavigationExpanded"
