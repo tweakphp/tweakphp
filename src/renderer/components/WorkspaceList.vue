@@ -1,11 +1,13 @@
 <script setup lang="ts">
-  import { computed, reactive, ref } from 'vue'
+  import { computed, reactive, ref, watch } from 'vue'
   import {
     PlusIcon,
     ChevronDownIcon,
     ChevronRightIcon,
     FolderIcon,
+    FolderOpenIcon,
     FolderPlusIcon,
+    EllipsisHorizontalIcon,
     StarIcon,
   } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
@@ -43,7 +45,7 @@
     return [...all.filter(t => t.pinned), ...all.filter(t => !t.pinned)]
   }
 
-  // ---- show more (per folder, resets on restart) ----
+  // ---- show more (per folder, resets on restart and on folder collapse) ----
   const extraShown = reactive<Record<number, number>>({})
 
   const visibleFolderTabs = (folder: WorkspaceFolder): Tab[] => {
@@ -142,11 +144,19 @@
     return router.currentRoute.value.name === 'code' && tabsStore.getCurrent()?.id === tab.id
   }
 
-  const openFolderFromCollapsed = (folder: WorkspaceFolder) => {
-    settingsStore.settings.navigationDisplay = 'expanded'
-    settingsStore.update()
-    expandFolder(folder.id)
-  }
+  // reset a folder's "Show more" steps when it gets collapsed (any path:
+  // header toggle in the expanded sidebar, spring-load collapse after drag,
+  // tile toggle in the collapsed sidebar)
+  watch(
+    () => foldersStore.collapsedIds,
+    ids => {
+      Object.keys(extraShown).forEach(key => {
+        if (ids.has(Number(key))) {
+          delete extraShown[Number(key)]
+        }
+      })
+    }
+  )
 
   // ---- new folder ----
   const newFolderModal = ref()
@@ -216,6 +226,8 @@
       :animation="150"
       ghost-class="opacity-40"
       class="space-y-2"
+      @start="onWorkspaceDragStart"
+      @end="onWorkspaceDragEnd"
     >
       <template #item="{ element: tab }">
         <div>
@@ -229,8 +241,13 @@
               @click="openTab(tab)"
               @mousedown.middle="requestCloseTab(tab.id)"
             >
-              <span class="flex-shrink-0">
+              <span class="flex-shrink-0 relative">
                 {{ tab.name[0] }}
+                <StarIcon
+                  v-if="tab.pinned"
+                  class="absolute -top-1 -right-1.5 w-2.5 h-2.5 text-primary-500"
+                  aria-label="Pinned"
+                />
               </span>
             </ProjectTile>
           </ProjectMenuContext>
@@ -262,7 +279,6 @@
               @click="toggleFolder(folder.id)"
               @dragover="onFolderHeaderDragOver(folder)"
               @dragleave="onFolderHeaderDragLeave(folder, $event)"
-              v-tippy="{ content: folder.name, placement: 'right' }"
             >
               <ChevronRightIcon v-if="isFolderCollapsed(folder.id)" class="w-3 h-3 mr-1 shrink-0 opacity-60" />
               <ChevronDownIcon v-else class="w-3 h-3 mr-1 shrink-0 opacity-60" />
@@ -344,24 +360,88 @@
       @update:model-value="foldersStore.setFoldersOrder($event)"
       item-key="id"
       group="workspace-folders"
+      handle="[data-folder-tile]"
       :animation="150"
       ghost-class="opacity-40"
       class="space-y-2"
     >
       <template #item="{ element: folder }">
-        <div>
+        <div class="space-y-2">
           <FolderMenuContext :folder="folder">
             <div
-              class="text-md flex h-8 w-8 justify-center capitalize items-center rounded-lg cursor-pointer hover:bg-black/10 transition-all"
+              data-folder-tile
+              class="relative text-md flex h-8 w-8 justify-center capitalize items-center rounded-lg cursor-pointer hover:bg-black/10 transition-all"
+              :class="{
+                'bg-black/10': !isFolderCollapsed(folder.id),
+              }"
               :style="{
                 color: settingsStore.colors.foreground,
               }"
-              @click="openFolderFromCollapsed(folder)"
+              @click="toggleFolder(folder.id)"
               v-tippy="{ content: `${folder.name} (${folderTabs(folder.id).length})`, placement: 'right' }"
             >
-              <FolderIcon class="w-4 h-4" />
+              <FolderOpenIcon v-if="!isFolderCollapsed(folder.id)" class="w-4 h-4" />
+              <FolderIcon v-else class="w-4 h-4" />
+              <span
+                v-if="folderTabs(folder.id).length > 0"
+                class="absolute -bottom-1 -right-1 min-w-[13px] h-[13px] px-[3px] rounded-full text-[8px] leading-[13px] text-center font-semibold text-white bg-primary-500 pointer-events-none select-none"
+              >
+                {{ folderTabs(folder.id).length > 99 ? '99+' : folderTabs(folder.id).length }}
+              </span>
             </div>
           </FolderMenuContext>
+
+          <!-- Inline project tiles (folder open) -->
+          <div v-if="!isFolderCollapsed(folder.id)" class="pl-1.5 space-y-2">
+            <draggable
+              :model-value="visibleFolderTabs(folder)"
+              @update:model-value="tabsStore.applyGroupOrder(folder.id, $event)"
+              item-key="id"
+              :group="workspaceGroup"
+              :animation="150"
+              ghost-class="opacity-40"
+              class="space-y-2 min-h-[12px]"
+              :empty-insert-threshold="24"
+              @start="onWorkspaceDragStart"
+              @end="onWorkspaceDragEnd"
+            >
+              <template #item="{ element: tab }">
+                <div>
+                  <ProjectMenuContext :tab="tab">
+                    <ProjectTile
+                      :active="isActive(tab)"
+                      :name="tab.name"
+                      :tooltip="tab.name"
+                      :expanded="false"
+                      tooltip-placement="right"
+                      @click="openTab(tab)"
+                      @mousedown.middle="requestCloseTab(tab.id)"
+                    >
+                      <span class="flex-shrink-0 relative">
+                        {{ tab.name[0] }}
+                        <StarIcon
+                          v-if="tab.pinned"
+                          class="absolute -top-1 -right-1.5 w-2.5 h-2.5 text-primary-500"
+                          aria-label="Pinned"
+                        />
+                      </span>
+                    </ProjectTile>
+                  </ProjectMenuContext>
+                </div>
+              </template>
+            </draggable>
+
+            <button
+              v-if="hiddenCount(folder) > 0"
+              @click="showMore(folder.id)"
+              class="w-full"
+              v-tippy="{ content: `Show more (+${nextStepCount(folder)})`, placement: 'right' }"
+            >
+              <ProjectTile tooltip="" tooltip-placement="right" :expanded="false">
+                <EllipsisHorizontalIcon class="w-4 h-4 flex-shrink-0 opacity-50" />
+              </ProjectTile>
+            </button>
+          </div>
         </div>
       </template>
     </draggable>
