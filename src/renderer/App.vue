@@ -143,7 +143,7 @@
       class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r transition-all duration-300"
       :class="{
         'w-12': !settingsStore.isNavigationExpanded,
-        'w-48': settingsStore.isNavigationExpanded,
+        'w-72': settingsStore.isNavigationExpanded,
       }"
       :style="{
         backgroundColor: settingsStore.colors.background,
@@ -185,7 +185,7 @@
       class="h-full flex transition-all duration-300"
       :class="{
         'pl-12': !settingsStore.isNavigationExpanded,
-        'pl-48': settingsStore.isNavigationExpanded,
+        'pl-72': settingsStore.isNavigationExpanded,
       }"
     >
       <main class="w-full h-full">

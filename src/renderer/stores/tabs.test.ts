@@ -86,9 +86,63 @@ describe('tabs store', () => {
     expect(tabsStore.tabs[2].folder_id).toBe(1)
   })
 
+  it('applyGroupOrder ignores elements that are not known tabs (a folder dragged into a project list)', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1 }), makeTab({ id: 2, folder_id: 1 })])
+
+    const draggedFolder = { id: 99, name: 'Folder', position: 0 } as unknown as Tab
+    tabsStore.applyGroupOrder(1, [tabsStore.tabs[1], draggedFolder])
+
+    expect(tabsStore.tabs.map(t => t.id)).toEqual([1, 2])
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+    const saved = invoke.mock.calls.find(call => call[0] === 'storage:tabs:save-all')![1] as Tab[]
+    expect(saved.map(t => t.id)).toEqual([1, 2])
+  })
+
+  it('applyGroupOrder unpins tabs dropped into a folder or into Recent', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, pinned: true }), makeTab({ id: 2, pinned: true, folder_id: 1 })])
+
+    tabsStore.applyGroupOrder(1, [tabsStore.tabs[1]])
+
+    expect(tabsStore.tabs[1].folder_id).toBe(1)
+    expect(tabsStore.tabs[1].pinned).toBe(false)
+    // the tab that stayed in the Pinned section keeps its pin
+    expect(tabsStore.tabs[0].pinned).toBe(true)
+  })
+
+  // ---- applyPinnedOrder ----
+
+  it('applyPinnedOrder reorders the pinned tabs and keeps the other tabs untouched', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, pinned: true }), makeTab({ id: 2 }), makeTab({ id: 3, pinned: true })])
+
+    tabsStore.applyPinnedOrder([tabsStore.tabs[2], tabsStore.tabs[0]])
+
+    expect(tabsStore.tabs.map(t => t.id)).toEqual([3, 1, 2])
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
+  it('applyPinnedOrder pins tabs dragged into the Pinned section and keeps their folder', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, pinned: true }), makeTab({ id: 2, folder_id: 1 })])
+
+    tabsStore.applyPinnedOrder([tabsStore.tabs[0], tabsStore.tabs[1]])
+
+    expect(tabsStore.tabs.map(t => t.id)).toEqual([1, 2])
+    expect(tabsStore.tabs[1].pinned).toBe(true)
+    expect(tabsStore.tabs[1].folder_id).toBe(1)
+  })
+
+  it('applyPinnedOrder ignores elements that are not known tabs', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, pinned: true })])
+
+    const draggedFolder = { id: 99, name: 'Folder', position: 0 } as unknown as Tab
+    tabsStore.applyPinnedOrder([draggedFolder, tabsStore.tabs[0]])
+
+    expect(tabsStore.tabs.map(t => t.id)).toEqual([1])
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
   // ---- moveTab ----
 
-  it('moveTab places the tab right after the pinned tabs of the group', () => {
+  it('moveTab places the tab at the given position among the unpinned tabs of the group', () => {
     seedTabs(tabsStore, [
       makeTab({ id: 10, folder_id: 1, pinned: true }),
       makeTab({ id: 11, folder_id: 1 }),
@@ -101,7 +155,7 @@ describe('tabs store', () => {
     expect(tabsStore.tabs[1].folder_id).toBe(1)
   })
 
-  it('moveTab appends at the end of the group when the index exceeds the unpinned tabs', () => {
+  it('moveTab appends at the end of the group when the index exceeds the displayed tabs', () => {
     seedTabs(tabsStore, [
       makeTab({ id: 10, folder_id: 1, pinned: true }),
       makeTab({ id: 11, folder_id: 1 }),
@@ -114,7 +168,7 @@ describe('tabs store', () => {
     expect(tabsStore.tabs.map(t => t.id)).toEqual([10, 11, 13, 12])
   })
 
-  it('moveTab moves a tab to root after the root pinned tabs', () => {
+  it('moveTab moves a tab to the top of the recent workspaces', () => {
     seedTabs(tabsStore, [makeTab({ id: 20, pinned: true }), makeTab({ id: 21 }), makeTab({ id: 22, folder_id: 1 })])
 
     tabsStore.moveTab(22, null, 0)
@@ -129,6 +183,15 @@ describe('tabs store', () => {
     tabsStore.moveTab(999, null, 0)
 
     expect(tabsStore.tabs.map(t => t.id)).toEqual([1])
+  })
+
+  it('moveTab keeps a pinned tab pinned while changing its folder', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, pinned: true }), makeTab({ id: 2, folder_id: 5 })])
+
+    tabsStore.moveTab(1, 5, 0)
+
+    expect(tabsStore.tabs[0].pinned).toBe(true)
+    expect(tabsStore.tabs[0].folder_id).toBe(5)
   })
 
   // ---- duplicateTab ----

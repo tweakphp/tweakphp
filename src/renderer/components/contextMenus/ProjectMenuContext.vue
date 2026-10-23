@@ -22,7 +22,13 @@
   import TrashIcon from '@/components/icons/TrashIcon.vue'
   import PencilIcon from '@/components/icons/PencilIcon.vue'
   import events from '../../events'
-  import { DocumentDuplicateIcon, FolderIcon, FolderPlusIcon, StarIcon } from '@heroicons/vue/24/outline'
+  import {
+    ArrowTopRightOnSquareIcon,
+    DocumentDuplicateIcon,
+    FolderIcon,
+    FolderPlusIcon,
+    StarIcon,
+  } from '@heroicons/vue/24/outline'
   import NewFolderModal from '@/components/NewFolderModal.vue'
 
   const settingsStore = useSettingsStore()
@@ -241,7 +247,12 @@
             backgroundColor: hoverGoToFolder ? settingsStore.colors.background : settingsStore.colors.backgroundLight,
           }"
         >
-          Go to folder<span v-if="lastFolderName">&nbsp;"{{ lastFolderName }}"</span>
+          <div class="flex items-center justify-start gap-1">
+            <ArrowTopRightOnSquareIcon class="w-3 h-3 shrink-0" />
+            <span class="truncate">
+              Go to folder<span v-if="lastFolderName">&nbsp;"{{ lastFolderName }}"</span>
+            </span>
+          </div>
         </ContextMenuItem>
         <ContextMenuSeparator class="h-[1px] border-t border-gray-200/20" />
         <ContextMenuItem

@@ -95,4 +95,13 @@ describe('folders store', () => {
     expect(folder.id).toBe(3)
     expect(foldersStore.folders.map(f => f.id)).toEqual([1, 2, 3])
   })
+
+  it('setFoldersOrder ignores elements that are not known folders (a project dropped between folders)', () => {
+    const draggedTab = { id: 99, name: 'Project', position: 0 } as unknown as WorkspaceFolder
+
+    foldersStore.setFoldersOrder([foldersStore.folders[1], draggedTab, foldersStore.folders[0]])
+
+    expect(foldersStore.folders.map(f => f.id)).toEqual([2, 1])
+    expect(invoke).toHaveBeenCalledWith('storage:folders:reorder', [2, 1])
+  })
 })

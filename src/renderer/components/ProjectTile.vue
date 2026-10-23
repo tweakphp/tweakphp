@@ -16,6 +16,10 @@
       type: Boolean,
       default: false,
     },
+    sidebar: {
+      type: Boolean,
+      default: false,
+    },
   })
 
   const settingsStore = useSettingsStore()
@@ -24,18 +28,21 @@
 <template>
   <div
     :style="{
-      color: props.active ? '' : settingsStore.colors.foreground,
+      color: props.active && !props.sidebar ? '' : settingsStore.colors.foreground,
     }"
     :class="{
-      'bg-primary-500/15 text-primary-400': props.active,
-      'hover:bg-black/10': !props.active,
+      'bg-primary-500/15 text-primary-400': props.active && !props.sidebar,
+      'bg-black/10 dark:bg-white/15 font-medium': props.active && props.sidebar,
+      'hover:bg-black/5 dark:hover:bg-white/10': !props.active && props.sidebar,
+      'hover:bg-black/10': !props.active && !props.sidebar,
       'w-8 justify-center capitalize': !props.expanded,
-      'w-full px-3': props.expanded,
+      'w-full px-3': props.expanded && !props.sidebar,
+      'w-full px-2': props.expanded && props.sidebar,
     }"
-    class="text-md flex h-8 rounded-lg cursor-pointer transition-all"
+    class="text-md flex h-8 rounded-lg cursor-pointer transition-all min-w-0"
     v-tippy="{ content: props.tooltip, placement: props.tooltipPlacement }"
   >
-    <span class="flex items-center" :class="{ 'w-full text-start': props.expanded }">
+    <span class="flex items-center min-w-0" :class="{ 'w-full text-start': props.expanded }">
       <slot></slot>
     </span>
   </div>

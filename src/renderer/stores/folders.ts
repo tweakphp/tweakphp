@@ -90,9 +90,11 @@ export const useFoldersStore = defineStore('folders', () => {
     )
   }
 
-  // Called by drag & drop with the full new folder order
+  // Called by drag & drop with the full new folder order. Elements that are
+  // not known folders (e.g. a workspace dropped between folders) are ignored.
   const setFoldersOrder = (ordered: WorkspaceFolder[]) => {
-    folders.value = [...ordered]
+    const existingIds = new Set(folders.value.map(f => f.id))
+    folders.value = ordered.filter(f => existingIds.has(f.id))
     void window.ipcRenderer.invoke(
       'storage:folders:reorder',
       folders.value.map(f => f.id)

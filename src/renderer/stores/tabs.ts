@@ -226,18 +226,16 @@ export const useTabsStore = defineStore('tabs', () => {
     const [tab] = tabs.value.splice(tabIndex, 1)
     tab.folder_id = folderId
 
-    // index refers to the non-pinned section of the group: the tab lands
-    // right after the pinned tabs, keeping array order aligned with display order
-    const group = tabs.value.filter(t => (t.folder_id ?? null) === folderId)
-    const pinned = group.filter(t => t.pinned)
-    const unpinned = group.filter(t => !t.pinned)
-    const clamped = Math.max(0, Math.min(index, unpinned.length))
+    // index refers to the displayed (unpinned) members of the group: the tab
+    // lands at that position, keeping array order aligned with display order
+    const group = tabs.value.filter(t => (t.folder_id ?? null) === folderId && !t.pinned)
+    const clamped = Math.max(0, Math.min(index, group.length))
 
     let insertAt: number
-    if (clamped < unpinned.length) {
-      insertAt = tabs.value.findIndex(t => t.id === unpinned[clamped].id)
+    if (clamped < group.length) {
+      insertAt = tabs.value.findIndex(t => t.id === group[clamped].id)
     } else {
-      const anchor = unpinned[unpinned.length - 1] ?? pinned[pinned.length - 1]
+      const anchor = group[group.length - 1]
       insertAt = anchor ? tabs.value.findIndex(t => t.id === anchor.id) + 1 : tabs.value.length
     }
 
@@ -247,16 +245,38 @@ export const useTabsStore = defineStore('tabs', () => {
 
   // Called by drag & drop with the new content of a group (root or folder).
   // Handles both full lists and visible slices (Show more): hidden members
-  // are kept at the end of the group.
+  // are kept at the end of the group. Elements that are not known tabs
+  // (e.g. a folder) are ignored to avoid corrupting the tabs store.
+  // Pinned tabs live in the Pinned section: dropping a tab into a folder or
+  // into Recent unpins it.
   const applyGroupOrder = (folderId: number | null, orderedTabs: Tab[]) => {
-    const orderedIds = new Set(orderedTabs.map(t => t.id))
+    const knownIds = new Set(tabs.value.map(t => t.id))
+    const ordered = orderedTabs.filter(t => knownIds.has(t.id))
+    const orderedIds = new Set(ordered.map(t => t.id))
     const tail = tabs.value.filter(t => (t.folder_id ?? null) === folderId && !orderedIds.has(t.id))
     const tailIds = new Set(tail.map(t => t.id))
-    orderedTabs.forEach(tab => {
+    ordered.forEach(tab => {
       tab.folder_id = folderId
+      tab.pinned = false
     })
     const rest = tabs.value.filter(t => !orderedIds.has(t.id) && !tailIds.has(t.id))
-    tabs.value = [...rest, ...orderedTabs, ...tail]
+    tabs.value = [...rest, ...ordered, ...tail]
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+  }
+
+  // Called by drag & drop with the new content of the Pinned section. Every
+  // tab in the list becomes pinned (dragging a tab into the section pins
+  // it); folder membership is preserved so unpinning returns the tab to its
+  // folder. Elements that are not known tabs are ignored.
+  const applyPinnedOrder = (orderedTabs: Tab[]) => {
+    const knownIds = new Set(tabs.value.map(t => t.id))
+    const ordered = orderedTabs.filter(t => knownIds.has(t.id))
+    const orderedIds = new Set(ordered.map(t => t.id))
+    ordered.forEach(tab => {
+      tab.pinned = true
+    })
+    const rest = tabs.value.filter(t => !orderedIds.has(t.id))
+    tabs.value = [...ordered, ...rest]
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
   }
 
@@ -324,6 +344,7 @@ export const useTabsStore = defineStore('tabs', () => {
     updateTabName,
     moveTab,
     applyGroupOrder,
+    applyPinnedOrder,
     togglePin,
     detachFolder,
     removeFolderTabs,
