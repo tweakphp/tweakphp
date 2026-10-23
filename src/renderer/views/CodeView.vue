@@ -299,18 +299,14 @@
 
     <div
       v-if="tab.info"
-      class="pl-12 fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
+      class="fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
       :style="{
+        paddingLeft: 'var(--sidebar-width)',
         borderColor: settingsStore.colors.border,
         backgroundColor: settingsStore.colors.background,
       }"
     >
-      <div
-        class="flex items-center ml-2 cursor-pointer"
-        :class="[settingsStore.isNavigationExpanded ? 'pl-[241px]' : '']"
-        v-tippy="lspStatusTooltip"
-        @click="handleLspReconnect"
-      >
+      <div class="flex items-center ml-2 cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
         <template v-if="lspStore.status === 'connected'">
           <div class="flex items-center justify-center bg-green-500 rounded-full size-3"></div>
         </template>

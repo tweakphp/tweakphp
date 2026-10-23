@@ -35,4 +35,5 @@ export const repositoryStorageKeys = {
   currentTab: 'renderer.current-tab',
   collapsedFolders: 'renderer.collapsed-folders',
   collapsedSections: 'renderer.collapsed-sections',
+  sidebarWidth: 'renderer.sidebar-width',
 }

@@ -5,12 +5,13 @@
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
   import router from './router/index'
   import events from './events'
   import { useSettingsStore } from './stores/settings'
+  import { clampSidebarWidth, sidebarWidthBounds, useSidebarWidthStore } from './stores/sidebar-width'
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
@@ -30,11 +31,76 @@
   const tabStore = useTabsStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
+  const sidebarWidthStore = useSidebarWidthStore()
   const updateStore = useUpdateStore()
 
   const newProjectModal = ref()
 
   const isAppReady = ref(false)
+  const viewportWidth = ref(window.innerWidth)
+  const isResizingSidebar = ref(false)
+  const sidebarWidth = computed(() =>
+    settingsStore.isNavigationExpanded ? clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value) : 48
+  )
+
+  let resizePointerId: number | null = null
+  let resizeHandle: HTMLElement | null = null
+  let resizeStartWidth = 0
+  let previousUserSelect = ''
+
+  const startSidebarResize = (event: PointerEvent) => {
+    if (event.button !== 0 || !settingsStore.isNavigationExpanded || resizePointerId !== null) return
+
+    event.preventDefault()
+    resizePointerId = event.pointerId
+    resizeHandle = event.currentTarget as HTMLElement
+    resizeStartWidth = sidebarWidthStore.width
+    previousUserSelect = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+    isResizingSidebar.value = true
+    resizeHandle.setPointerCapture(event.pointerId)
+  }
+
+  const moveSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId !== resizePointerId) return
+    sidebarWidthStore.setWidth(clampSidebarWidth(event.clientX, viewportWidth.value))
+  }
+
+  const stopSidebarResize = (persist: boolean) => {
+    if (resizePointerId === null) return
+
+    const pointerId = resizePointerId
+    resizePointerId = null
+    isResizingSidebar.value = false
+    document.body.style.userSelect = previousUserSelect
+    if (resizeHandle?.hasPointerCapture(pointerId)) resizeHandle.releasePointerCapture(pointerId)
+    resizeHandle = null
+
+    if (persist) {
+      void sidebarWidthStore.persistWidth()
+    } else {
+      sidebarWidthStore.setWidth(resizeStartWidth)
+    }
+  }
+
+  const endSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId !== resizePointerId) return
+    moveSidebarResize(event)
+    stopSidebarResize(true)
+  }
+
+  const cancelSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId === resizePointerId) stopSidebarResize(false)
+  }
+
+  const adjustSidebarWidth = (change: number) => {
+    sidebarWidthStore.setWidth(clampSidebarWidth(sidebarWidth.value + change, viewportWidth.value))
+    void sidebarWidthStore.persistWidth()
+  }
+
+  const updateViewportWidth = () => {
+    viewportWidth.value = window.innerWidth
+  }
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -79,6 +145,7 @@
     })
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
+      await sidebarWidthStore.ready
       isAppReady.value = true
     })
     window.ipcRenderer.send('init')
@@ -108,13 +175,16 @@
     })
 
     window.addEventListener('keydown', keydownListener)
+    window.addEventListener('resize', updateViewportWidth)
     window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
     await initEditor()
   })
 
   onBeforeUnmount(() => {
+    stopSidebarResize(false)
     window.removeEventListener('keydown', keydownListener)
+    window.removeEventListener('resize', updateViewportWidth)
     window.removeEventListener('unhandledrejection', unhandledRejectionListener)
   })
 
@@ -137,15 +207,17 @@
 </script>
 
 <template>
-  <div v-if="isAppReady" class="h-full" :style="{ color: settingsStore.colors.foreground }">
+  <div
+    v-if="isAppReady"
+    class="h-full"
+    :style="{ 'color': settingsStore.colors.foreground, '--sidebar-width': `${sidebarWidth}px` }"
+  >
     <TitleBar />
     <aside
-      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r transition-all duration-300"
-      :class="{
-        'w-12': !settingsStore.isNavigationExpanded,
-        'w-72': settingsStore.isNavigationExpanded,
-      }"
+      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r"
+      :class="{ 'transition-[width] duration-300': !isResizingSidebar }"
       :style="{
+        width: 'var(--sidebar-width)',
         backgroundColor: settingsStore.colors.background,
         borderColor: settingsStore.colors.border,
       }"
@@ -180,13 +252,34 @@
           </SidebarItem>
         </div>
       </div>
+      <div
+        v-if="settingsStore.isNavigationExpanded"
+        role="separator"
+        aria-label="Resize sidebar"
+        aria-orientation="vertical"
+        :aria-valuenow="sidebarWidth"
+        :aria-valuemin="sidebarWidthBounds(viewportWidth).min"
+        :aria-valuemax="sidebarWidthBounds(viewportWidth).max"
+        tabindex="0"
+        class="group absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none"
+        @pointerdown="startSidebarResize"
+        @pointermove="moveSidebarResize"
+        @pointerup="endSidebarResize"
+        @pointercancel="cancelSidebarResize"
+        @lostpointercapture="cancelSidebarResize"
+        @keydown.left.prevent="adjustSidebarWidth(-16)"
+        @keydown.right.prevent="adjustSidebarWidth(16)"
+      >
+        <span
+          class="absolute inset-y-0 left-1/2 w-px bg-primary-500/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          :class="{ 'opacity-100': isResizingSidebar }"
+        />
+      </div>
     </aside>
     <div
-      class="h-full flex transition-all duration-300"
-      :class="{
-        'pl-12': !settingsStore.isNavigationExpanded,
-        'pl-72': settingsStore.isNavigationExpanded,
-      }"
+      class="h-full flex"
+      :class="{ 'transition-[padding] duration-300': !isResizingSidebar }"
+      :style="{ paddingLeft: 'var(--sidebar-width)' }"
     >
       <main class="w-full h-full">
         <RouterView :key="$route.fullPath" />
