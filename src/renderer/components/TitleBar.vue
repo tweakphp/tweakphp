@@ -102,7 +102,7 @@
       <div class="flex-grow-0 flex items-center space-x-2">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
           <SecondaryButton
-            withoutBorder
+            without-border
             class="!px-1 h-6"
             v-tippy="{ content: 'Change layout', placement: 'left' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
@@ -117,7 +117,7 @@
             />
           </SecondaryButton>
           <SecondaryButton
-            withoutBorder
+            without-border
             v-if="showOutputType"
             class="!px-2 h-6"
             v-tippy="{ content: 'Output Style', placement: 'bottom' }"

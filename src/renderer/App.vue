@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon } from '@heroicons/vue/24/outline'
+  import { CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
@@ -11,6 +11,7 @@
   import router from './router/index'
   import events from './events'
   import { useSettingsStore } from './stores/settings'
+  import { useLspStore } from './stores/lsp'
   import { clampSidebarWidth, sidebarWidthBounds, useSidebarWidthStore } from './stores/sidebar-width'
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
@@ -32,6 +33,44 @@
   const settingsStore = useSettingsStore()
   const sidebarWidthStore = useSidebarWidthStore()
   const updateStore = useUpdateStore()
+  const lspStore = useLspStore()
+
+  const lspStatusTooltip = computed(() => {
+    switch (lspStore.status) {
+      case 'connected':
+        return 'Status LSP: Connected'
+      case 'connecting':
+        return 'Status LSP: Connecting...'
+      case 'disconnected':
+        return 'Status LSP: Disconnected (Click to reconnect)'
+    }
+  })
+
+  const handleLspReconnect = () => {
+    window.ipcRenderer.send('lsp.restart')
+  }
+
+  const tabInfo = computed(() => {
+    const info = tabStore.current?.info
+    if (!info || (!info.php_version && !info.version)) {
+      return null
+    }
+    return info
+  })
+
+  const infoTooltip = computed(() => {
+    if (!tabInfo.value) {
+      return ''
+    }
+    const project = `${tabInfo.value.name} ${tabInfo.value.version}`.trim()
+    let content = `PHP ${tabInfo.value.php_version}`
+    if (project) {
+      content += `<br>${project}`
+    }
+    return content
+  })
+
+  const isSettingsPage = computed(() => router.currentRoute.value.name === 'settings')
 
   const newProjectModal = ref()
 
@@ -222,7 +261,7 @@
       <div class="relative h-full flex flex-col justify-between pb-10">
         <WorkspaceList @open-new-project="newProjectModal.openModal()" />
         <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
-          <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative pl-2 -mt-[1px]">
+          <SidebarItem class="relative px-3 -mt-[1px]">
             <span
               v-if="
                 updateStore.update &&
@@ -231,14 +270,31 @@
               class="absolute top-[12px] right-[12px] bg-primary-500 text-white size-2 rounded-full"
             >
             </span>
-            <RouterLink
-              :to="{ name: 'settings' }"
-              class="flex items-center justify-start w-full"
-              :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
-            >
-              <CogIcon class="size-6 hover:text-primary-500" />
-              <span class="ml-3 text-sm"> Settings </span>
-            </RouterLink>
+            <div class="flex items-center justify-between w-full">
+              <RouterLink
+                :to="{ name: 'settings' }"
+                :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+              >
+                <CogIcon class="size-5 hover:text-primary-500" />
+              </RouterLink>
+              <div v-if="!isSettingsPage" class="flex items-center justify-center gap-2">
+                <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
+                  <div
+                    class="rounded-full size-4"
+                    :class="{
+                      'bg-green-500': lspStore.status === 'connected',
+                      'bg-yellow-500': lspStore.status === 'connecting',
+                      'bg-red-500': lspStore.status === 'disconnected',
+                    }"
+                  ></div>
+                </div>
+                <InformationCircleIcon
+                  v-if="tabInfo"
+                  class="size-5 hover:text-primary-500"
+                  v-tippy="{ content: infoTooltip, allowHTML: true, placement: 'top' }"
+                />
+              </div>
+            </div>
           </SidebarItem>
         </div>
       </div>

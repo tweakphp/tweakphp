@@ -3,6 +3,7 @@
   import { TransitionRoot, TransitionChild, DialogPanel, DialogTitle, Dialog } from '@headlessui/vue'
   import { useSettingsStore } from '../stores/settings.ts'
   import { XMarkIcon } from '@heroicons/vue/24/outline'
+  import SecondaryButton from '@/components/SecondaryButton.vue'
 
   const settingsStore = useSettingsStore()
 
@@ -57,7 +58,7 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full transform rounded-lg p-4 text-left align-middle transition-all border my-8"
+                class="w-full transform rounded-lg p-6 text-left align-middle transition-all border my-8"
                 :class="{
                   'max-w-md': props.size === 'md',
                   'max-w-lg': props.size === 'lg',
@@ -75,7 +76,9 @@
               >
                 <DialogTitle as="h3" class="text-lg font-medium leading-6 mb-5 flex items-center justify-between">
                   {{ props.title }}
-                  <XMarkIcon class="w-5 h-5 cursor-pointer hover:opacity-70" @click="closeModal()" />
+                  <SecondaryButton without-border @click="closeModal()" class="absolute right-2 top-2">
+                    <XMarkIcon class="size-5" />
+                  </SecondaryButton>
                 </DialogTitle>
                 <slot></slot>
               </DialogPanel>
