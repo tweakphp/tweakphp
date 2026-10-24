@@ -28,29 +28,26 @@
   "build": {
     "appId": "com.tweakphp.app",
     "productName": "TweakPHP",
-    "asar": {
-      "unpack": [
-        "**/node_modules/better-sqlite3/**/*"
-      ]
-    },
-    "fileOptions": {
-      "files": [
-        "**/*",
-        "!e2e-environment/**"
-      ],
-      "extraResources": [
-        "build/*",
-        "public/*"
-      ],
-      "extraFiles": [
-        "build/**/*",
-        "public/**/*",
-        {
-          "from": "migrations",
-          "to": "migrations"
-        }
-      ]
-    },
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*"
+    ],
+    "files": [
+      "**/*",
+      "!e2e-environment/**"
+    ],
+    "extraResources": [
+      "build/*",
+      "public/*"
+    ],
+    "extraFiles": [
+      "build/**/*",
+      "public/**/*",
+      {
+        "from": "migrations",
+        "to": "migrations"
+      }
+    ],
     "publish": {
       "provider": "github",
       "owner": "tweakphp",
@@ -102,11 +99,10 @@
     },
     "mac": {
       "darkModeSupport": true,
-      "sign": {
-        "entitlements": "build/entitlements.mac.plist",
-        "entitlementsInherit": "build/entitlements.mac.plist",
-        "hardenedRuntime": true
-      }
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
       "title": "${productName} ${version}",
@@ -128,6 +124,7 @@
     "afterSign": "scripts/notarize.js"
   },
   "overrides": {
+    "plist": "^4.0.0",
     "applicationinsights": "^3.16.0",
     "protobufjs": "^7.5.9"
   },
@@ -173,7 +170,7 @@
     "concurrently": "^9.2.4",
     "dotenv": "^16.4.7",
     "electron": "^41.1.1",
-    "electron-builder": "27.0.0-alpha.12",
+    "electron-builder": "^26.8.1",
     "electron-log": "^5.2.4",
     "electron-notarize": "^1.2.2",
     "electron-updater": "^6.3.9",
