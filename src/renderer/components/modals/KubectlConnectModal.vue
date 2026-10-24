@@ -2,6 +2,7 @@
   import { computed, ref } from 'vue'
   import Modal from '../Modal.vue'
   import KubectlConnectForm from '../forms/KubectlConnectForm.vue'
+  import PrimaryButton from '../PrimaryButton.vue'
 
   const props = withDefaults(
     defineProps<{
@@ -15,6 +16,7 @@
   )
 
   const modal = ref<InstanceType<typeof Modal> | null>(null)
+  const form = ref<InstanceType<typeof KubectlConnectForm> | null>(null)
 
   const modalTitle = computed(() => props.title || (props.id ? 'Edit Connection' : 'Add Connection'))
 
@@ -31,6 +33,11 @@
 
 <template>
   <Modal ref="modal" :title="modalTitle" size="lg">
-    <KubectlConnectForm :id="props.id" @done="closeModal()" />
+    <KubectlConnectForm ref="form" :id="props.id" @done="closeModal()" />
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <PrimaryButton @click="form?.save()"> Save </PrimaryButton>
+      </div>
+    </template>
   </Modal>
 </template>

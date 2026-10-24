@@ -1,11 +1,9 @@
 <script setup lang="ts">
   import TextInput from '../TextInput.vue'
-  import { onBeforeUnmount, onMounted, Ref, ref } from 'vue'
-  import PrimaryButton from '../PrimaryButton.vue'
+  import { computed, onBeforeUnmount, onMounted, Ref, ref } from 'vue'
   import SelectInput from '../SelectInput.vue'
   import { useSSHStore } from '../../stores/ssh'
   import { ConnectionConfig } from '../../../types/ssh.type'
-  import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
   import events from '../../events'
   import { ConnectReply } from '../../../types/client.type'
   import FormField from './FormField.vue'
@@ -82,6 +80,10 @@
       }
     }
   }
+
+  const connecting = computed(() => sshStore.connecting)
+
+  defineExpose({ connect, connecting })
 </script>
 
 <template>
@@ -124,16 +126,6 @@
       <FormField label="Working Directory" divider>
         <TextInput id="path" v-model="form.path" placeholder="/var/www" />
       </FormField>
-      <div class="flex items-center justify-end">
-        <PrimaryButton @click="connect" :disabled="sshStore.connecting">
-          <ArrowPathIcon
-            v-if="sshStore.connecting"
-            :spin="true"
-            class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
-          />
-          Connect
-        </PrimaryButton>
-      </div>
     </form>
   </div>
 </template>

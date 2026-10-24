@@ -48,14 +48,14 @@
 
 <template>
   <Modal :title="props.title" ref="modal" :size="props.size">
-    <div class="space-y-5">
-      <div class="text-sm">
-        <slot />
-      </div>
+    <div class="text-sm">
+      <slot />
+    </div>
+    <template #actions>
       <div class="flex justify-end gap-2">
         <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
         <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
       </div>
-    </div>
+    </template>
   </Modal>
 </template>

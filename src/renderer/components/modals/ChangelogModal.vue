@@ -25,8 +25,10 @@
 <template>
   <Modal :title="`Version ${updateStore.update?.version} Changelog`" ref="modal">
     <div class="prose max-w-none" v-html="updateStore.update?.releaseNotes"></div>
-    <SecondaryButton class="mt-5" @click="openInBrowser(updateStore.update)" :autofocus="false"
-      >Open in Browser</SecondaryButton
-    >
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <SecondaryButton @click="openInBrowser(updateStore.update)">Open in Browser</SecondaryButton>
+      </div>
+    </template>
   </Modal>
 </template>

@@ -72,9 +72,11 @@
         :placeholder="props.placeholder"
       />
     </div>
-    <div class="mt-6 flex justify-end space-x-3">
-      <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
-      <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
-    </div>
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
+        <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
+      </div>
+    </template>
   </Modal>
 </template>

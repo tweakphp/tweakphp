@@ -1,7 +1,6 @@
 <script setup lang="ts">
   import TextInput from '../TextInput.vue'
   import { onBeforeUnmount, onMounted, Ref, ref } from 'vue'
-  import PrimaryButton from '../PrimaryButton.vue'
   import SelectInput from '../SelectInput.vue'
   import { ConnectionConfig } from '../../../types/kubectl.type'
   import events from '../../events'
@@ -70,6 +69,8 @@
     emit('done')
   }
 
+  defineExpose({ save })
+
   const actionReply = (e: any) => {
     const reply = e.detail as ActionReply
     if (reply.error) {
@@ -115,9 +116,6 @@
       <FormField label="Working Directory" divider>
         <TextInput id="path" v-model="form.path" placeholder="/var/www" />
       </FormField>
-      <div class="flex items-center justify-end">
-        <PrimaryButton @click="save"> Save </PrimaryButton>
-      </div>
     </form>
   </div>
 </template>
