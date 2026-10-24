@@ -104,13 +104,13 @@
       <div
         class="flex-grow-0 transition-all duration-300"
         :class="{
-          'pl-[70px]': platform === 'darwin',
+          'pl-[80px]': platform === 'darwin',
         }"
       >
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
       <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>
-      <div class="flex-grow-0 flex items-center space-x-2">
+      <div class="flex-grow-0 flex items-center space-x-2 pr-2">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
           <SecondaryButton
             class="!px-1"
@@ -177,22 +177,22 @@
               {{ tab.queries?.length ?? 0 }}
             </span>
           </SecondaryButton>
-          <SecondaryButton
+          <!--<SecondaryButton
             v-if="tab"
             class="!px-2"
             v-tippy="{ content: 'Remove', placement: 'bottom' }"
             @click="removeTab(tab.id)"
           >
             <XMarkIcon class="size-4" />
-          </SecondaryButton>
+          </SecondaryButton>-->
         </template>
-        <SecondaryButton
+        <!--<SecondaryButton
           class="!px-2"
           v-tippy="{ content: 'Sponsor this project', placement: 'bottom' }"
           @click="sponsor()"
         >
           <HeartIcon class="size-4 text-pink-500" />
-        </SecondaryButton>
+        </SecondaryButton>-->
       </div>
     </div>
     <Modal title="Executed Queries" ref="queriesModal" size="4xl">

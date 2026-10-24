@@ -222,7 +222,7 @@
         borderColor: settingsStore.colors.border,
       }"
     >
-      <div class="relative h-full flex flex-col justify-between pb-[70px]">
+      <div class="relative h-full flex flex-col justify-between pb-[40px]">
         <WorkspaceList @open-new-project="newProjectModal.openModal()" />
         <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
           <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
