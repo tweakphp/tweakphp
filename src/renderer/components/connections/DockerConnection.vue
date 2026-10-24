@@ -1,6 +1,5 @@
 <script setup lang="ts">
   import Container from '../Container.vue'
-  import PrimaryButton from '../PrimaryButton.vue'
   import { onMounted, ref, onBeforeUnmount } from 'vue'
   import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
   import { useTabsStore } from '../../stores/tabs.ts'
@@ -158,6 +157,8 @@
     eventBus.removeEventListener('client.connect.reply', connectReply)
     eventBus.removeEventListener('client.action.reply', actionReply)
   })
+
+  defineExpose({ connect, connecting })
 </script>
 
 <template>
@@ -225,17 +226,6 @@
             <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
             <TextInput placeholder="e.g. sail" id="docker_user" v-model="form.user" />
           </FormField>
-
-          <div class="flex items-center justify-end">
-            <PrimaryButton @click="connect" :disabled="connecting">
-              <ArrowPathIcon
-                v-if="connecting"
-                :spin="true"
-                class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
-              />
-              Connect
-            </PrimaryButton>
-          </div>
         </div>
 
         <div class="mt-2">
