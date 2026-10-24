@@ -120,11 +120,11 @@
         </aside>
 
         <div class="col-start-2 row-start-2 mt-8 min-w-0 w-full max-w-3xl space-y-12 pb-24">
-          <div class="col-start-2 row-start-1">
+          <div id="settings-general" class="col-start-2 row-start-1 scroll-mt-[32px]">
             <h1 class="text-3xl font-semibold tracking-tight">Settings</h1>
           </div>
 
-          <section id="settings-general" aria-label="General settings" class="scroll-mt-[10px]">
+          <section aria-label="General settings" class="scroll-mt-[10px]">
             <GeneralSettings />
           </section>
 
