@@ -23,5 +23,6 @@ export interface Settings {
   mcpEnabled?: boolean
   mcpPort?: number
   streaming: boolean
+  queryLog: boolean
   dockerKubectlExecutionTimeoutSeconds: number
 }

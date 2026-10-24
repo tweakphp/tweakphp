@@ -3,6 +3,8 @@ import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
 
+const queryLogArg = () => `--query-log=${settings.getSettings().queryLog === true}`
+
 export const executeUnix = (
   connection: ConnectionConfig,
   pharPath: string,
@@ -17,6 +19,7 @@ export const executeUnix = (
     if (loader) {
       args.push(`--loader=${base64Encode(loader)}`)
     }
+    args.push(queryLogArg())
 
     execFile(phpPath, args, { shell: false }, (_err, stdout) => {
       resolve(stdout || '')
@@ -38,6 +41,7 @@ export const executeStreamingUnix = (
     if (loader) {
       args.push(`--loader=${base64Encode(loader)}`)
     }
+    args.push(queryLogArg())
 
     const child = spawn(phpPath, args, {
       shell: false,

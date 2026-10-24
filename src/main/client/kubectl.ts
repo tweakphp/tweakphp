@@ -5,6 +5,8 @@ import { RemoteClient } from './client.remote'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
 
+const queryLogArg = () => `--query-log=${getSettings().queryLog === true}`
+
 export default class KubectlClient extends RemoteClient {
   private kubectl: Kubectl
 
@@ -23,7 +25,10 @@ export default class KubectlClient extends RemoteClient {
 
   execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(async resolve => {
-      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const optionalArgs = [loader ? `--loader=${base64Encode(loader || '')}` : '', queryLogArg()]
+        .filter(Boolean)
+        .join(' ')
+      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${optionalArgs}`
       const result = await this.kubectl.exec(command, this.connection, this.executionTimeout)
       resolve(result)
     })

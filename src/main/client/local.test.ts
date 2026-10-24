@@ -32,6 +32,7 @@ vi.mock('electron', () => ({
 vi.mock('../settings', () => ({
   getSettings: () => ({
     php: 'C:\\php\\php.exe',
+    queryLog: false,
   }),
 }))
 
@@ -250,7 +251,16 @@ describe('LocalClient WSL Support', () => {
       await client.execute('echo "hello";')
       expect(execFile).toHaveBeenCalledWith(
         'wsl',
-        ['-d', 'Ubuntu', 'php', expect.any(String), '/home/david/project', 'execute', expect.any(String)],
+        [
+          '-d',
+          'Ubuntu',
+          'php',
+          expect.any(String),
+          '/home/david/project',
+          'execute',
+          expect.any(String),
+          '--query-log=false',
+        ],
         expect.any(Object),
         expect.any(Function)
       )
@@ -274,7 +284,7 @@ describe('LocalClient WSL Support', () => {
       await client.execute('echo "hello";', 'my-custom-loader')
       expect(execFile).toHaveBeenCalledWith(
         'C:\\php\\php.exe',
-        expect.arrayContaining([expect.stringContaining('--loader=')]),
+        expect.arrayContaining([expect.stringContaining('--loader='), expect.stringContaining('--query-log=')]),
         expect.any(Object),
         expect.any(Function)
       )

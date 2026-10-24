@@ -10,6 +10,10 @@ vi.mock('electron', () => ({
   },
 }))
 
+vi.mock('../settings', () => ({
+  getSettings: () => ({ queryLog: false }),
+}))
+
 class TestRemoteClient extends RemoteClient {
   public mockExec = vi.fn()
   public uploadedFiles: { localPath: string; remotePath: string }[] = []
@@ -85,6 +89,7 @@ describe('RemoteClient Shared Logic', () => {
     expect(client.mockExec).toHaveBeenCalled()
     const commandSent = client.mockExec.mock.calls[0][0]
     expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/remote/project' execute")
+    expect(commandSent).toContain('--query-log=false')
   })
 
   it('info runs remote command to retrieve project info', async () => {

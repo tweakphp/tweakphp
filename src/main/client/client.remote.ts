@@ -4,6 +4,9 @@ import { BaseClient } from './client.base'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
+import { getSettings } from '../settings'
+
+const queryLogArg = () => `--query-log=${getSettings().queryLog === true}`
 
 export abstract class RemoteClient extends BaseClient {
   abstract remoteExec(command: string): Promise<string>
@@ -71,7 +74,8 @@ export abstract class RemoteClient extends BaseClient {
   async execute(code: string, loader?: string): Promise<string> {
     if (!this.connection.php) return 'PHP version not found'
     if (!this.connection.client_path) return 'Client path not found'
-    const cmd = `${this.command()} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
+    const optionalArgs = [loader ? `--loader=${base64Encode(loader!)}` : '', queryLogArg()].filter(Boolean).join(' ')
+    const cmd = `${this.command()} execute ${base64Encode(code)} ${optionalArgs}`
     return this.remoteExec(cmd)
   }
 
@@ -81,7 +85,8 @@ export abstract class RemoteClient extends BaseClient {
       throw new Error('Streaming is not supported by this connection')
     }
 
-    const cmd = `${this.command()} execute-stream ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader!)}` : ''}`
+    const optionalArgs = [loader ? `--loader=${base64Encode(loader!)}` : '', queryLogArg()].filter(Boolean).join(' ')
+    const cmd = `${this.command()} execute-stream ${base64Encode(code)} ${optionalArgs}`
     const parser = createStreamOutputParser(onEvent)
     await this.remoteExecStream(cmd, (chunk: string) => {
       parser.push(chunk)

@@ -15,7 +15,7 @@ vi.mock('../utils/ssh', () => ({
 }))
 
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60, queryLog: false }),
 }))
 
 vi.mock('child_process', () => ({
@@ -152,6 +152,7 @@ describe('DockerClient', () => {
         '/var/www',
         'execute',
         expect.any(String),
+        '--query-log=false',
       ],
       expect.objectContaining({ shell: false, timeout: 60_000 }),
       expect.any(Function)
@@ -211,6 +212,7 @@ describe('DockerClient', () => {
         '/var/www',
         'execute-stream',
         expect.any(String),
+        '--query-log=false',
       ],
       { shell: false, windowsHide: true }
     )

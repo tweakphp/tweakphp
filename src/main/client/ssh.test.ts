@@ -13,6 +13,10 @@ vi.mock('../utils/ssh', () => {
   }
 })
 
+vi.mock('../settings', () => ({
+  getSettings: () => ({ queryLog: false }),
+}))
+
 describe('SSHClient', () => {
   let mockSSHInstance: any
 
@@ -44,6 +48,22 @@ describe('SSHClient', () => {
     const res = await client.remoteExec('echo hello')
     expect(res).toBe('output\n')
     expect(mockSSHInstance.exec).toHaveBeenCalledWith('echo hello')
+  })
+
+  it('executes code with the query log flag', async () => {
+    const client = new SSHClient({
+      type: 'ssh',
+      path: '/var/www/laravel',
+      host: 'localhost',
+      php: '8.3',
+      client_path: '/home/user/.tweakphp/client-8.3.phar',
+    } as any)
+    mockSSHInstance = (client as any).ssh
+    mockSSHInstance.exec.mockResolvedValue('output\n')
+
+    await client.execute('echo 1;')
+
+    expect(mockSSHInstance.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=false$/))
   })
 
   it('remoteUploadFile calls ssh.uploadFile()', async () => {

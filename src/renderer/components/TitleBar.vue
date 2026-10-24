@@ -19,9 +19,7 @@
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import Modal from './Modal.vue'
-  import QueriesView from '../views/QueriesView.vue'
-  import { computed, ComputedRef, ref, watch } from 'vue'
+  import { computed, ComputedRef, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
 
   const settingsStore = useSettingsStore()
@@ -30,7 +28,6 @@
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
-  const queriesModal = ref()
 
   const showOutputType = computed(() => {
     return tab.value?.execution !== 'vapor'
@@ -73,16 +70,17 @@
     settingsStore.update()
   }
 
+  const toggleQueryLog = () => {
+    settingsStore.settings.queryLog = !settingsStore.settings.queryLog
+    settingsStore.update()
+  }
+
   const removeTab = (id: number) => {
     events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
   }
 
   const sponsor = () => {
     window.ipcRenderer.send('link.open', 'https://github.com/sponsors/saeedvaziry')
-  }
-
-  const openQueriesModal = () => {
-    queriesModal.value?.openModal()
   }
 </script>
 
@@ -166,16 +164,17 @@
           </SecondaryButton>
           <SecondaryButton
             v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
-            class="!px-2 relative"
-            v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
-            @click="openQueriesModal()"
+            class="!px-2"
+            v-tippy="{
+              content: `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`,
+              placement: 'bottom',
+            }"
+            @click="toggleQueryLog"
           >
-            <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
-            <span
-              class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
-            >
-              {{ tab.queries?.length ?? 0 }}
-            </span>
+            <CircleStackIcon
+              class="size-4 cursor-pointer hover:text-blue-400"
+              :class="settingsStore.settings.queryLog ? 'text-blue-500' : 'opacity-40'"
+            />
           </SecondaryButton>
           <SecondaryButton
             v-if="tab"
@@ -195,8 +194,5 @@
         </SecondaryButton>
       </div>
     </div>
-    <Modal title="Executed Queries" ref="queriesModal" size="4xl">
-      <QueriesView />
-    </Modal>
   </div>
 </template>

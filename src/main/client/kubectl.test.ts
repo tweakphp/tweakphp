@@ -15,7 +15,7 @@ vi.mock('../utils/kubectl', () => {
 })
 
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60, queryLog: false }),
 }))
 
 vi.mock('electron', () => ({
@@ -64,12 +64,27 @@ describe('KubectlClient', () => {
     await client.executeStreaming('echo 1;', undefined, event => events.push(event))
 
     expect(mockKubectlInstance.execStream).toHaveBeenCalledWith(
-      expect.stringContaining('execute-stream'),
+      expect.stringMatching(/execute-stream [^ ]+ --query-log=false$/),
       conn,
       expect.any(Function),
       60_000
     )
     expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
+  })
+
+  it('executes code with the query log flag', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec.mockResolvedValue('output\n')
+
+    await client.execute('echo 1;')
+
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=false$/),
+      conn,
+      60_000
+    )
   })
 
   it('remoteUploadFile calls kubectl.uploadFile', async () => {
