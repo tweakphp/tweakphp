@@ -168,19 +168,6 @@
     </div>
     <Divider class="mt-3" />
     <div class="mt-3 grid grid-cols-2 items-center">
-      <div>Navigation Display</div>
-      <SelectInput
-        id="navigation-display"
-        v-model="settingsStore.settings.navigationDisplay"
-        @change="saveSettings()"
-        placeholder="Select"
-      >
-        <option value="collapsed">Collapsed</option>
-        <option value="expanded">Expanded</option>
-      </SelectInput>
-    </div>
-    <Divider class="mt-3" />
-    <div class="mt-3 grid grid-cols-2 items-center">
       <div>Streaming Output</div>
       <SelectInput
         id="streaming-output"

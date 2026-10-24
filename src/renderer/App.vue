@@ -39,9 +39,7 @@
   const isAppReady = ref(false)
   const viewportWidth = ref(window.innerWidth)
   const isResizingSidebar = ref(false)
-  const sidebarWidth = computed(() =>
-    settingsStore.isNavigationExpanded ? clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value) : 48
-  )
+  const sidebarWidth = computed(() => clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value))
 
   let resizePointerId: number | null = null
   let resizeHandle: HTMLElement | null = null
@@ -49,7 +47,7 @@
   let previousUserSelect = ''
 
   const startSidebarResize = (event: PointerEvent) => {
-    if (event.button !== 0 || !settingsStore.isNavigationExpanded || resizePointerId !== null) return
+    if (event.button !== 0 || resizePointerId !== null) return
 
     event.preventDefault()
     resizePointerId = event.pointerId
@@ -231,29 +229,21 @@
                 updateStore.update &&
                 updateStore.isUpdateAvailable(settingsStore.settings.version, updateStore.update.version)
               "
-              class="absolute bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
-              :class="{
-                'top-[5px] right-[5px]': !settingsStore.isNavigationExpanded,
-                'top-[12px] right-[12px]': settingsStore.isNavigationExpanded,
-              }"
+              class="absolute top-[12px] right-[12px] bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
             >
             </span>
             <RouterLink
               :to="{ name: 'settings' }"
-              :class="{
-                'text-primary-500': router.currentRoute.value.name === 'settings',
-                'flex items-center justify-center': !settingsStore.isNavigationExpanded,
-                'flex items-center justify-start w-full': settingsStore.isNavigationExpanded,
-              }"
+              class="flex items-center justify-start w-full"
+              :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
             >
               <CogIcon class="w-6 h-6 hover:text-primary-500" />
-              <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm"> Settings </span>
+              <span class="ml-3 text-sm"> Settings </span>
             </RouterLink>
           </SidebarItem>
         </div>
       </div>
       <div
-        v-if="settingsStore.isNavigationExpanded"
         role="separator"
         aria-label="Resize sidebar"
         aria-orientation="vertical"

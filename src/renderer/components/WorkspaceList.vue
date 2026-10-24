@@ -1,15 +1,6 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import {
-    PlusIcon,
-    ChevronDownIcon,
-    ChevronRightIcon,
-    FolderIcon,
-    FolderOpenIcon,
-    FolderPlusIcon,
-    EllipsisHorizontalIcon,
-    StarIcon,
-  } from '@heroicons/vue/24/outline'
+  import { PlusIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
@@ -191,31 +182,23 @@
 </script>
 
 <template>
-  <div class="h-full min-h-0 flex flex-col" :class="settingsStore.isNavigationExpanded ? 'py-3 pl-3' : 'p-2'">
+  <div class="h-full min-h-0 flex flex-col py-3 pl-3">
     <!-- Add new project -->
-    <div class="shrink-0" :class="{ 'pr-3': settingsStore.isNavigationExpanded }">
+    <div class="shrink-0 pr-3">
       <button @click="emit('open-new-project')" class="w-full">
-        <ProjectTile
-          tooltip="Add new project"
-          tooltip-placement="right"
-          :expanded="settingsStore.isNavigationExpanded"
-          :sidebar="settingsStore.isNavigationExpanded"
-        >
+        <ProjectTile tooltip="Add new project" tooltip-placement="right" expanded sidebar>
           <PlusIcon class="w-4 h-4 flex-shrink-0" />
-          <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm truncate block min-w-0 flex-1">
-            Add new project
-          </span>
+          <span class="ml-3 text-sm truncate block min-w-0 flex-1"> Add new project </span>
         </ProjectTile>
       </button>
     </div>
 
     <div
-      class="min-h-0 flex-1 overflow-y-auto"
-      :class="settingsStore.isNavigationExpanded ? 'workspace-scrollbar' : 'no-scrollbar mt-2 space-y-2'"
+      class="min-h-0 flex-1 overflow-y-auto workspace-scrollbar"
       :style="{ '--workspace-scrollbar-color': settingsStore.colors.foreground }"
     >
-      <!-- Pinned workspaces (expanded sidebar) -->
-      <div v-if="settingsStore.isNavigationExpanded && pinnedTabs.length > 0" class="mt-3">
+      <!-- Pinned workspaces -->
+      <div v-if="pinnedTabs.length > 0" class="mt-3">
         <button
           type="button"
           class="group flex items-center w-full h-8 px-2 rounded-lg text-left text-sm font-medium opacity-50 transition-opacity enabled:hover:opacity-80"
@@ -248,7 +231,7 @@
                 <ProjectTile
                   :active="isActive(tab)"
                   :name="tab.name"
-                  :expanded="settingsStore.isNavigationExpanded"
+                  expanded
                   sidebar
                   @click="openTab(tab)"
                   @mousedown.middle="requestCloseTab(tab.id)"
@@ -263,43 +246,8 @@
         </draggable>
       </div>
 
-      <!-- Pinned workspaces (collapsed sidebar) -->
-      <draggable
-        v-if="!settingsStore.isNavigationExpanded && pinnedTabs.length > 0"
-        :model-value="pinnedTabs"
-        @update:model-value="tabsStore.applyPinnedOrder($event)"
-        item-key="id"
-        :group="workspaceGroup"
-        :animation="150"
-        ghost-class="opacity-40"
-        class="space-y-2"
-        @start="onWorkspaceDragStart"
-        @end="onWorkspaceDragEnd"
-      >
-        <template #item="{ element: tab }">
-          <div>
-            <ProjectMenuContext :tab="tab">
-              <ProjectTile
-                :active="isActive(tab)"
-                :name="tab.name"
-                :tooltip="tab.name"
-                :expanded="false"
-                tooltip-placement="right"
-                @click="openTab(tab)"
-                @mousedown.middle="requestCloseTab(tab.id)"
-              >
-                <span class="flex-shrink-0 relative">
-                  {{ tab.name[0] }}
-                  <StarIcon class="absolute -top-1 -right-1.5 w-2.5 h-2.5 text-primary-500" aria-label="Pinned" />
-                </span>
-              </ProjectTile>
-            </ProjectMenuContext>
-          </div>
-        </template>
-      </draggable>
-
-      <!-- Folders (expanded sidebar) -->
-      <div v-if="settingsStore.isNavigationExpanded" class="mt-3">
+      <!-- Folders -->
+      <div class="mt-3">
         <div class="flex items-center h-8 px-2 text-sm font-medium opacity-50">
           <button
             type="button"
@@ -390,7 +338,7 @@
                         <ProjectTile
                           :active="isActive(tab)"
                           :name="tab.name"
-                          :expanded="settingsStore.isNavigationExpanded"
+                          expanded
                           sidebar
                           @click="openTab(tab)"
                           @mousedown.middle="requestCloseTab(tab.id)"
@@ -424,97 +372,8 @@
         </draggable>
       </div>
 
-      <!-- Folders (collapsed sidebar) -->
-      <draggable
-        v-if="!settingsStore.isNavigationExpanded"
-        :model-value="foldersStore.folders"
-        @update:model-value="foldersStore.setFoldersOrder($event)"
-        item-key="id"
-        :group="foldersGroup"
-        handle="[data-folder-tile]"
-        :animation="150"
-        ghost-class="opacity-40"
-        class="space-y-2"
-      >
-        <template #item="{ element: folder }">
-          <div class="space-y-2">
-            <FolderMenuContext :folder="folder">
-              <div
-                data-folder-tile
-                class="relative text-md flex h-8 w-8 justify-center capitalize items-center rounded-lg cursor-pointer hover:bg-black/10 transition-all"
-                :class="{
-                  'bg-black/10': !isFolderCollapsed(folder.id),
-                }"
-                :style="{
-                  color: settingsStore.colors.foreground,
-                }"
-                @click="toggleFolder(folder.id)"
-                v-tippy="{ content: `${folder.name} (${folderTabs(folder.id).length})`, placement: 'right' }"
-              >
-                <FolderOpenIcon v-if="!isFolderCollapsed(folder.id)" class="w-4 h-4" />
-                <FolderIcon v-else class="w-4 h-4" />
-                <span
-                  v-if="folderTabs(folder.id).length > 0"
-                  class="absolute -bottom-1 -right-1 min-w-[13px] h-[13px] px-[3px] rounded-full text-[8px] leading-[13px] text-center font-semibold text-white bg-primary-500 pointer-events-none select-none"
-                >
-                  {{ folderTabs(folder.id).length > 99 ? '99+' : folderTabs(folder.id).length }}
-                </span>
-              </div>
-            </FolderMenuContext>
-
-            <!-- Inline project tiles (folder open) -->
-            <div v-if="!isFolderCollapsed(folder.id)" class="pl-1.5 space-y-2">
-              <draggable
-                :model-value="visibleFolderTabs(folder)"
-                @update:model-value="tabsStore.applyGroupOrder(folder.id, $event)"
-                @add="onWorkspaceAddedToFolder(folder.id)"
-                item-key="id"
-                :group="workspaceGroup"
-                :animation="150"
-                ghost-class="opacity-40"
-                class="space-y-2 min-h-[12px]"
-                :empty-insert-threshold="24"
-                @start="onWorkspaceDragStart"
-                @end="onWorkspaceDragEnd"
-              >
-                <template #item="{ element: tab }">
-                  <div>
-                    <ProjectMenuContext :tab="tab">
-                      <ProjectTile
-                        :active="isActive(tab)"
-                        :name="tab.name"
-                        :tooltip="tab.name"
-                        :expanded="false"
-                        tooltip-placement="right"
-                        @click="openTab(tab)"
-                        @mousedown.middle="requestCloseTab(tab.id)"
-                      >
-                        <span class="flex-shrink-0">
-                          {{ tab.name[0] }}
-                        </span>
-                      </ProjectTile>
-                    </ProjectMenuContext>
-                  </div>
-                </template>
-              </draggable>
-
-              <button
-                v-if="hiddenCount(folder) > 0"
-                @click="showMore(folder.id)"
-                class="w-full"
-                v-tippy="{ content: `Show more (+${nextStepCount(folder)})`, placement: 'right' }"
-              >
-                <ProjectTile tooltip="" tooltip-placement="right" :expanded="false">
-                  <EllipsisHorizontalIcon class="w-4 h-4 flex-shrink-0 opacity-50" />
-                </ProjectTile>
-              </button>
-            </div>
-          </div>
-        </template>
-      </draggable>
-
-      <!-- Recent workspaces (expanded sidebar) -->
-      <div v-if="settingsStore.isNavigationExpanded" class="mt-3">
+      <!-- Recent workspaces -->
+      <div class="mt-3">
         <button
           type="button"
           class="group flex items-center w-full h-8 px-2 rounded-lg text-left text-sm font-medium opacity-50 hover:opacity-80 transition-opacity"
@@ -547,7 +406,7 @@
                 <ProjectTile
                   :active="isActive(tab)"
                   :name="tab.name"
-                  :expanded="settingsStore.isNavigationExpanded"
+                  expanded
                   sidebar
                   @click="openTab(tab)"
                   @mousedown.middle="requestCloseTab(tab.id)"
@@ -561,51 +420,6 @@
           </template>
         </draggable>
       </div>
-
-      <!-- Recent workspaces (collapsed sidebar) -->
-      <draggable
-        v-if="!settingsStore.isNavigationExpanded && recentTabs.length > 0"
-        :model-value="recentTabs"
-        @update:model-value="tabsStore.applyGroupOrder(null, $event)"
-        item-key="id"
-        :group="workspaceGroup"
-        :animation="150"
-        ghost-class="opacity-40"
-        class="space-y-2"
-        @start="onWorkspaceDragStart"
-        @end="onWorkspaceDragEnd"
-      >
-        <template #item="{ element: tab }">
-          <div>
-            <ProjectMenuContext :tab="tab">
-              <ProjectTile
-                :active="isActive(tab)"
-                :name="tab.name"
-                :tooltip="tab.name"
-                :expanded="false"
-                tooltip-placement="right"
-                @click="openTab(tab)"
-                @mousedown.middle="requestCloseTab(tab.id)"
-              >
-                <span class="flex-shrink-0">
-                  {{ tab.name[0] }}
-                </span>
-              </ProjectTile>
-            </ProjectMenuContext>
-          </div>
-        </template>
-      </draggable>
-
-      <!-- New folder -->
-      <button
-        v-if="!settingsStore.isNavigationExpanded"
-        @click="openNewFolderModal()"
-        v-tippy="{ content: 'New folder', placement: 'right' }"
-      >
-        <ProjectTile tooltip="" tooltip-placement="right" :expanded="false">
-          <FolderPlusIcon class="w-4 h-4 flex-shrink-0 opacity-50" />
-        </ProjectTile>
-      </button>
     </div>
   </div>
 
