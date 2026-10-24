@@ -47,7 +47,18 @@ export const useTabsStore = defineStore('tabs', () => {
     return findTab()
   }
 
-  const addTab = (data: { id?: number | null; type: string; path: string }) => {
+  const insertTabInGroup = (tab: Tab) => {
+    // New workspaces enter at the top of their group (root or folder)
+    const folderId = tab.folder_id ?? null
+    const firstIndex = tabs.value.findIndex(t => (t.folder_id ?? null) === folderId)
+    if (firstIndex === -1) {
+      tabs.value.push(tab)
+      return
+    }
+    tabs.value.splice(firstIndex, 0, tab)
+  }
+
+  const addTab = (data: { id?: number | null; type: string; path: string; folderId?: number | null }) => {
     if (!data.id) {
       data.id = Date.now()
     }
@@ -61,6 +72,8 @@ export const useTabsStore = defineStore('tabs', () => {
       code: '<?php\n\n',
       result: [],
       queries: [],
+      folder_id: data.folderId ?? null,
+      pinned: false,
       pane: {
         code: 50,
         result: 50,
@@ -75,16 +88,49 @@ export const useTabsStore = defineStore('tabs', () => {
     if (tabExists) {
       return tabExists
     }
-    tabs.value.push(tab)
+    insertTabInGroup(tab)
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
     setCurrent(tab)
     return tab
   }
 
+  // Clones a tab (code, name, path, folder, pin state...) with a fresh id,
+  // placed right after the original in its group, and activates it.
+  const duplicateTab = async (tabId: number) => {
+    const index = tabs.value.findIndex(t => t.id === tabId)
+    if (index === -1) {
+      return null
+    }
+    const source = tabs.value[index]
+    const clone = { ...toPlain(source), id: Date.now() } as Tab
+    tabs.value.splice(index + 1, 0, clone)
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+
+    // Vapor connection configs are keyed by tab id: copy the source config over
+    if (source.execution === 'vapor') {
+      const config = vaporStore.getConnectionConfig(source.id)
+      if (config) {
+        vaporStore.setEnviroments(clone.id, [...config.environments])
+        vaporStore.setClientPath(clone.id, config.client_path)
+        vaporStore.setEnvironment(clone.id, config.environment)
+      }
+    }
+
+    setCurrent(clone)
+    await router.replace({ name: 'code', params: { id: clone.id } })
+    return clone
+  }
+
   const removeTab = async (id: number) => {
     let index = tabs.value.findIndex(tab => tab.id === id)
-    tabs.value.splice(index, 1)
+    if (index === -1) {
+      return null
+    }
+    const [removed] = tabs.value.splice(index, 1)
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    if (removed.execution === 'vapor') {
+      vaporStore.removeVaporConfig(id)
+    }
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
       let activeTab = tabs.value[tabs.value.length - 1]
@@ -172,16 +218,156 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
+  const updateTabColor = (tabId: number, color: string | null) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (!tabToUpdate) {
+      return
+    }
+    tabToUpdate.color = color
+    updateTab(tabToUpdate)
+  }
+
+  const updateTabTag = (tabId: number, tag: string | null) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (!tabToUpdate) {
+      return
+    }
+    tabToUpdate.tag = tag
+    updateTab(tabToUpdate)
+  }
+
+  const moveTab = (tabId: number, folderId: number | null, index: number) => {
+    const tabIndex = tabs.value.findIndex(t => t.id === tabId)
+    if (tabIndex === -1) {
+      return
+    }
+    const [tab] = tabs.value.splice(tabIndex, 1)
+    tab.folder_id = folderId
+
+    // index refers to the displayed (unpinned) members of the group: the tab
+    // lands at that position, keeping array order aligned with display order
+    const group = tabs.value.filter(t => (t.folder_id ?? null) === folderId && !t.pinned)
+    const clamped = Math.max(0, Math.min(index, group.length))
+
+    let insertAt: number
+    if (clamped < group.length) {
+      insertAt = tabs.value.findIndex(t => t.id === group[clamped].id)
+    } else {
+      const anchor = group[group.length - 1]
+      insertAt = anchor ? tabs.value.findIndex(t => t.id === anchor.id) + 1 : tabs.value.length
+    }
+
+    tabs.value.splice(insertAt, 0, tab)
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+  }
+
+  // Called by drag & drop with the new content of a group (root or folder).
+  // Handles both full lists and visible slices (Show more): hidden members
+  // are kept at the end of the group. Elements that are not known tabs
+  // (e.g. a folder) are ignored to avoid corrupting the tabs store.
+  // Pinned tabs live in the Pinned section: dropping a tab into a folder or
+  // into Recent unpins it.
+  const applyGroupOrder = (folderId: number | null, orderedTabs: Tab[]) => {
+    const knownIds = new Set(tabs.value.map(t => t.id))
+    const ordered = orderedTabs.filter(t => knownIds.has(t.id))
+    const orderedIds = new Set(ordered.map(t => t.id))
+    const tail = tabs.value.filter(t => (t.folder_id ?? null) === folderId && !orderedIds.has(t.id))
+    const tailIds = new Set(tail.map(t => t.id))
+    ordered.forEach(tab => {
+      tab.folder_id = folderId
+      tab.pinned = false
+    })
+    const rest = tabs.value.filter(t => !orderedIds.has(t.id) && !tailIds.has(t.id))
+    tabs.value = [...rest, ...ordered, ...tail]
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+  }
+
+  // Called by drag & drop with the new content of the Pinned section. Every
+  // tab in the list becomes pinned (dragging a tab into the section pins
+  // it); folder membership is preserved so unpinning returns the tab to its
+  // folder. Elements that are not known tabs are ignored.
+  const applyPinnedOrder = (orderedTabs: Tab[]) => {
+    const knownIds = new Set(tabs.value.map(t => t.id))
+    const ordered = orderedTabs.filter(t => knownIds.has(t.id))
+    const orderedIds = new Set(ordered.map(t => t.id))
+    ordered.forEach(tab => {
+      tab.pinned = true
+    })
+    const rest = tabs.value.filter(t => !orderedIds.has(t.id))
+    tabs.value = [...ordered, ...rest]
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+  }
+
+  const togglePin = (tabId: number) => {
+    const tab = tabs.value.find(t => t.id === tabId)
+    if (!tab) {
+      return
+    }
+    tab.pinned = !tab.pinned
+    updateTab(tab)
+  }
+
+  const detachFolder = (folderId: number) => {
+    let changed = false
+    tabs.value.forEach(tab => {
+      if (tab.folder_id === folderId) {
+        tab.folder_id = null
+        changed = true
+      }
+    })
+    if (changed) {
+      void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    }
+  }
+
+  // Bulk variant of removeTab used when deleting a folder together with its tabs
+  const removeFolderTabs = async (folderId: number) => {
+    const removed = tabs.value.filter(t => t.folder_id === folderId)
+    if (removed.length === 0) {
+      return null
+    }
+    const removedIds = new Set(removed.map(t => t.id))
+    const removedCurrent = current.value ? removedIds.has(current.value.id) : false
+    tabs.value = tabs.value.filter(t => !removedIds.has(t.id))
+    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    removed.forEach(tab => {
+      if (tab.execution === 'vapor') {
+        vaporStore.removeVaporConfig(tab.id)
+      }
+    })
+    if (!removedCurrent) {
+      return null
+    }
+    if (tabs.value.length > 0) {
+      const activeTab = tabs.value[tabs.value.length - 1]
+      setCurrent(activeTab)
+      await router.replace({ name: 'code', params: { id: activeTab.id } })
+      return activeTab
+    }
+    setCurrent(null)
+    await router.replace({ name: 'home' })
+    return null
+  }
+
   return {
     tabs,
     current,
     addTab,
+    duplicateTab,
     removeTab,
     updateTab,
     findTab,
     setCurrent,
     getCurrent,
     updateTabName,
+    updateTabColor,
+    updateTabTag,
+    moveTab,
+    applyGroupOrder,
+    applyPinnedOrder,
+    togglePin,
+    detachFolder,
+    removeFolderTabs,
     scrollPosition,
     setScrollPosition,
     getConnectionConfig,
@@ -207,6 +393,10 @@ const normalize = (tab: any): Tab => {
     path: tab.path as string | undefined,
     execution: (tab.execution as 'local' | 'ssh' | 'vapor' | 'docker' | 'kubectl') ?? 'local',
     loader: tab.loader as string,
+    folder_id: (tab.folder_id as number | null) ?? null,
+    pinned: Boolean(tab.pinned),
+    color: (tab.color as string | null) ?? null,
+    tag: (tab.tag as string | null) ?? null,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
     queries: Array.isArray(tab.queries) ? tab.queries : [],
     pane: {

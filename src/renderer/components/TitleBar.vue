@@ -2,10 +2,8 @@
   import {
     PlayIcon,
     ArrowPathIcon,
-    XMarkIcon,
     CodeBracketIcon,
     RectangleStackIcon,
-    HeartIcon,
     CircleStackIcon,
     BoltIcon,
   } from '@heroicons/vue/24/outline'
@@ -19,8 +17,7 @@
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import Modal from './Modal.vue'
-  import QueriesView from '../views/QueriesView.vue'
+  import QueriesModal from './modals/QueriesModal.vue'
   import { computed, ComputedRef, ref, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
 
@@ -73,14 +70,6 @@
     settingsStore.update()
   }
 
-  const removeTab = (id: number) => {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
-  }
-
-  const sponsor = () => {
-    window.ipcRenderer.send('link.open', 'https://github.com/sponsors/saeedvaziry')
-  }
-
   const openQueriesModal = () => {
     queriesModal.value?.openModal()
   }
@@ -104,55 +93,47 @@
       <div
         class="flex-grow-0 transition-all duration-300"
         :class="{
-          'pl-[70px]': platform === 'darwin',
+          'pl-[80px]': platform === 'darwin',
         }"
       >
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
       <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>
-      <div class="flex-grow-0 flex items-center space-x-2">
+      <div class="flex-grow-0 flex items-center gap-1">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
           <SecondaryButton
-            class="!px-1"
+            without-border
+            class="!px-1 h-6"
             v-tippy="{ content: 'Change layout', placement: 'left' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
           >
-            <VerticalSplitIcon
-              v-if="settingsStore.settings.layout === 'horizontal'"
-              class="cursor-pointer size-7 hover:!stroke-primary-500"
-            />
-            <HorizontalSplitIcon
-              v-if="settingsStore.settings.layout === 'vertical'"
-              class="cursor-pointer size-7 hover:!stroke-primary-500"
-            />
+            <VerticalSplitIcon v-if="settingsStore.settings.layout === 'horizontal'" class="cursor-pointer size-7" />
+            <HorizontalSplitIcon v-if="settingsStore.settings.layout === 'vertical'" class="cursor-pointer size-7" />
           </SecondaryButton>
           <SecondaryButton
+            without-border
             v-if="showOutputType"
-            class="!px-2"
+            class="!px-2 h-6"
             v-tippy="{ content: 'Output Style', placement: 'bottom' }"
             @click="updateOutput(settingsStore.settings.output === 'stack' ? 'code' : 'stack')"
           >
-            <CodeBracketIcon
-              v-if="settingsStore.settings.output === 'stack'"
-              class="cursor-pointer size-4 hover:!stroke-primary-500"
-            />
-            <RectangleStackIcon
-              v-if="settingsStore.settings.output === 'code'"
-              class="cursor-pointer size-4 hover:!stroke-primary-500"
-            />
+            <CodeBracketIcon v-if="settingsStore.settings.output === 'stack'" class="cursor-pointer size-4" />
+            <RectangleStackIcon v-if="settingsStore.settings.output === 'code'" class="cursor-pointer size-4" />
           </SecondaryButton>
           <SecondaryButton
-            class="!px-2"
+            without-border
+            class="!px-2 h-6"
             v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }"
             @click="execute"
             :disabled="executeStore.executing"
           >
             <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />
-            <PlayIcon v-else class="size-4 cursor-pointer hover:text-primary-500" />
+            <PlayIcon v-else class="size-4 cursor-pointer" />
           </SecondaryButton>
           <SecondaryButton
+            without-border
             v-if="isRealtimeSupported"
-            class="!px-2"
+            class="!px-2 h-6"
             v-tippy="{
               content: `Streaming Output: ${settingsStore.settings.streaming ? 'ON' : 'OFF'}`,
               placement: 'bottom',
@@ -165,8 +146,9 @@
             />
           </SecondaryButton>
           <SecondaryButton
+            without-border
             v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
-            class="!px-2 relative"
+            class="!px-2 relative h-6"
             v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
             @click="openQueriesModal()"
           >
@@ -177,26 +159,9 @@
               {{ tab.queries?.length ?? 0 }}
             </span>
           </SecondaryButton>
-          <SecondaryButton
-            v-if="tab"
-            class="!px-2"
-            v-tippy="{ content: 'Remove', placement: 'bottom' }"
-            @click="removeTab(tab.id)"
-          >
-            <XMarkIcon class="size-4" />
-          </SecondaryButton>
         </template>
-        <SecondaryButton
-          class="!px-2"
-          v-tippy="{ content: 'Sponsor this project', placement: 'bottom' }"
-          @click="sponsor()"
-        >
-          <HeartIcon class="size-4 text-pink-500" />
-        </SecondaryButton>
       </div>
     </div>
-    <Modal title="Executed Queries" ref="queriesModal" size="4xl">
-      <QueriesView />
-    </Modal>
+    <QueriesModal ref="queriesModal" />
   </div>
 </template>
