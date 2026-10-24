@@ -10,6 +10,7 @@
   import router from '../router'
   import events from '../events'
   import ProjectTile from './ProjectTile.vue'
+  import AutoScrollText from './AutoScrollText.vue'
   import ProjectMenuContext from './contextMenus/ProjectMenuContext.vue'
   import FolderMenuContext from './contextMenus/FolderMenuContext.vue'
   import NewFolderModal from './modals/NewFolderModal.vue'
@@ -238,7 +239,7 @@
                   @mousedown.middle="requestCloseTab(tab.id)"
                 >
                   <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                    <span class="truncate">{{ tab.name }}</span>
+                    <AutoScrollText>{{ tab.name }}</AutoScrollText>
                   </span>
                 </ProjectTile>
               </ProjectMenuContext>
@@ -354,7 +355,7 @@
                           @mousedown.middle="requestCloseTab(tab.id)"
                         >
                           <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                            <span class="truncate">{{ tab.name }}</span>
+                            <AutoScrollText>{{ tab.name }}</AutoScrollText>
                           </span>
                         </ProjectTile>
                       </ProjectMenuContext>
@@ -431,7 +432,7 @@
                   @mousedown.middle="requestCloseTab(tab.id)"
                 >
                   <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                    <span class="truncate">{{ tab.name }}</span>
+                    <AutoScrollText>{{ tab.name }}</AutoScrollText>
                   </span>
                 </ProjectTile>
               </ProjectMenuContext>

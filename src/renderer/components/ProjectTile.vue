@@ -33,8 +33,6 @@
     :class="{
       'bg-primary-500/15 text-primary-400': props.active && !props.sidebar,
       'bg-black/15 dark:bg-white/15 font-medium': props.active && props.sidebar,
-      'hover:bg-black/10 dark:hover:bg-white/10': !props.active && props.sidebar,
-      'hover:bg-black/20': !props.active && !props.sidebar,
       'w-8 justify-center capitalize': !props.expanded,
       'w-full px-3': props.expanded && !props.sidebar,
       'w-full px-2': props.expanded && props.sidebar,
