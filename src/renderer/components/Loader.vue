@@ -1,8 +1,6 @@
 <script setup lang="ts">
   import TextInput from '../components/TextInput.vue'
   import { onMounted, Ref, ref } from 'vue'
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { Loader } from '../../types/loader.type'
   import Editor from './Editor.vue'
@@ -79,6 +77,8 @@ class MyCustomLoader extends BaseLoader
       saved.value = false
     }, 2000)
   }
+
+  defineExpose({ save, saving, saved })
 </script>
 
 <template>
@@ -96,19 +96,6 @@ class MyCustomLoader extends BaseLoader
         }"
         language="php"
       />
-      <div class="flex items-center justify-end space-x-2">
-        <span :class="{ 'opacity-0': !saved, 'opacity-65': saved }" class="transition-all duration-300">
-          Changes Saved
-        </span>
-        <PrimaryButton @click="save" :disabled="saving">
-          <ArrowPathIcon
-            v-if="saving"
-            :spin="true"
-            class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
-          />
-          Save
-        </PrimaryButton>
-      </div>
     </form>
   </div>
 </template>

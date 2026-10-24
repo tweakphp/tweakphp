@@ -27,7 +27,6 @@ export const useSettingsStore = defineStore('settings', () => {
     aiPromptTemplateGenerateCodeFromComment: '',
     aiPromptTemplateCompleteComment: '',
     aiPromptTemplateCompleteCode: '',
-    navigationDisplay: 'collapsed',
     mcpEnabled: false,
     mcpPort: 3000,
     streaming: true,
@@ -41,8 +40,6 @@ export const useSettingsStore = defineStore('settings', () => {
     return themeColors[settings.value.theme as keyof typeof themeColors]
   })
 
-  const isNavigationExpanded = computed(() => settings.value.navigationDisplay === 'expanded')
-
   const setSettings = (s: any) => {
     settings.value = s
   }
@@ -53,5 +50,5 @@ export const useSettingsStore = defineStore('settings', () => {
     })
   }
 
-  return { settings, themes, setSettings, update, colors, isNavigationExpanded }
+  return { settings, themes, setSettings, update, colors }
 })

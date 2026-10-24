@@ -1,20 +1,18 @@
 <script setup lang="ts">
-  import Container from '../components/Container.vue'
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import Divider from '../components/Divider.vue'
+  import Container from '../Container.vue'
   import { onMounted, ref, onBeforeUnmount } from 'vue'
-  import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
-  import { useTabsStore } from '../stores/tabs.ts'
-  import SelectInput from '../components/SelectInput.vue'
-  import TextInput from '../components/TextInput.vue'
-  import { ConnectionConfig } from '../../types/docker.type.ts'
-  import { ConnectReply, ActionReply } from '../../types/client.type.ts'
-  import { useSSHStore } from '../stores/ssh'
+  import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
+  import { useTabsStore } from '../../stores/tabs.ts'
+  import SelectInput from '../SelectInput.vue'
+  import TextInput from '../TextInput.vue'
+  import { ConnectionConfig } from '../../../types/docker.type.ts'
+  import { ConnectReply, ActionReply } from '../../../types/client.type.ts'
+  import { useSSHStore } from '../../stores/ssh'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { PlusIcon } from '@heroicons/vue/24/outline'
-  import Modal from '../components/Modal.vue'
-  import SSHConnectView from './SSHConnectView.vue'
-  import eventBus from '../events'
+  import SSHConnectModal from '../modals/SSHConnectModal.vue'
+  import eventBus from '../../events'
+  import FormField from '../forms/FormField.vue'
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
@@ -37,6 +35,7 @@
   })
   const sshConnectModal = ref()
   const connecting = ref(false)
+  let recheckSelection = false
 
   const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
@@ -91,11 +90,22 @@
     getPHPVersion()
   }
 
-  const getContainers = () => {
+  // Host changed: containers belong to a different host, so reset the selection
+  const onHostChange = () => {
     phpVersion.value = ''
     containers.value = []
-    loading.value = true
     form.value.container_name = ''
+    fetchContainers()
+  }
+
+  // Manual refresh: keep the current selection and re-detect the PHP version afterwards
+  const refreshContainers = () => {
+    recheckSelection = true
+    fetchContainers()
+  }
+
+  const fetchContainers = () => {
+    loading.value = true
 
     window.ipcRenderer.send('client.action', {
       connection: getConnection(),
@@ -118,6 +128,9 @@
     loading.value = false
     if (reply.error) {
       errorResponse.value = reply.error
+      if (reply.type === 'getContainers') {
+        recheckSelection = false
+      }
       return
     }
     errorResponse.value = ''
@@ -127,6 +140,16 @@
   const actionReplyHandlers = {
     getContainers: (result: any) => {
       containers.value = result || []
+      if (!recheckSelection) {
+        return
+      }
+      recheckSelection = false
+      if (form.value.container_name && containers.value.some(c => c.name === form.value.container_name)) {
+        getPHPVersion()
+      } else {
+        form.value.container_name = ''
+        phpVersion.value = ''
+      }
     },
     getPHPVersion: (result: any) => {
       phpVersion.value = result
@@ -142,7 +165,7 @@
   }
 
   onMounted(() => {
-    getContainers()
+    fetchContainers()
 
     const docker = tabsStore.getCurrent()?.docker
     if (docker) {
@@ -159,22 +182,22 @@
     eventBus.removeEventListener('client.connect.reply', connectReply)
     eventBus.removeEventListener('client.action.reply', actionReply)
   })
+
+  defineExpose({ connect, connecting })
 </script>
 
 <template>
   <Container>
     <div class="mt-3 w-full mx-auto">
       <div class="mx-auto space-y-3">
-        <div class="grid grid-cols-2 items-center">
-          <div>Host</div>
-
+        <FormField label="Host" divider>
           <div class="flex gap-3 items-center">
             <div class="w-full">
               <SelectInput
                 placeholder="Select docker host"
-                id="docker-containers"
+                id="docker-host"
                 v-model="form.ssh_id"
-                @change="getContainers"
+                @change="onHostChange"
               >
                 <option value="0">Local</option>
                 <option v-for="conn in sshStore.connections" :key="`ssh-${conn.id}`" :value="conn.id">
@@ -183,18 +206,14 @@
               </SelectInput>
             </div>
             <div>
-              <SecondaryButton class="!h-7" v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
+              <SecondaryButton v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
                 <PlusIcon class="size-4" />
               </SecondaryButton>
             </div>
           </div>
-        </div>
+        </FormField>
 
-        <Divider />
-
-        <div class="grid grid-cols-2 items-center">
-          <div>Container</div>
-
+        <FormField label="Container" divider>
           <div class="flex gap-3 items-center">
             <div class="w-full">
               <SelectInput
@@ -208,48 +227,37 @@
                 </option>
               </SelectInput>
             </div>
-            <div>
+            <div class="size-6 overflow-hidden">
               <ArrowPathIcon
                 :spin="true"
-                @click="getContainers"
+                @click="refreshContainers"
                 :class="{ 'animate-spin': loading }"
                 class="w-6 cursor-pointer h-6 hover:text-primary-500"
               />
             </div>
           </div>
-        </div>
-
-        <Divider />
+        </FormField>
 
         <div class="space-y-3">
-          <div class="grid grid-cols-2 items-center">
-            <div>PHP Version</div>
-            {{ phpVersion ?? '--' }}
-          </div>
+          <FormField label="PHP Version" divider>
+            <span v-if="phpVersion" class="text-sm">{{ phpVersion }}</span>
+            <span v-else-if="loading && form.container_name" class="text-sm opacity-50">Detecting…</span>
+            <span v-else class="text-sm opacity-50">Select a container first</span>
+          </FormField>
 
-          <Divider />
-          <div class="grid grid-cols-2 items-center">
-            <div>Working directory</div>
-            <TextInput placeholder="/var/www/html" id="work_directory" v-model="form.working_directory" />
-          </div>
+          <FormField label="Working directory" divider>
+            <TextInput
+              class="w-full"
+              placeholder="/var/www/html"
+              id="work_directory"
+              v-model="form.working_directory"
+            />
+          </FormField>
 
-          <Divider />
-          <div class="grid grid-cols-2 items-center">
-            <div>User <span class="text-xs text-gray-400">(optional)</span></div>
-            <TextInput placeholder="e.g. sail" id="docker_user" v-model="form.user" />
-          </div>
-
-          <Divider />
-          <div class="flex items-center justify-end">
-            <PrimaryButton @click="connect" :disabled="connecting">
-              <ArrowPathIcon
-                v-if="connecting"
-                :spin="true"
-                class="w-4 h-4 cursor-pointer hover:text-primary-500 animate-spin mr-1"
-              />
-              Connect
-            </PrimaryButton>
-          </div>
+          <FormField label="User" divider>
+            <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
+            <TextInput class="w-full" placeholder="e.g. sail" id="docker_user" v-model="form.user" />
+          </FormField>
         </div>
 
         <div class="mt-2">
@@ -257,9 +265,7 @@
         </div>
       </div>
     </div>
-    <Modal ref="sshConnectModal" title="Add SSH Host" size="lg">
-      <SSHConnectView @connected="sshConnectModal.closeModal()" />
-    </Modal>
+    <SSHConnectModal ref="sshConnectModal" title="Add SSH Host" />
   </Container>
 </template>
 

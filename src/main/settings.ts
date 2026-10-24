@@ -51,7 +51,6 @@ const defaultSettings: Settings = {
   aiPromptTemplateGenerateCodeFromComment: '',
   aiPromptTemplateCompleteComment: '',
   aiPromptTemplateCompleteCode: '',
-  navigationDisplay: 'collapsed',
   mcpEnabled: false,
   mcpPort: 3000,
   streaming: true,
@@ -139,7 +138,6 @@ export const getSettings = () => {
         settingsJson.aiPromptTemplateCompleteComment !== undefined ? settingsJson.aiPromptTemplateCompleteComment : '',
       aiPromptTemplateCompleteCode:
         settingsJson.aiPromptTemplateCompleteCode !== undefined ? settingsJson.aiPromptTemplateCompleteCode : '',
-      navigationDisplay: settingsJson.navigationDisplay || defaultSettings.navigationDisplay,
       mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
       mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
       streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,

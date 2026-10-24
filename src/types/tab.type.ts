@@ -34,6 +34,10 @@ export interface Tab {
   loader?: string
   result: Result[]
   queries?: QueryItem[]
+  folder_id?: number | null
+  pinned?: boolean
+  color?: string | null
+  tag?: string | null
   pane: {
     code: number
     result: number

@@ -19,7 +19,6 @@ export interface Settings {
   aiPromptTemplateGenerateCodeFromComment: string
   aiPromptTemplateCompleteComment: string
   aiPromptTemplateCompleteCode: string
-  navigationDisplay?: string
   mcpEnabled?: boolean
   mcpPort?: number
   streaming: boolean
