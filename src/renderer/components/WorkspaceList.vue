@@ -186,7 +186,7 @@
     <!-- Add new project -->
     <div class="shrink-0 pr-3">
       <button @click="emit('open-new-project')" class="w-full">
-        <ProjectTile tooltip="Add new project" tooltip-placement="right" expanded sidebar>
+        <ProjectTile expanded sidebar>
           <PlusIcon class="w-4 h-4 flex-shrink-0" />
           <span class="ml-3 text-sm truncate block min-w-0 flex-1"> Add new project </span>
         </ProjectTile>
