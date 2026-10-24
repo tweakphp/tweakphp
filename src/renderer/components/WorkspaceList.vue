@@ -213,7 +213,7 @@
 </script>
 
 <template>
-  <div class="h-full min-h-0 flex flex-col py-3 px-1">
+  <div class="h-full min-h-0 flex flex-col p-1">
     <!-- Add new project -->
     <div class="shrink-0">
       <button @click="emit('open-new-project')" class="w-full">
@@ -278,6 +278,12 @@
                     @mousedown.middle="requestCloseTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <span
+                        v-if="tab.color || tab.tag"
+                        v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
+                        class="size-2 rounded-full shrink-0 mr-2"
+                        :class="tab.color ? `bg-${tab.color}-500` : 'border border-current opacity-70'"
+                      ></span>
                       <AutoScrollText>{{ tab.name }}</AutoScrollText>
                     </span>
                   </ProjectTile>
@@ -417,6 +423,12 @@
                               @mousedown.middle="requestCloseTab(tab.id)"
                             >
                               <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                                <span
+                                  v-if="tab.color || tab.tag"
+                                  v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
+                                  class="size-2 rounded-full shrink-0 mr-2"
+                                  :class="tab.color ? `bg-${tab.color}-500` : 'border border-current opacity-70'"
+                                ></span>
                                 <AutoScrollText>{{ tab.name }}</AutoScrollText>
                               </span>
                             </ProjectTile>
@@ -506,6 +518,12 @@
                     @mousedown.middle="requestCloseTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <span
+                        v-if="tab.color || tab.tag"
+                        v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
+                        class="size-2 rounded-full shrink-0 mr-2"
+                        :class="tab.color ? `bg-${tab.color}-500` : 'border border-current opacity-70'"
+                      ></span>
                       <AutoScrollText>{{ tab.name }}</AutoScrollText>
                     </span>
                   </ProjectTile>

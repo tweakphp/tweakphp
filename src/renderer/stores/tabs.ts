@@ -218,6 +218,24 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
+  const updateTabColor = (tabId: number, color: string | null) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (!tabToUpdate) {
+      return
+    }
+    tabToUpdate.color = color
+    updateTab(tabToUpdate)
+  }
+
+  const updateTabTag = (tabId: number, tag: string | null) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (!tabToUpdate) {
+      return
+    }
+    tabToUpdate.tag = tag
+    updateTab(tabToUpdate)
+  }
+
   const moveTab = (tabId: number, folderId: number | null, index: number) => {
     const tabIndex = tabs.value.findIndex(t => t.id === tabId)
     if (tabIndex === -1) {
@@ -342,6 +360,8 @@ export const useTabsStore = defineStore('tabs', () => {
     setCurrent,
     getCurrent,
     updateTabName,
+    updateTabColor,
+    updateTabTag,
     moveTab,
     applyGroupOrder,
     applyPinnedOrder,
@@ -375,6 +395,8 @@ const normalize = (tab: any): Tab => {
     loader: tab.loader as string,
     folder_id: (tab.folder_id as number | null) ?? null,
     pinned: Boolean(tab.pinned),
+    color: (tab.color as string | null) ?? null,
+    tag: (tab.tag as string | null) ?? null,
     result: isResultArray(tab.result) ? tab.result : [{ line: 0, code: '', output: tab.result }],
     queries: Array.isArray(tab.queries) ? tab.queries : [],
     pane: {

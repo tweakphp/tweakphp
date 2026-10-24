@@ -29,6 +29,8 @@ interface TabRow {
   kubectl: string | null
   folder_id: number | null
   pinned: number
+  color: string | null
+  tag: string | null
   active: number
   position: number
   created_at: string
@@ -79,6 +81,8 @@ const normalizeTab = (input: Partial<TabRecord>, position = 0): TabRecord => {
     ...(input.kubectl ? { kubectl: input.kubectl } : {}),
     folder_id: input.folder_id ?? null,
     pinned: Boolean(input.pinned),
+    color: input.color ?? null,
+    tag: input.tag ?? null,
     connection_id: input.connection_id ?? null,
     active: Boolean(input.active),
     position: input.position ?? position,
@@ -104,6 +108,8 @@ const deserializeTab = (row: TabRow): TabRecord => {
     connection_id: row.connection_id,
     folder_id: row.folder_id ?? null,
     pinned: Boolean(row.pinned),
+    color: row.color ?? null,
+    tag: row.tag ?? null,
     active: Boolean(row.active),
     position: row.position,
     created_at: row.created_at,
@@ -125,7 +131,7 @@ const deserializeTab = (row: TabRow): TabRecord => {
 const tabColumns = `
   id, type, name, code, path, loader, execution, connection_id,
   result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
-  active, position, created_at, updated_at, deleted_at
+  color, tag, active, position, created_at, updated_at, deleted_at
 `
 
 export class TabsRepository {
@@ -161,9 +167,9 @@ export class TabsRepository {
       INSERT INTO tabs (
         id, type, name, code, path, loader, execution, connection_id,
         result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
-        active, position, created_at, updated_at, deleted_at
+        color, tag, active, position, created_at, updated_at, deleted_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         name = excluded.name,
@@ -181,6 +187,8 @@ export class TabsRepository {
         kubectl = excluded.kubectl,
         folder_id = excluded.folder_id,
         pinned = excluded.pinned,
+        color = excluded.color,
+        tag = excluded.tag,
         active = excluded.active,
         position = excluded.position,
         updated_at = excluded.updated_at,
@@ -205,6 +213,8 @@ export class TabsRepository {
       normalized.kubectl ? JSON.stringify(normalized.kubectl) : null,
       normalized.folder_id ?? null,
       normalized.pinned ? 1 : 0,
+      normalized.color ?? null,
+      normalized.tag ?? null,
       normalized.active ? 1 : 0,
       normalized.position ?? 0,
       normalized.created_at || now,
