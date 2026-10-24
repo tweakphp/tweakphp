@@ -213,7 +213,7 @@
 </script>
 
 <template>
-  <div class="h-full min-h-0 flex flex-col py-3 pl-1 pr-2">
+  <div class="h-full min-h-0 flex flex-col py-3 px-1">
     <!-- Add new project -->
     <div class="shrink-0">
       <button @click="emit('open-new-project')" class="w-full">
