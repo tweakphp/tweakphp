@@ -107,14 +107,8 @@
             v-tippy="{ content: 'Change layout', placement: 'left' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
           >
-            <VerticalSplitIcon
-              v-if="settingsStore.settings.layout === 'horizontal'"
-              class="cursor-pointer size-7"
-            />
-            <HorizontalSplitIcon
-              v-if="settingsStore.settings.layout === 'vertical'"
-              class="cursor-pointer size-7"
-            />
+            <VerticalSplitIcon v-if="settingsStore.settings.layout === 'horizontal'" class="cursor-pointer size-7" />
+            <HorizontalSplitIcon v-if="settingsStore.settings.layout === 'vertical'" class="cursor-pointer size-7" />
           </SecondaryButton>
           <SecondaryButton
             without-border
@@ -123,14 +117,8 @@
             v-tippy="{ content: 'Output Style', placement: 'bottom' }"
             @click="updateOutput(settingsStore.settings.output === 'stack' ? 'code' : 'stack')"
           >
-            <CodeBracketIcon
-              v-if="settingsStore.settings.output === 'stack'"
-              class="cursor-pointer size-4"
-            />
-            <RectangleStackIcon
-              v-if="settingsStore.settings.output === 'code'"
-              class="cursor-pointer size-4"
-            />
+            <CodeBracketIcon v-if="settingsStore.settings.output === 'stack'" class="cursor-pointer size-4" />
+            <RectangleStackIcon v-if="settingsStore.settings.output === 'code'" class="cursor-pointer size-4" />
           </SecondaryButton>
           <SecondaryButton
             without-border

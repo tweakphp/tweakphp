@@ -33,9 +33,7 @@
   <div>
     <div class="flex items-center justify-between">
       <Title>Loaders</Title>
-      <PrimaryButton @click="add">
-        Write new loader
-      </PrimaryButton>
+      <PrimaryButton @click="add"> Write new loader </PrimaryButton>
     </div>
     <p class="mt-2 text-xs opacity-70">Manage custom loaders applied to your code before execution.</p>
     <Divider class="mt-3" />
