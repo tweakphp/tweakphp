@@ -2,6 +2,7 @@
   import { onMounted, ref } from 'vue'
   import { ToastAction, ToastDescription, ToastProvider, ToastRoot, ToastTitle, ToastViewport } from 'reka-ui'
   import { useSettingsStore } from '../stores/settings'
+  import SecondaryButton from './SecondaryButton.vue'
 
   const props = withDefaults(
     defineProps<{
@@ -58,9 +59,9 @@
         as-child
         alt-text="Vai alla pianificazione per annullare"
       >
-        <button class="text-sm text-primary-500 hover:text-primary-400">
+        <SecondaryButton class="!text-primary-500 hover:!text-primary-400">
           {{ dismissLabel }}
-        </button>
+        </SecondaryButton>
       </ToastAction>
     </ToastRoot>
     <ToastViewport

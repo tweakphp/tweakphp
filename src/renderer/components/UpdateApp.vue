@@ -4,9 +4,7 @@
   import { useUpdateStore } from '../stores/update.ts'
   import { ArrowPathIcon, XMarkIcon } from '@heroicons/vue/24/outline'
   import { useSettingsStore } from '../stores/settings.ts'
-  import Modal from './Modal.vue'
-  import SecondaryButton from './SecondaryButton.vue'
-  import { UpdateInfo } from 'electron-updater'
+  import ChangelogModal from './modals/ChangelogModal.vue'
 
   const changelogModal = ref()
   const settingsStore = useSettingsStore()
@@ -21,12 +19,6 @@
 
   const openChangelogModal = () => {
     changelogModal.value.openModal()
-  }
-
-  const openInBrowser = (update?: UpdateInfo) => {
-    if (update) {
-      window.ipcRenderer.send('link.open', `https://github.com/tweakphp/tweakphp/releases/tag/v${update.releaseName}`)
-    }
   }
 
   const update = () => {
@@ -68,14 +60,13 @@
             :style="{ width: `${updateStore.downloadProgress.percent}%` }"
           ></div>
         </div>
-        <button
-          @click="cancelUpdate"
-          class="p-1 opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
+        <SecondaryButton
+          class="!p-1 !border-transparent flex-shrink-0 opacity-70 hover:opacity-100"
           v-tippy="'Cancel update'"
-          :style="{ color: settingsStore.colors.foreground }"
+          @click="cancelUpdate"
         >
           <XMarkIcon class="w-4 h-4" />
-        </button>
+        </SecondaryButton>
       </div>
       <div class="text-xs opacity-70 whitespace-nowrap overflow-hidden text-ellipsis">
         {{ Math.round(updateStore.downloadProgress.percent) }}% -
@@ -92,14 +83,13 @@
       "
     >
       <div class="flex items-center">
-        <button
-          type="button"
-          class="mr-2 text-sm underline"
+        <SecondaryButton
+          class="mr-2"
           v-tippy="`Version ${updateStore.update.version} changelog`"
           @click="openChangelogModal"
         >
           Changelog
-        </button>
+        </SecondaryButton>
         <PrimaryButton v-tippy="`Update to ${updateStore.update.version}`" @click="update" :disabled="updating">
           <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': updating && !updateStore.downloading }" />
         </PrimaryButton>
@@ -110,18 +100,11 @@
     <div v-else class="mr-2 text-sm">
       <span v-if="updateStore.checking">Checking...</span>
       <div v-else class="flex items-center gap-2">
-        <button type="button" class="underline" @click="checkForUpdates">Check for updates</button>
-        <button v-if="isDev" type="button" class="text-xs opacity-60 underline" @click="testProgress">
-          Test Progress
-        </button>
+        <SecondaryButton @click="checkForUpdates">Check for updates</SecondaryButton>
+        <SecondaryButton v-if="isDev" class="!text-xs" @click="testProgress"> Test Progress </SecondaryButton>
       </div>
     </div>
-    <Modal :title="`Version ${updateStore.update?.version} Changelog`" ref="changelogModal">
-      <div class="prose max-w-none" v-html="updateStore.update?.releaseNotes"></div>
-      <SecondaryButton class="mt-5" @click="openInBrowser(updateStore.update)" :autofocus="false"
-        >Open in Browser</SecondaryButton
-      >
-    </Modal>
+    <ChangelogModal ref="changelogModal" />
   </div>
 </template>
 

@@ -2,6 +2,7 @@ import { registerConnectionsIpc, setMcpConnectionManager } from './connections-i
 import { registerLoadersIpc } from './loaders-ipc'
 import { registerMigrationIpc } from './migration-ipc'
 import { registerTabsIpc } from './tabs-ipc'
+import { registerWorkspaceFoldersIpc } from './workspace-folders-ipc'
 import { registerCodeHistoryIpc } from './code-history-ipc'
 import { registerAppStorageIpc } from './app-storage-ipc'
 
@@ -11,6 +12,7 @@ export function initStorageIpc(): void {
   registerMigrationIpc()
   registerConnectionsIpc()
   registerTabsIpc()
+  registerWorkspaceFoldersIpc()
   registerLoadersIpc()
   registerCodeHistoryIpc()
   registerAppStorageIpc()
