@@ -109,11 +109,11 @@
           >
             <VerticalSplitIcon
               v-if="settingsStore.settings.layout === 'horizontal'"
-              class="cursor-pointer size-7 hover:!stroke-primary-500"
+              class="cursor-pointer size-7"
             />
             <HorizontalSplitIcon
               v-if="settingsStore.settings.layout === 'vertical'"
-              class="cursor-pointer size-7 hover:!stroke-primary-500"
+              class="cursor-pointer size-7"
             />
           </SecondaryButton>
           <SecondaryButton
@@ -125,11 +125,11 @@
           >
             <CodeBracketIcon
               v-if="settingsStore.settings.output === 'stack'"
-              class="cursor-pointer size-4 hover:!stroke-primary-500"
+              class="cursor-pointer size-4"
             />
             <RectangleStackIcon
               v-if="settingsStore.settings.output === 'code'"
-              class="cursor-pointer size-4 hover:!stroke-primary-500"
+              class="cursor-pointer size-4"
             />
           </SecondaryButton>
           <SecondaryButton
@@ -140,7 +140,7 @@
             :disabled="executeStore.executing"
           >
             <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />
-            <PlayIcon v-else class="size-4 cursor-pointer hover:text-primary-500" />
+            <PlayIcon v-else class="size-4 cursor-pointer" />
           </SecondaryButton>
           <SecondaryButton
             without-border

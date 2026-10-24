@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { computed, ref, useSlots } from 'vue'
+  import { computed, ref, useSlots, type PropType } from 'vue'
   import {
     DialogClose,
     DialogContent,
@@ -14,6 +14,7 @@
   import { useSettingsStore } from '../stores/settings.ts'
   import { XMarkIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from '@/components/SecondaryButton.vue'
+  import { ModalSize } from '../../types/modal.type'
 
   const settingsStore = useSettingsStore()
   const slots = useSlots()
@@ -30,9 +31,9 @@
       default: '',
     },
     size: {
-      type: String,
-      default: 'md',
-      validator: (value: string) => ['md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl'].includes(value),
+      type: String as PropType<ModalSize>,
+      default: ModalSize.MD,
+      validator: (value: string) => Object.values(ModalSize).includes(value as ModalSize),
     },
     // Modal mode traps focus and renders the rest of the page inert.
     // Non-modal mode lets the user interact with the background.
@@ -118,14 +119,14 @@
 
   const hasDescription = computed(() => Boolean(props.description || slots.description))
 
-  const sizeClasses: Record<string, string> = {
-    'md': 'max-w-md',
-    'lg': 'max-w-lg',
-    'xl': 'max-w-xl',
-    '2xl': 'max-w-2xl',
-    '3xl': 'max-w-3xl',
-    '4xl': 'max-w-4xl',
-    '5xl': 'max-w-5xl',
+  const sizeClasses: Record<ModalSize, string> = {
+    [ModalSize.MD]: 'max-w-md',
+    [ModalSize.LG]: 'max-w-lg',
+    [ModalSize.XL]: 'max-w-xl',
+    [ModalSize.TWO_XL]: 'max-w-2xl',
+    [ModalSize.THREE_XL]: 'max-w-3xl',
+    [ModalSize.FOUR_XL]: 'max-w-4xl',
+    [ModalSize.FIVE_XL]: 'max-w-5xl',
   }
 
   defineExpose({ openModal, closeModal, toggleModal, isModalOpen })

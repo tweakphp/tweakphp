@@ -96,10 +96,10 @@
         </div>
       </FormField>
       <FormField label="Host" divider>
-        <TextInput id="host" v-model="form.host" placeholder="1.2.3.4" />
+        <TextInput class="w-full" id="host" v-model="form.host" placeholder="1.2.3.4" />
       </FormField>
       <FormField label="Port" divider>
-        <TextInput id="port" v-model="form.port" />
+        <TextInput class="w-full" id="port" v-model="form.port" />
       </FormField>
       <FormField label="Authentication Type" divider>
         <SelectInput id="auth-type" v-model="form.auth_type" placeholder="Authentication Type">
@@ -108,23 +108,24 @@
         </SelectInput>
       </FormField>
       <FormField label="Username" divider>
-        <TextInput id="username" v-model="form.username" />
+        <TextInput class="w-full" id="username" v-model="form.username" />
       </FormField>
       <FormField v-if="form.auth_type === 'password'" label="Password" divider>
-        <TextInput id="password" type="password" v-model="form.password" />
+        <TextInput class="w-full" id="password" type="password" v-model="form.password" />
       </FormField>
       <FormField v-if="form.auth_type === 'key'" label="Passphrase" divider>
-        <TextInput id="passphrase" type="password" v-model="form.passphrase" />
+        <TextInput class="w-full" id="passphrase" type="password" v-model="form.passphrase" />
       </FormField>
       <FormField v-if="form.auth_type === 'key'" label="Private Key Path" divider>
         <TextInput
+          class="w-full"
           id="key"
           v-model="form.privateKey"
           :placeholder="platform === 'darwin' ? '/Users/username/.ssh/id_rsa' : '/home/username/.ssh/id_rsa'"
         />
       </FormField>
       <FormField label="Working Directory" divider>
-        <TextInput id="path" v-model="form.path" placeholder="/var/www" />
+        <TextInput class="w-full" id="path" v-model="form.path" placeholder="/var/www" />
       </FormField>
     </form>
   </div>

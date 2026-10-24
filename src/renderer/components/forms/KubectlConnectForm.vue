@@ -114,7 +114,7 @@
         </SelectInput>
       </FormField>
       <FormField label="Working Directory" divider>
-        <TextInput id="path" v-model="form.path" placeholder="/var/www" />
+        <TextInput class="w-full" id="path" v-model="form.path" placeholder="/var/www" />
       </FormField>
     </form>
   </div>

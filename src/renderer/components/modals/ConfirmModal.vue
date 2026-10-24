@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import PrimaryButton from '../PrimaryButton.vue'
   import SecondaryButton from '../SecondaryButton.vue'
 
@@ -9,12 +10,12 @@
       title: string
       confirmText?: string
       cancelText?: string
-      size?: string
+      size?: ModalSize
     }>(),
     {
       confirmText: 'Confirm',
       cancelText: 'Cancel',
-      size: 'md',
+      size: ModalSize.MD,
     }
   )
 

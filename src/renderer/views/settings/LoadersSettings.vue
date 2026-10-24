@@ -4,7 +4,6 @@
   import { useLoadersStore } from '../../stores/loaders'
   import { ref } from 'vue'
   import PrimaryButton from '../../components/PrimaryButton.vue'
-  import { PlusIcon } from '@heroicons/vue/24/outline'
   import LoaderModal from '../../components/modals/LoaderModal.vue'
   import RowActions from '../../components/interactions/RowActions.vue'
   import EmptyState from '../../components/EmptyState.vue'
@@ -35,7 +34,7 @@
     <div class="flex items-center justify-between">
       <Title>Loaders</Title>
       <PrimaryButton @click="add">
-        <PlusIcon class="w-4 h-4" />
+        Write new loader
       </PrimaryButton>
     </div>
     <p class="mt-2 text-xs opacity-70">Manage custom loaders applied to your code before execution.</p>
@@ -55,7 +54,7 @@
       <EmptyState
         v-if="Object.values(loadersStore.loaders).length === 0"
         class="mt-3"
-        message="No custom loader yet!"
+        message="No custom loader yet, click the button above to create one."
       />
     </div>
     <LoaderModal ref="loaderModal" :edit="editName" />

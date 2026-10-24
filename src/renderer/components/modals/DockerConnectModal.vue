@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import DockerConnection from '../connections/DockerConnection.vue'
   import PrimaryButton from '../PrimaryButton.vue'
   import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
@@ -20,7 +21,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" title="Connect to Docker" size="xl">
+  <Modal ref="modal" title="Connect to Docker" :size="ModalSize.XL">
     <DockerConnection ref="form" @connected="closeModal()" />
     <template #actions>
       <div class="flex justify-end gap-2">

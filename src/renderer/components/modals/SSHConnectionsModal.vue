@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import SSHConnections from '../connections/SSHConnections.vue'
 
   const emit = defineEmits<{
@@ -27,7 +28,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" title="Connect to SSH" size="2xl">
+  <Modal ref="modal" title="Connect to SSH" :size="ModalSize.THREE_XL">
     <SSHConnections @connected="onConnected" @removed="id => emit('removed', id)" />
   </Modal>
 </template>

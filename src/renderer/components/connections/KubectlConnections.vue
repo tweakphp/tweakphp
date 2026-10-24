@@ -1,7 +1,8 @@
 <script setup lang="ts">
   import PrimaryButton from '../PrimaryButton.vue'
   import SecondaryButton from '../SecondaryButton.vue'
-  import { EyeIcon, PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import AutoScrollText from '../AutoScrollText.vue'
   import { onBeforeUnmount, onMounted, ref } from 'vue'
   import { useKubectlStore } from '../../stores/kubectl'
   import Divider from '../Divider.vue'
@@ -20,6 +21,7 @@
   const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
 
+  /* @ts-ignore */
   const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
     store: kubectlStore,
     connectState: 'connect',
@@ -93,14 +95,14 @@
               <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
               {{ connection.name }}
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.context" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.context }}</AutoScrollText>
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.namespace" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.namespace }}</AutoScrollText>
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.path }}</AutoScrollText>
             </div>
             <RowActions @edit="edit(connection.id)" @remove="remove(connection.id)">
               <SecondaryButton v-if="connecting === connection.id" class="!p-1 !border-transparent">
@@ -131,7 +133,10 @@
           <Divider />
         </template>
       </div>
-      <EmptyState v-if="Object.values(kubectlStore.connections).length === 0" message="No connections yet!" />
+      <EmptyState
+        v-if="Object.values(kubectlStore.connections).length === 0"
+        message="No connections yet, click the + button to add one."
+      />
     </div>
     <KubectlConnectModal ref="connectModal" :id="editId" />
   </div>

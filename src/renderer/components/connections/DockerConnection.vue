@@ -35,6 +35,7 @@
   })
   const sshConnectModal = ref()
   const connecting = ref(false)
+  let recheckSelection = false
 
   const connect = () => {
     const index = containers.value.findIndex(c => c.name === form.value.container_name)
@@ -89,11 +90,22 @@
     getPHPVersion()
   }
 
-  const getContainers = () => {
+  // Host changed: containers belong to a different host, so reset the selection
+  const onHostChange = () => {
     phpVersion.value = ''
     containers.value = []
-    loading.value = true
     form.value.container_name = ''
+    fetchContainers()
+  }
+
+  // Manual refresh: keep the current selection and re-detect the PHP version afterwards
+  const refreshContainers = () => {
+    recheckSelection = true
+    fetchContainers()
+  }
+
+  const fetchContainers = () => {
+    loading.value = true
 
     window.ipcRenderer.send('client.action', {
       connection: getConnection(),
@@ -116,6 +128,9 @@
     loading.value = false
     if (reply.error) {
       errorResponse.value = reply.error
+      if (reply.type === 'getContainers') {
+        recheckSelection = false
+      }
       return
     }
     errorResponse.value = ''
@@ -125,6 +140,16 @@
   const actionReplyHandlers = {
     getContainers: (result: any) => {
       containers.value = result || []
+      if (!recheckSelection) {
+        return
+      }
+      recheckSelection = false
+      if (form.value.container_name && containers.value.some(c => c.name === form.value.container_name)) {
+        getPHPVersion()
+      } else {
+        form.value.container_name = ''
+        phpVersion.value = ''
+      }
     },
     getPHPVersion: (result: any) => {
       phpVersion.value = result
@@ -140,7 +165,7 @@
   }
 
   onMounted(() => {
-    getContainers()
+    fetchContainers()
 
     const docker = tabsStore.getCurrent()?.docker
     if (docker) {
@@ -170,9 +195,9 @@
             <div class="w-full">
               <SelectInput
                 placeholder="Select docker host"
-                id="docker-containers"
+                id="docker-host"
                 v-model="form.ssh_id"
-                @change="getContainers"
+                @change="onHostChange"
               >
                 <option value="0">Local</option>
                 <option v-for="conn in sshStore.connections" :key="`ssh-${conn.id}`" :value="conn.id">
@@ -181,7 +206,7 @@
               </SelectInput>
             </div>
             <div>
-              <SecondaryButton class="!h-7" v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
+              <SecondaryButton v-tippy="{ content: 'Add Host' }" @click="sshConnectModal.openModal()">
                 <PlusIcon class="size-4" />
               </SecondaryButton>
             </div>
@@ -202,10 +227,10 @@
                 </option>
               </SelectInput>
             </div>
-            <div>
+            <div class="size-6 overflow-hidden">
               <ArrowPathIcon
                 :spin="true"
-                @click="getContainers"
+                @click="refreshContainers"
                 :class="{ 'animate-spin': loading }"
                 class="w-6 cursor-pointer h-6 hover:text-primary-500"
               />
@@ -215,16 +240,23 @@
 
         <div class="space-y-3">
           <FormField label="PHP Version" divider>
-            {{ phpVersion ?? '--' }}
+            <span v-if="phpVersion" class="text-sm">{{ phpVersion }}</span>
+            <span v-else-if="loading && form.container_name" class="text-sm opacity-50">Detecting…</span>
+            <span v-else class="text-sm opacity-50">Select a container first</span>
           </FormField>
 
           <FormField label="Working directory" divider>
-            <TextInput placeholder="/var/www/html" id="work_directory" v-model="form.working_directory" />
+            <TextInput
+              class="w-full"
+              placeholder="/var/www/html"
+              id="work_directory"
+              v-model="form.working_directory"
+            />
           </FormField>
 
           <FormField label="User" divider>
             <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
-            <TextInput placeholder="e.g. sail" id="docker_user" v-model="form.user" />
+            <TextInput class="w-full" placeholder="e.g. sail" id="docker_user" v-model="form.user" />
           </FormField>
         </div>
 

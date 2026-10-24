@@ -1,7 +1,8 @@
 <script setup lang="ts">
   import PrimaryButton from '../PrimaryButton.vue'
   import SecondaryButton from '../SecondaryButton.vue'
-  import { EyeIcon, PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import AutoScrollText from '../AutoScrollText.vue'
   import { useSSHStore } from '../../stores/ssh'
   import Divider from '../Divider.vue'
   import SSHConnectModal from '../modals/SSHConnectModal.vue'
@@ -13,6 +14,7 @@
   const sshStore = useSSHStore()
   const emit = defineEmits(['connected', 'removed'])
 
+  /* @ts-ignore */
   const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
     store: sshStore,
     connectState: 'connect-ssh',
@@ -55,8 +57,8 @@
             </div>
             <div>{{ connection.host }}</div>
             <div>{{ connection.port }}</div>
-            <div>
-              <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.path }}</AutoScrollText>
             </div>
             <RowActions @edit="edit(connection.id)" @remove="remove(connection.id)">
               <SecondaryButton v-if="connecting === connection.id" class="!p-1 !border-transparent">
@@ -70,7 +72,10 @@
           <Divider />
         </template>
       </div>
-      <EmptyState v-if="Object.values(sshStore.connections).length === 0" message="No connections yet!" />
+      <EmptyState
+        v-if="Object.values(sshStore.connections).length === 0"
+        message="No connections yet, click the + button to add one."
+      />
     </div>
     <SSHConnectModal ref="connectModal" :id="editId" />
   </div>

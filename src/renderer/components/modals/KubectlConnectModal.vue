@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import KubectlConnectForm from '../forms/KubectlConnectForm.vue'
   import PrimaryButton from '../PrimaryButton.vue'
 
@@ -32,7 +33,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" :title="modalTitle" size="lg">
+  <Modal ref="modal" :title="modalTitle" :size="ModalSize.LG">
     <KubectlConnectForm ref="form" :id="props.id" @done="closeModal()" />
     <template #actions>
       <div class="flex justify-end gap-2">

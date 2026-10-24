@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import Loader from '../Loader.vue'
   import PrimaryButton from '../PrimaryButton.vue'
   import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
@@ -36,7 +37,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" :title="props.edit ? 'Edit Loader' : 'Add Loader'" size="4xl">
+  <Modal ref="modal" :title="props.edit ? 'Edit Loader' : 'Add Loader'" :size="ModalSize.FOUR_XL">
     <Loader ref="form" :edit="props.edit" @saved="onSaved" />
     <template #actions>
       <div class="flex items-center justify-end gap-2">

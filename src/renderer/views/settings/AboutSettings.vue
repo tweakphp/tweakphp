@@ -6,6 +6,7 @@
 
   const settingsStore = useSettingsStore()
 
+  const websiteUrl = 'https://tweakphp.com/'
   const repositoryUrl = 'https://github.com/tweakphp/tweakphp'
   const donationUrl = 'https://www.buymeacoffee.com/ildaviz'
 
@@ -24,6 +25,17 @@
 
     <FormField class="mt-3" label="Version" divider>
       <span>{{ settingsStore.settings.version }}</span>
+    </FormField>
+
+    <FormField class="mt-3" label="Website" divider>
+      <a
+        :href="websiteUrl"
+        class="text-primary-500 hover:underline"
+        rel="noreferrer"
+        @click.prevent="openLink(websiteUrl)"
+      >
+        tweakphp.com
+      </a>
     </FormField>
 
     <FormField class="mt-3" label="GitHub repository" divider>

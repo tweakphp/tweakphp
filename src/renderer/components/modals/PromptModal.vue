@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import Modal from '../Modal.vue'
+  import { ModalSize } from '../../../types/modal.type'
   import TextInput from '../TextInput.vue'
   import PrimaryButton from '../PrimaryButton.vue'
   import SecondaryButton from '../SecondaryButton.vue'
@@ -14,7 +15,7 @@
       confirmText?: string
       cancelText?: string
       initialValue?: string
-      size?: string
+      size?: ModalSize
     }>(),
     {
       id: 'prompt-input',
@@ -22,7 +23,7 @@
       confirmText: 'Save',
       cancelText: 'Cancel',
       initialValue: '',
-      size: 'md',
+      size: ModalSize.MD,
     }
   )
 
