@@ -7,21 +7,20 @@
   import { useTabsStore } from '../stores/tabs'
   import DropDown from './DropDown.vue'
   import DropDownItem from './DropDownItem.vue'
-  import Modal from './Modal.vue'
   import { computed, ComputedRef, onBeforeUnmount, onMounted, ref } from 'vue'
-  import DockerView from '../views/DockerView.vue'
   import { useSettingsStore } from '../stores/settings'
   import { Tab } from '../../types/tab.type'
   import { useSSHStore } from '../stores/ssh'
-  import SSHView from '../views/SSHView.vue'
   import events from '../events'
   import { useKubectlStore } from '../stores/kubectl'
-  import KubectlView from '../views/KubectlView.vue'
   import { ConnectReply } from '../../types/client.type'
   import { useLoadersStore } from '../stores/loaders'
   import { useVaporStore } from '../stores/vapor.ts'
   import Divider from './Divider.vue'
   import { useRouter } from 'vue-router'
+  import DockerConnectModal from './modals/DockerConnectModal.vue'
+  import SSHConnectionsModal from './modals/SSHConnectionsModal.vue'
+  import KubectlConnectionsModal from './modals/KubectlConnectionsModal.vue'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -84,14 +83,11 @@
     tabStore.updateTab(tabStore.current)
   }
 
-  const modals: Record<string, any> = { ssh: sshModal, kubectl: kubectlModal }
-
   const remoteConnected = (type: 'ssh' | 'kubectl', config: { id: number }) => {
     if (!tabStore.current) return
     tabStore.current.execution = type
     tabStore.current[type] = { id: config.id }
     tabStore.updateTab(tabStore.current)
-    modals[type].value.closeModal()
   }
 
   const remoteRemoved = (type: 'ssh' | 'kubectl', id: number) => {
@@ -137,10 +133,11 @@
 </script>
 
 <template>
-  <div class="flex items-center space-x-2" v-if="tab">
+  <div class="flex items-center gap-1" v-if="tab">
     <!-- local -->
     <SecondaryButton
-      class="!px-2"
+      without-border
+      class="!px-2 h-6"
       @click="connect('local')"
       v-tippy="{ content: 'Connect to local', placement: 'bottom' }"
     >
@@ -157,7 +154,7 @@
       <!-- docker -->
       <DropDown>
         <template v-slot:trigger>
-          <SecondaryButton class="!px-2">
+          <SecondaryButton without-border class="!px-2 h-6">
             <ArrowPathIcon v-if="connecting === 'docker'" class="size-4 mr-1 animate-spin" />
             <DockerIcon
               v-else
@@ -190,7 +187,7 @@
       <!-- vapor -->
       <DropDown>
         <template v-slot:trigger>
-          <SecondaryButton class="!px-2">
+          <SecondaryButton without-border class="!px-2 h-6">
             <VaporIcon
               class="size-4 mr-1"
               :class="{ '!text-[#25C4F2]': tabStore.getCurrent()?.execution === 'vapor' }"
@@ -220,7 +217,7 @@
       <!-- ssh -->
       <DropDown>
         <template v-slot:trigger>
-          <SecondaryButton class="!px-2">
+          <SecondaryButton without-border class="!px-2 h-6">
             <ArrowPathIcon v-if="connecting === 'ssh'" class="size-4 mr-1 animate-spin" />
             <ServerIcon
               v-else
@@ -259,7 +256,7 @@
       <!-- kubectl -->
       <DropDown>
         <template v-slot:trigger>
-          <SecondaryButton class="!px-2">
+          <SecondaryButton without-border class="!px-2 h-6">
             <ArrowPathIcon v-if="connecting === 'kubectl'" class="size-4 mr-1 animate-spin" />
             <KubectlIcon
               v-else
@@ -303,7 +300,7 @@
     <!-- loader -->
     <DropDown>
       <template v-slot:trigger>
-        <SecondaryButton class="!px-2">
+        <SecondaryButton without-border class="!px-2 h-6">
           <BoltIcon class="size-4 mr-1" :class="{ 'text-primary-500': tab.loader }" />
           <div class="text-xs max-w-[150px] truncate">
             <div v-if="tab && tab.loader">
@@ -334,14 +331,16 @@
     <!-- other tools -->
 
     <!-- modals -->
-    <Modal title="Connect to Docker" ref="dockerModal" size="xl">
-      <DockerView @connected="dockerModal.closeModal()" />
-    </Modal>
-    <Modal title="Connect to SSH" ref="sshModal" size="2xl">
-      <SSHView @connected="remoteConnected('ssh', $event)" @removed="remoteRemoved('ssh', $event)" />
-    </Modal>
-    <Modal title="Connect to Kubernetes" ref="kubectlModal" size="2xl">
-      <KubectlView @connected="remoteConnected('kubectl', $event)" @removed="remoteRemoved('kubectl', $event)" />
-    </Modal>
+    <DockerConnectModal ref="dockerModal" />
+    <SSHConnectionsModal
+      ref="sshModal"
+      @connected="remoteConnected('ssh', $event)"
+      @removed="remoteRemoved('ssh', $event)"
+    />
+    <KubectlConnectionsModal
+      ref="kubectlModal"
+      @connected="remoteConnected('kubectl', $event)"
+      @removed="remoteRemoved('kubectl', $event)"
+    />
   </div>
 </template>

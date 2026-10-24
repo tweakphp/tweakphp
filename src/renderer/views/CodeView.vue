@@ -3,7 +3,6 @@
   import { useExecuteStore } from '../stores/execute'
   import { useTabsStore } from '../stores/tabs'
   import { useVaporStore } from '../stores/vapor'
-  import { useLspStore } from '../stores/lsp'
   import Container from '../components/Container.vue'
   import events from '../events'
   import { useSettingsStore } from '../stores/settings'
@@ -11,7 +10,6 @@
   import { useRoute } from 'vue-router'
   import router from '../router/index'
   import { Tab } from '../../types/tab.type'
-  import ProgressBar from '../components/ProgressBar.vue'
   import { Splitpanes, Pane } from 'splitpanes'
   import 'splitpanes/dist/splitpanes.css'
   import StackedOutput from '../components/StackedOutput.vue'
@@ -22,7 +20,6 @@
   const executeStore = useExecuteStore()
   const vaporStore = useVaporStore()
   const tabsStore = useTabsStore()
-  const lspStore = useLspStore()
   const codeEditor = ref<InstanceType<typeof Editor> | null>(null)
   const resultEditor = ref<InstanceType<typeof Editor> | null>(null)
   const loadersStore = useLoadersStore()
@@ -54,17 +51,6 @@
     return output ? output.output : ''
   })
 
-  const lspStatusTooltip = computed(() => {
-    switch (lspStore.status) {
-      case 'connected':
-        return 'LSP Connected'
-      case 'connecting':
-        return 'LSP Connecting...'
-      case 'disconnected':
-        return 'LSP Disconnected (Click to reconnect)'
-    }
-  })
-
   const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
     tab,
     rawOutput,
@@ -75,14 +61,6 @@
     tabsStore,
     loadersStore,
   })
-
-  const handleLspReconnect = () => {
-    window.ipcRenderer.send('lsp.restart')
-    try {
-      // @ts-ignore - template ref typed at runtime
-      codeEditor?.value?.reconnectLsp && codeEditor.value.reconnectLsp()
-    } catch (e) {}
-  }
 
   const lspRestartSuccessListener = () => {
     console.log('LSP restart success, reconnecting editors...')
@@ -262,7 +240,7 @@
     <Splitpanes
       v-if="tab.type === 'code'"
       v-bind:horizontal="settingsStore.settings.layout === 'horizontal'"
-      class="pb-6 default-theme"
+      class="default-theme"
       @resized="paneResized"
     >
       <pane :size="tab.pane.code">
@@ -296,38 +274,5 @@
         <StackedOutput v-else :output="tab.result" />
       </pane>
     </Splitpanes>
-
-    <div
-      v-if="tab.info"
-      class="pl-12 fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
-      :style="{
-        borderColor: settingsStore.colors.border,
-        backgroundColor: settingsStore.colors.background,
-      }"
-    >
-      <div
-        class="flex items-center ml-2 cursor-pointer"
-        :class="[settingsStore.isNavigationExpanded ? 'pl-[145px]' : '']"
-        v-tippy="lspStatusTooltip"
-        @click="handleLspReconnect"
-      >
-        <template v-if="lspStore.status === 'connected'">
-          <div class="flex items-center justify-center bg-green-500 rounded-full size-3"></div>
-        </template>
-        <template v-else-if="lspStore.status === 'connecting'">
-          <div class="flex items-center justify-center bg-yellow-500 rounded-full size-3"></div>
-        </template>
-        <template v-else-if="lspStore.status === 'disconnected'">
-          <div class="flex items-center justify-center bg-red-500 rounded-full size-3"></div>
-        </template>
-      </div>
-      <div class="px-2 flex gap-1 w-1/2 items-center">
-        <div class="whitespace-nowrap">PHP {{ tab.info.php_version }}</div>
-      </div>
-      <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
-        <ProgressBar />
-        <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
-      </div>
-    </div>
   </Container>
 </template>

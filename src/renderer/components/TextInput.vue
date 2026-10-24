@@ -33,7 +33,7 @@
     type="text"
     v-model="inputValue"
     @input="emitChange"
-    class="text-sm h-7 outline py-1 px-2 focus:!outline-primary-500 rounded-md"
+    class="text-sm h-[29px] outline py-1 px-2 focus:!outline-primary-500 rounded-md"
     :style="{
       backgroundColor: settingsStore.colors.backgroundLight,
       color: settingsStore.colors.foreground,
