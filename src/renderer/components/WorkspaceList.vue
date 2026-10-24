@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { PlusIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
+  import { PlusIcon, ChevronDownIcon, FolderIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
@@ -143,6 +143,35 @@
     droppedIntoFolderId = null
   }
 
+  // ---- collapse/expand animation ----
+  // `height: auto` is not animatable in CSS, so these hooks measure the block
+  // (scrollHeight) and drive an inline height: the `.collapse-*` classes in the
+  // scoped style own the timing/easing and clip the block while it animates.
+  const collapseEnter = (el: Element) => {
+    const htmlEl = el as HTMLElement
+    htmlEl.style.height = '0px'
+    // force a reflow so the starting height is registered
+    void htmlEl.offsetHeight
+    htmlEl.style.height = `${htmlEl.scrollHeight}px`
+  }
+
+  const collapseAfterEnter = (el: Element) => {
+    const htmlEl = el as HTMLElement
+    htmlEl.style.height = ''
+  }
+
+  const collapseLeave = (el: Element) => {
+    const htmlEl = el as HTMLElement
+    htmlEl.style.height = `${htmlEl.scrollHeight}px`
+    void htmlEl.offsetHeight
+    htmlEl.style.height = '0px'
+  }
+
+  const collapseAfterLeave = (el: Element) => {
+    const htmlEl = el as HTMLElement
+    htmlEl.style.height = ''
+  }
+
   // ---- actions ----
   const openTab = (tab: Tab) => {
     router.replace({ name: 'code', params: { id: tab.id } })
@@ -208,44 +237,55 @@
           @click="sectionsStore.toggleSection('pinned')"
         >
           <span>Pinned</span>
-          <ChevronRightIcon v-if="sectionsStore.isCollapsed('pinned')" class="w-4 h-4 ml-1" />
           <ChevronDownIcon
-            v-else
-            class="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+            class="w-4 h-4 ml-1 transition-[transform,opacity] duration-200"
+            :class="
+              sectionsStore.isCollapsed('pinned')
+                ? '-rotate-90'
+                : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'
+            "
           />
         </button>
-        <draggable
-          v-if="!sectionsStore.isCollapsed('pinned')"
-          :model-value="pinnedTabs"
-          @update:model-value="tabsStore.applyPinnedOrder($event)"
-          item-key="id"
-          :group="workspaceGroup"
-          :animation="150"
-          ghost-class="opacity-40"
-          class="min-h-[8px]"
-          :empty-insert-threshold="24"
-          @start="onWorkspaceDragStart"
-          @end="onWorkspaceDragEnd"
+        <Transition
+          name="collapse"
+          @enter="collapseEnter"
+          @after-enter="collapseAfterEnter"
+          @leave="collapseLeave"
+          @after-leave="collapseAfterLeave"
         >
-          <template #item="{ element: tab }">
-            <div>
-              <ProjectMenuContext :tab="tab">
-                <ProjectTile
-                  :active="isActive(tab)"
-                  :name="tab.name"
-                  expanded
-                  sidebar
-                  @click="openTab(tab)"
-                  @mousedown.middle="requestCloseTab(tab.id)"
-                >
-                  <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                    <AutoScrollText>{{ tab.name }}</AutoScrollText>
-                  </span>
-                </ProjectTile>
-              </ProjectMenuContext>
-            </div>
-          </template>
-        </draggable>
+          <draggable
+            v-if="!sectionsStore.isCollapsed('pinned')"
+            :model-value="pinnedTabs"
+            @update:model-value="tabsStore.applyPinnedOrder($event)"
+            item-key="id"
+            :group="workspaceGroup"
+            :animation="150"
+            ghost-class="opacity-40"
+            class="min-h-[8px]"
+            :empty-insert-threshold="24"
+            @start="onWorkspaceDragStart"
+            @end="onWorkspaceDragEnd"
+          >
+            <template #item="{ element: tab }">
+              <div>
+                <ProjectMenuContext :tab="tab">
+                  <ProjectTile
+                    :active="isActive(tab)"
+                    :name="tab.name"
+                    expanded
+                    sidebar
+                    @click="openTab(tab)"
+                    @mousedown.middle="requestCloseTab(tab.id)"
+                  >
+                    <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <AutoScrollText>{{ tab.name }}</AutoScrollText>
+                    </span>
+                  </ProjectTile>
+                </ProjectMenuContext>
+              </div>
+            </template>
+          </draggable>
+        </Transition>
       </div>
 
       <!-- Folders -->
@@ -258,10 +298,13 @@
             @click="sectionsStore.toggleSection('folders')"
           >
             <span>Folders</span>
-            <ChevronRightIcon v-if="sectionsStore.isCollapsed('folders')" class="w-4 h-4 ml-1" />
             <ChevronDownIcon
-              v-else
-              class="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+              class="w-4 h-4 ml-1 transition-[transform,opacity] duration-200"
+              :class="
+                sectionsStore.isCollapsed('folders')
+                  ? '-rotate-90'
+                  : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'
+              "
             />
           </button>
           <SecondaryButton
@@ -274,113 +317,134 @@
             <PlusIcon class="w-4 h-4" />
           </SecondaryButton>
         </div>
-        <draggable
-          v-if="!sectionsStore.isCollapsed('folders')"
-          :model-value="foldersStore.folders"
-          @update:model-value="foldersStore.setFoldersOrder($event)"
-          item-key="id"
-          :group="foldersGroup"
-          handle="[data-folder-handle]"
-          :animation="150"
-          ghost-class="opacity-40"
-          class="min-h-[8px]"
+        <Transition
+          name="collapse"
+          @enter="collapseEnter"
+          @after-enter="collapseAfterEnter"
+          @leave="collapseLeave"
+          @after-leave="collapseAfterLeave"
         >
-          <template #header>
-            <div
-              v-if="foldersStore.folders.length === 0"
-              class="px-3 py-1 text-xs italic opacity-50"
-              :style="{ color: settingsStore.colors.foreground }"
-            >
-              No folder found
-            </div>
-          </template>
-          <template #item="{ element: folder }">
-            <div>
-              <FolderMenuContext :folder="folder">
-                <button
-                  type="button"
-                  data-folder-handle
-                  class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all hover:bg-black/5 dark:hover:bg-white/10"
-                  :style="{
-                    color: settingsStore.colors.foreground,
-                  }"
-                  :aria-expanded="!isFolderCollapsed(folder.id)"
-                  @click="toggleFolder(folder.id)"
-                  @dragover="onFolderHeaderDragOver(folder)"
-                  @dragleave="onFolderHeaderDragLeave(folder, $event)"
-                >
-                  <FolderOpenIcon v-if="!isFolderCollapsed(folder.id)" class="w-4 h-4 mr-3 shrink-0 opacity-70" />
-                  <FolderIcon v-else class="w-4 h-4 mr-3 shrink-0 opacity-70" />
-                  <span class="truncate">{{ folder.name }}</span>
-                  <ChevronRightIcon
-                    v-if="isFolderCollapsed(folder.id)"
-                    class="w-4 h-4 ml-auto shrink-0 opacity-0 group-hover:opacity-50"
-                  />
-                  <ChevronDownIcon v-else class="w-4 h-4 ml-auto shrink-0 opacity-0 group-hover:opacity-50" />
-                </button>
-              </FolderMenuContext>
-
-              <div v-if="!isFolderCollapsed(folder.id)" class="ml-5">
-                <draggable
-                  :model-value="visibleFolderTabs(folder)"
-                  @update:model-value="tabsStore.applyGroupOrder(folder.id, $event)"
-                  @add="onWorkspaceAddedToFolder(folder.id)"
-                  item-key="id"
-                  :group="workspaceGroup"
-                  :animation="150"
-                  ghost-class="opacity-40"
-                  class="min-h-[12px]"
-                  :empty-insert-threshold="24"
-                  @start="onWorkspaceDragStart"
-                  @end="onWorkspaceDragEnd"
-                >
-                  <template #header>
-                    <div
-                      v-if="folderTabs(folder.id).length === 0"
-                      class="px-3 py-1 text-xs italic opacity-50"
-                      :style="{ color: settingsStore.colors.foreground }"
-                    >
-                      No projects
-                    </div>
-                  </template>
-                  <template #item="{ element: tab }">
-                    <div>
-                      <ProjectMenuContext :tab="tab">
-                        <ProjectTile
-                          :active="isActive(tab)"
-                          :name="tab.name"
-                          expanded
-                          sidebar
-                          @click="openTab(tab)"
-                          @mousedown.middle="requestCloseTab(tab.id)"
-                        >
-                          <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                            <AutoScrollText>{{ tab.name }}</AutoScrollText>
-                          </span>
-                        </ProjectTile>
-                      </ProjectMenuContext>
-                    </div>
-                  </template>
-                </draggable>
-
-                <SecondaryButton
-                  v-if="hiddenCount(folder) > 0"
-                  class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
-                  @click="showMore(folder.id)"
-                >
-                  Show more (+{{ nextStepCount(folder) }})
-                </SecondaryButton>
-                <SecondaryButton
-                  v-else-if="(extraShown[folder.id] ?? 0) > 0"
-                  class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
-                  @click="showLess(folder.id)"
-                >
-                  Show less
-                </SecondaryButton>
+          <draggable
+            v-if="!sectionsStore.isCollapsed('folders')"
+            :model-value="foldersStore.folders"
+            @update:model-value="foldersStore.setFoldersOrder($event)"
+            item-key="id"
+            :group="foldersGroup"
+            handle="[data-folder-handle]"
+            :animation="150"
+            ghost-class="opacity-40"
+            class="min-h-[8px]"
+          >
+            <template #header>
+              <div
+                v-if="foldersStore.folders.length === 0"
+                class="px-3 py-1 text-xs italic opacity-50"
+                :style="{ color: settingsStore.colors.foreground }"
+              >
+                No folder found
               </div>
-            </div>
-          </template>
-        </draggable>
+            </template>
+            <template #item="{ element: folder }">
+              <div>
+                <FolderMenuContext :folder="folder">
+                  <button
+                    type="button"
+                    data-folder-handle
+                    class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all hover:bg-black/5 dark:hover:bg-white/10"
+                    :style="{
+                      color: settingsStore.colors.foreground,
+                    }"
+                    :aria-expanded="!isFolderCollapsed(folder.id)"
+                    @click="toggleFolder(folder.id)"
+                    @dragover="onFolderHeaderDragOver(folder)"
+                    @dragleave="onFolderHeaderDragLeave(folder, $event)"
+                  >
+                    <Transition name="folder-icon" mode="out-in">
+                      <FolderOpenIcon
+                        v-if="!isFolderCollapsed(folder.id)"
+                        key="open"
+                        class="w-4 h-4 mr-3 shrink-0 opacity-70"
+                      />
+                      <FolderIcon v-else key="closed" class="w-4 h-4 mr-3 shrink-0 opacity-70" />
+                    </Transition>
+                    <span class="truncate">{{ folder.name }}</span>
+                    <ChevronDownIcon
+                      class="w-4 h-4 ml-auto shrink-0 opacity-0 group-hover:opacity-50 transition-[transform,opacity] duration-200"
+                      :class="{ '-rotate-90': isFolderCollapsed(folder.id) }"
+                    />
+                  </button>
+                </FolderMenuContext>
+
+                <Transition
+                  name="collapse"
+                  @enter="collapseEnter"
+                  @after-enter="collapseAfterEnter"
+                  @leave="collapseLeave"
+                  @after-leave="collapseAfterLeave"
+                >
+                  <div v-if="!isFolderCollapsed(folder.id)" class="ml-5">
+                    <draggable
+                      :model-value="visibleFolderTabs(folder)"
+                      @update:model-value="tabsStore.applyGroupOrder(folder.id, $event)"
+                      @add="onWorkspaceAddedToFolder(folder.id)"
+                      item-key="id"
+                      :group="workspaceGroup"
+                      :animation="150"
+                      ghost-class="opacity-40"
+                      class="min-h-[12px]"
+                      :empty-insert-threshold="24"
+                      @start="onWorkspaceDragStart"
+                      @end="onWorkspaceDragEnd"
+                    >
+                      <template #header>
+                        <div
+                          v-if="folderTabs(folder.id).length === 0"
+                          class="px-3 py-1 text-xs italic opacity-50"
+                          :style="{ color: settingsStore.colors.foreground }"
+                        >
+                          No projects
+                        </div>
+                      </template>
+                      <template #item="{ element: tab }">
+                        <div>
+                          <ProjectMenuContext :tab="tab">
+                            <ProjectTile
+                              :active="isActive(tab)"
+                              :name="tab.name"
+                              expanded
+                              sidebar
+                              @click="openTab(tab)"
+                              @mousedown.middle="requestCloseTab(tab.id)"
+                            >
+                              <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                                <AutoScrollText>{{ tab.name }}</AutoScrollText>
+                              </span>
+                            </ProjectTile>
+                          </ProjectMenuContext>
+                        </div>
+                      </template>
+                    </draggable>
+
+                    <SecondaryButton
+                      v-if="hiddenCount(folder) > 0"
+                      class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
+                      @click="showMore(folder.id)"
+                    >
+                      Show more (+{{ nextStepCount(folder) }})
+                    </SecondaryButton>
+                    <SecondaryButton
+                      v-else-if="(extraShown[folder.id] ?? 0) > 0"
+                      class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
+                      @click="showLess(folder.id)"
+                    >
+                      Show less
+                    </SecondaryButton>
+                  </div>
+                </Transition>
+              </div>
+            </template>
+          </draggable>
+        </Transition>
       </div>
 
       <!-- Recent workspaces -->
@@ -392,53 +456,64 @@
           @click="sectionsStore.toggleSection('recent')"
         >
           <span>Recent</span>
-          <ChevronRightIcon v-if="sectionsStore.isCollapsed('recent')" class="w-4 h-4 ml-1" />
           <ChevronDownIcon
-            v-else
-            class="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+            class="w-4 h-4 ml-1 transition-[transform,opacity] duration-200"
+            :class="
+              sectionsStore.isCollapsed('recent')
+                ? '-rotate-90'
+                : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'
+            "
           />
         </button>
-        <draggable
-          v-if="!sectionsStore.isCollapsed('recent')"
-          :model-value="recentTabs"
-          @update:model-value="tabsStore.applyGroupOrder(null, $event)"
-          item-key="id"
-          :group="workspaceGroup"
-          :animation="150"
-          ghost-class="opacity-40"
-          class="min-h-[8px]"
-          :empty-insert-threshold="24"
-          @start="onWorkspaceDragStart"
-          @end="onWorkspaceDragEnd"
+        <Transition
+          name="collapse"
+          @enter="collapseEnter"
+          @after-enter="collapseAfterEnter"
+          @leave="collapseLeave"
+          @after-leave="collapseAfterLeave"
         >
-          <template #header>
-            <div
-              v-if="recentTabs.length === 0"
-              class="px-2 py-1 text-xs italic opacity-50"
-              :style="{ color: settingsStore.colors.foreground }"
-            >
-              No project found
-            </div>
-          </template>
-          <template #item="{ element: tab }">
-            <div>
-              <ProjectMenuContext :tab="tab">
-                <ProjectTile
-                  :active="isActive(tab)"
-                  :name="tab.name"
-                  expanded
-                  sidebar
-                  @click="openTab(tab)"
-                  @mousedown.middle="requestCloseTab(tab.id)"
-                >
-                  <span class="flex items-center text-sm truncate block min-w-0 flex-1">
-                    <AutoScrollText>{{ tab.name }}</AutoScrollText>
-                  </span>
-                </ProjectTile>
-              </ProjectMenuContext>
-            </div>
-          </template>
-        </draggable>
+          <draggable
+            v-if="!sectionsStore.isCollapsed('recent')"
+            :model-value="recentTabs"
+            @update:model-value="tabsStore.applyGroupOrder(null, $event)"
+            item-key="id"
+            :group="workspaceGroup"
+            :animation="150"
+            ghost-class="opacity-40"
+            class="min-h-[8px]"
+            :empty-insert-threshold="24"
+            @start="onWorkspaceDragStart"
+            @end="onWorkspaceDragEnd"
+          >
+            <template #header>
+              <div
+                v-if="recentTabs.length === 0"
+                class="px-2 py-1 text-xs italic opacity-50"
+                :style="{ color: settingsStore.colors.foreground }"
+              >
+                No project found
+              </div>
+            </template>
+            <template #item="{ element: tab }">
+              <div>
+                <ProjectMenuContext :tab="tab">
+                  <ProjectTile
+                    :active="isActive(tab)"
+                    :name="tab.name"
+                    expanded
+                    sidebar
+                    @click="openTab(tab)"
+                    @mousedown.middle="requestCloseTab(tab.id)"
+                  >
+                    <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <AutoScrollText>{{ tab.name }}</AutoScrollText>
+                    </span>
+                  </ProjectTile>
+                </ProjectMenuContext>
+              </div>
+            </template>
+          </draggable>
+        </Transition>
       </div>
     </div>
   </div>
@@ -470,5 +545,39 @@
 
   .workspace-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(in srgb, var(--workspace-scrollbar-color) 55%, transparent);
+  }
+
+  /* Collapse/expand animation: the Transition JS hooks drive an inline height
+     (height: auto is not animatable), these classes own timing/easing and clip
+     the block while it animates. min-height: 0 lets droppable lists
+     (min-h-[8px]/min-h-[12px]) fully collapse. pointer-events: none prevents
+     Sortable drops into a container that is animating out. */
+  .collapse-enter-active,
+  .collapse-leave-active {
+    transition:
+      height 200ms ease-in-out,
+      opacity 150ms ease-in-out;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .collapse-enter-from,
+  .collapse-leave-to {
+    opacity: 0;
+  }
+
+  .collapse-leave-active {
+    pointer-events: none;
+  }
+
+  /* Folder open/closed icon crossfade */
+  .folder-icon-enter-active,
+  .folder-icon-leave-active {
+    transition: opacity 100ms ease-in-out;
+  }
+
+  .folder-icon-enter-from,
+  .folder-icon-leave-to {
+    opacity: 0;
   }
 </style>
