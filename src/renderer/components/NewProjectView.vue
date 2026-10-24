@@ -77,7 +77,9 @@
           class="!p-1 !border-transparent"
           @click="removeHistory(h)"
         >
-          <TrashIcon class="w-4 h-4 hover:text-red-600" />
+          <SecondaryButton without-border>
+            <TrashIcon class="size-4" />
+          </SecondaryButton>
         </SecondaryButton>
       </div>
       <div v-if="history.length === 0">
