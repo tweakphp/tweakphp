@@ -7,17 +7,15 @@
     ContextMenuSeparator,
     ContextMenuTrigger,
   } from 'reka-ui'
-  import { computed, ref } from 'vue'
+  import { ref } from 'vue'
   import { useSettingsStore } from '../../stores/settings'
   import { useFoldersStore } from '../../stores/folders'
   import { useTabsStore } from '../../stores/tabs'
   import { WorkspaceFolder } from '../../../types/workspace-folder.type'
-  import Modal from '@/components/Modal.vue'
-  import TextInput from '@/components/TextInput.vue'
-  import PrimaryButton from '@/components/PrimaryButton.vue'
-  import SecondaryButton from '@/components/SecondaryButton.vue'
   import TrashIcon from '@/components/icons/TrashIcon.vue'
   import PencilIcon from '@/components/icons/PencilIcon.vue'
+  import RenameFolderModal from '@/components/modals/RenameFolderModal.vue'
+  import DeleteFolderModal from '@/components/modals/DeleteFolderModal.vue'
 
   const settingsStore = useSettingsStore()
   const foldersStore = useFoldersStore()
@@ -28,26 +26,14 @@
   }>()
 
   const renameFolderModal = ref()
-  const editedName = ref(props.folder.name)
-
   const deleteFolderModal = ref()
-
-  const folderTabsCount = computed(() => tabsStore.tabs.filter(t => t.folder_id === props.folder.id).length)
 
   const hoverRename = ref(false)
   const hoverDelete = ref(false)
   const hoverDeleteWithTabs = ref(false)
 
   const openRenameModal = () => {
-    editedName.value = props.folder.name
     renameFolderModal.value?.openModal()
-  }
-
-  const saveFolderName = () => {
-    if (editedName.value.trim()) {
-      foldersStore.renameFolder(props.folder.id, editedName.value)
-    }
-    renameFolderModal.value?.closeModal()
   }
 
   const deleteFolder = () => {
@@ -57,12 +43,6 @@
 
   const confirmDeleteFolderWithTabs = () => {
     deleteFolderModal.value?.openModal()
-  }
-
-  const deleteFolderWithTabs = async () => {
-    deleteFolderModal.value?.closeModal()
-    await tabsStore.removeFolderTabs(props.folder.id)
-    foldersStore.deleteFolder(props.folder.id)
   }
 </script>
 
@@ -136,39 +116,6 @@
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
-  <Modal title="Rename folder" ref="renameFolderModal" size="md">
-    <div>
-      <label for="folderName" class="block text-sm font-medium text-gray-300 mb-2">Folder Name</label>
-      <TextInput
-        class="w-full"
-        id="folderName"
-        v-model="editedName"
-        @keyup.enter="saveFolderName"
-        placeholder="Enter a new name"
-      />
-    </div>
-    <div class="mt-6 flex justify-end space-x-3">
-      <SecondaryButton @click="renameFolderModal.closeModal()">Cancel</SecondaryButton>
-      <PrimaryButton @click="saveFolderName">Save</PrimaryButton>
-    </div>
-  </Modal>
-  <Modal title="Delete folder" ref="deleteFolderModal" size="md">
-    <div class="space-y-5">
-      <p class="text-sm">
-        Are you sure you want to delete
-        <span class="font-semibold">{{ folder.name }}</span>
-        <template v-if="folderTabsCount > 0">
-          and its <span class="font-semibold">{{ folderTabsCount }}</span> project{{
-            folderTabsCount === 1 ? '' : 's'
-          }}?
-        </template>
-        <template v-else>?</template>
-        This action cannot be undone.
-      </p>
-      <div class="flex justify-end gap-2">
-        <SecondaryButton @click="deleteFolderModal.closeModal()">Cancel</SecondaryButton>
-        <PrimaryButton @click="deleteFolderWithTabs">Delete</PrimaryButton>
-      </div>
-    </div>
-  </Modal>
+  <RenameFolderModal ref="renameFolderModal" :folder="folder" />
+  <DeleteFolderModal ref="deleteFolderModal" :folder="folder" />
 </template>

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import { EyeIcon, PlusIcon, TrashIcon, WifiIcon, ArrowPathIcon, PencilIcon } from '@heroicons/vue/24/outline'
-  import { useSSHStore } from '../stores/ssh'
-  import Divider from '../components/Divider.vue'
-  import Modal from '../components/Modal.vue'
-  import SSHConnectView from './SSHConnectView.vue'
-  import { ConnectionConfig } from '../../types/ssh.type'
-  import { useConnectionView } from '../composables/useConnectionView'
+  import PrimaryButton from '../PrimaryButton.vue'
+  import SecondaryButton from '../SecondaryButton.vue'
+  import { EyeIcon, PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { useSSHStore } from '../../stores/ssh'
+  import Divider from '../Divider.vue'
+  import SSHConnectModal from '../modals/SSHConnectModal.vue'
+  import { ConnectionConfig } from '../../../types/ssh.type'
+  import { useConnectionView } from '../../composables/useConnectionView'
+  import RowActions from '../interactions/RowActions.vue'
+  import EmptyState from '../EmptyState.vue'
 
   const sshStore = useSSHStore()
   const emit = defineEmits(['connected', 'removed'])
@@ -56,31 +58,21 @@
             <div>
               <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
             </div>
-            <div class="flex gap-1 justify-end space-x-2">
-              <button type="button" @click="edit(connection.id)" class="p-1 cursor-pointer">
-                <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
-              </button>
-              <button type="button" @click="remove(connection.id)" class="p-1 cursor-pointer">
-                <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
-              </button>
-              <button type="button" v-if="connecting === connection.id" class="p-1 cursor-pointer">
+            <RowActions @edit="edit(connection.id)" @remove="remove(connection.id)">
+              <SecondaryButton v-if="connecting === connection.id" class="!p-1 !border-transparent">
                 <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
-              </button>
-              <button type="button" v-else @click="connect(connection)" class="p-1 cursor-pointer">
-                <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
-              </button>
-            </div>
+              </SecondaryButton>
+              <SecondaryButton v-else class="!p-1 !border-transparent" v-tippy="'Connect'" @click="connect(connection)">
+                <WifiIcon class="size-4 hover:text-green-500" />
+              </SecondaryButton>
+            </RowActions>
           </div>
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(sshStore.connections).length === 0" class="grid grid-cols-1 items-center">
-        <div>No connections yet!</div>
-      </div>
+      <EmptyState v-if="Object.values(sshStore.connections).length === 0" message="No connections yet!" />
     </div>
-    <Modal ref="connectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
-      <SSHConnectView @connected="connectModal.closeModal()" :id="editId" />
-    </Modal>
+    <SSHConnectModal ref="connectModal" :id="editId" />
   </div>
 </template>
 

@@ -4,9 +4,10 @@
   import { useLoadersStore } from '../../stores/loaders'
   import { ref } from 'vue'
   import PrimaryButton from '../../components/PrimaryButton.vue'
-  import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
-  import Modal from '../../components/Modal.vue'
-  import Loader from '../../components/Loader.vue'
+  import { PlusIcon } from '@heroicons/vue/24/outline'
+  import LoaderModal from '../../components/modals/LoaderModal.vue'
+  import RowActions from '../../components/interactions/RowActions.vue'
+  import EmptyState from '../../components/EmptyState.vue'
 
   const loadersStore = useLoadersStore()
   const editName = ref('')
@@ -37,6 +38,7 @@
         <PlusIcon class="w-4 h-4" />
       </PrimaryButton>
     </div>
+    <p class="mt-2 text-xs opacity-70">Manage custom loaders applied to your code before execution.</p>
     <Divider class="mt-3" />
     <div class="mx-auto space-y-3">
       <div v-if="Object.values(loadersStore.loaders).length > 0" class="space-y-3 mt-3">
@@ -45,24 +47,17 @@
             <div class="flex items-center">
               {{ loader.name }}
             </div>
-            <div class="flex gap-1 justify-end space-x-2">
-              <button type="button" @click="edit(loader.name)" class="p-1 cursor-pointer">
-                <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
-              </button>
-              <button type="button" @click="remove(loader.name)" class="p-1 cursor-pointer">
-                <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
-              </button>
-            </div>
+            <RowActions @edit="edit(loader.name)" @remove="remove(loader.name)" />
           </div>
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(loadersStore.loaders).length === 0" class="grid grid-cols-1 items-center mt-3">
-        <div>No custom loader yet!</div>
-      </div>
+      <EmptyState
+        v-if="Object.values(loadersStore.loaders).length === 0"
+        class="mt-3"
+        message="No custom loader yet!"
+      />
     </div>
-    <Modal ref="loaderModal" :title="editName ? 'Edit Loader' : 'Add Loader'" size="4xl">
-      <Loader :edit="editName" @saved="() => (!editName ? loaderModal.closeModal() : () => {})" />
-    </Modal>
+    <LoaderModal ref="loaderModal" :edit="editName" />
   </div>
 </template>

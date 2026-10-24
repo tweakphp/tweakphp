@@ -1,20 +1,19 @@
 <script setup lang="ts">
-  import Container from '../components/Container.vue'
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import Divider from '../components/Divider.vue'
+  import Container from '../Container.vue'
+  import PrimaryButton from '../PrimaryButton.vue'
   import { onMounted, ref, onBeforeUnmount } from 'vue'
-  import ArrowPathIcon from '../components/icons/ArrowPathIcon.vue'
-  import { useTabsStore } from '../stores/tabs.ts'
-  import SelectInput from '../components/SelectInput.vue'
-  import TextInput from '../components/TextInput.vue'
-  import { ConnectionConfig } from '../../types/docker.type.ts'
-  import { ConnectReply, ActionReply } from '../../types/client.type.ts'
-  import { useSSHStore } from '../stores/ssh'
+  import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
+  import { useTabsStore } from '../../stores/tabs.ts'
+  import SelectInput from '../SelectInput.vue'
+  import TextInput from '../TextInput.vue'
+  import { ConnectionConfig } from '../../../types/docker.type.ts'
+  import { ConnectReply, ActionReply } from '../../../types/client.type.ts'
+  import { useSSHStore } from '../../stores/ssh'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { PlusIcon } from '@heroicons/vue/24/outline'
-  import Modal from '../components/Modal.vue'
-  import SSHConnectView from './SSHConnectView.vue'
-  import eventBus from '../events'
+  import SSHConnectModal from '../modals/SSHConnectModal.vue'
+  import eventBus from '../../events'
+  import FormField from '../forms/FormField.vue'
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
@@ -165,9 +164,7 @@
   <Container>
     <div class="mt-3 w-full mx-auto">
       <div class="mx-auto space-y-3">
-        <div class="grid grid-cols-2 items-center">
-          <div>Host</div>
-
+        <FormField label="Host" divider>
           <div class="flex gap-3 items-center">
             <div class="w-full">
               <SelectInput
@@ -188,13 +185,9 @@
               </SecondaryButton>
             </div>
           </div>
-        </div>
+        </FormField>
 
-        <Divider />
-
-        <div class="grid grid-cols-2 items-center">
-          <div>Container</div>
-
+        <FormField label="Container" divider>
           <div class="flex gap-3 items-center">
             <div class="w-full">
               <SelectInput
@@ -217,29 +210,22 @@
               />
             </div>
           </div>
-        </div>
-
-        <Divider />
+        </FormField>
 
         <div class="space-y-3">
-          <div class="grid grid-cols-2 items-center">
-            <div>PHP Version</div>
+          <FormField label="PHP Version" divider>
             {{ phpVersion ?? '--' }}
-          </div>
+          </FormField>
 
-          <Divider />
-          <div class="grid grid-cols-2 items-center">
-            <div>Working directory</div>
+          <FormField label="Working directory" divider>
             <TextInput placeholder="/var/www/html" id="work_directory" v-model="form.working_directory" />
-          </div>
+          </FormField>
 
-          <Divider />
-          <div class="grid grid-cols-2 items-center">
-            <div>User <span class="text-xs text-gray-400">(optional)</span></div>
+          <FormField label="User" divider>
+            <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
             <TextInput placeholder="e.g. sail" id="docker_user" v-model="form.user" />
-          </div>
+          </FormField>
 
-          <Divider />
           <div class="flex items-center justify-end">
             <PrimaryButton @click="connect" :disabled="connecting">
               <ArrowPathIcon
@@ -257,9 +243,7 @@
         </div>
       </div>
     </div>
-    <Modal ref="sshConnectModal" title="Add SSH Host" size="lg">
-      <SSHConnectView @connected="sshConnectModal.closeModal()" />
-    </Modal>
+    <SSHConnectModal ref="sshConnectModal" title="Add SSH Host" />
   </Container>
 </template>
 

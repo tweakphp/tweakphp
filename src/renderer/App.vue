@@ -15,9 +15,8 @@
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import Modal from './components/Modal.vue'
-  import CloseTabModal from './components/CloseTabModal.vue'
-  import NewProjectView from './views/NewProjectView.vue'
+  import DeleteTabModal from './components/modals/DeleteTabModal.vue'
+  import NewProjectModal from './components/modals/NewProjectModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -220,16 +219,16 @@
         borderColor: settingsStore.colors.border,
       }"
     >
-      <div class="relative h-full flex flex-col justify-between pb-[40px]">
+      <div class="relative h-full flex flex-col justify-between pb-10">
         <WorkspaceList @open-new-project="newProjectModal.openModal()" />
         <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
-          <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
+          <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative pl-2 -mt-[1px]">
             <span
               v-if="
                 updateStore.update &&
                 updateStore.isUpdateAvailable(settingsStore.settings.version, updateStore.update.version)
               "
-              class="absolute top-[12px] right-[12px] bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
+              class="absolute top-[12px] right-[12px] bg-primary-500 text-white size-2 rounded-full"
             >
             </span>
             <RouterLink
@@ -237,7 +236,7 @@
               class="flex items-center justify-start w-full"
               :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
             >
-              <CogIcon class="w-6 h-6 hover:text-primary-500" />
+              <CogIcon class="size-6 hover:text-primary-500" />
               <span class="ml-3 text-sm"> Settings </span>
             </RouterLink>
           </SidebarItem>
@@ -275,9 +274,7 @@
         <RouterView :key="$route.fullPath" />
       </main>
     </div>
-    <Modal title="Add new project" ref="newProjectModal" size="xl">
-      <NewProjectView @opened="newProjectModal.closeModal()" />
-    </Modal>
-    <CloseTabModal />
+    <NewProjectModal ref="newProjectModal" />
+    <DeleteTabModal />
   </div>
 </template>

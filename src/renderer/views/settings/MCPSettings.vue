@@ -7,6 +7,7 @@
   import PrimaryButton from '../../components/PrimaryButton.vue'
   import SecondaryButton from '../../components/SecondaryButton.vue'
   import { useSettingsStore } from '../../stores/settings'
+  import FormField from '../../components/forms/FormField.vue'
 
   const settingsStore = useSettingsStore()
   const saved = ref(false)
@@ -79,6 +80,13 @@
     setTimeout(() => {
       saved.value = false
     }, 2000)
+  }
+
+  const onPortChange = () => {
+    saveSettings()
+    if (mcpEnabled.value) {
+      window.ipcRenderer.send('mcp.settings-changed', true)
+    }
   }
 
   const fetchServerStatus = async () => {
@@ -165,41 +173,32 @@
         Changes Saved
       </span>
     </div>
+    <p class="mt-2 text-xs opacity-70">Expose TweakPHP to AI coding agents through the Model Context Protocol.</p>
     <Divider class="mt-3" />
 
-    <div class="mt-3 grid grid-cols-2 items-start">
-      <div>Enable MCP Server</div>
-      <div class="flex flex-col gap-1">
-        <SwitchInput v-model="mcpEnabled" />
-        <span class="text-[11px] opacity-60">
-          Allow AI coding agents to execute PHP code through TweakPHP via the Model Context Protocol
-        </span>
-      </div>
-    </div>
+    <FormField
+      class="mt-3"
+      label="Enable MCP Server"
+      align="start"
+      description="Allow AI coding agents to execute PHP code through TweakPHP via the Model Context Protocol"
+      divider
+    >
+      <SwitchInput v-model="mcpEnabled" />
+    </FormField>
 
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-2 items-center">
-      <div>Server Port</div>
+    <FormField class="mt-3" label="Server Port" divider>
       <TextInput
         id="mcp-port"
         v-model="mcpPort"
+        class="w-full"
         type="number"
         :disabled="!mcpEnabled"
-        @change="
-          () => {
-            saveSettings()
-            if (mcpEnabled) window.ipcRenderer.send('mcp.settings-changed', true)
-          }
-        "
+        @change="onPortChange"
         placeholder="3000"
       />
-    </div>
+    </FormField>
 
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-2 items-start">
-      <div>Server Status</div>
+    <FormField class="mt-3" label="Server Status" align="start" divider>
       <div class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full" :class="serverStatus.running ? 'bg-green-500' : 'bg-gray-400'"></div>
@@ -220,12 +219,9 @@
           </SecondaryButton>
         </div>
       </div>
-    </div>
+    </FormField>
 
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-2 items-start">
-      <div>Connection Info</div>
+    <FormField class="mt-3" label="Connection Info" align="start">
       <div class="flex flex-col gap-2">
         <div v-if="!mcpEnabled" class="text-[11px] opacity-60">Enable the MCP server to allow AI agent connections</div>
         <template v-else>
@@ -234,16 +230,16 @@
             <pre class="text-[10px] bg-gray-800 p-2 rounded leading-relaxed select-all overflow-x-auto">{{
               configSnippet
             }}</pre>
-            <button
+            <SecondaryButton
+              class="!absolute !top-1 !right-1 !h-auto !rounded !border-transparent !bg-gray-700 !px-1.5 !py-0.5 !text-[10px] opacity-50 hover:opacity-100"
               @click="copyConfig"
-              class="absolute top-1 right-1 text-[10px] opacity-50 hover:opacity-100 px-1.5 py-0.5 rounded bg-gray-700"
             >
               copy
-            </button>
+            </SecondaryButton>
           </div>
         </template>
       </div>
-    </div>
+    </FormField>
   </div>
 </template>
 

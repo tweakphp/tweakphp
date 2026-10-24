@@ -3,13 +3,14 @@
   import { useHistoryStore } from '../stores/history'
   import { TrashIcon } from '@heroicons/vue/24/outline'
   import { useTabsStore } from '../stores/tabs'
-  import Divider from '../components/Divider.vue'
+  import Divider from './Divider.vue'
   import { useSettingsStore } from '../stores/settings'
   import { Tab } from '../../types/tab.type'
   import { History } from '../../types/history.type'
-  import TextInput from '../components/TextInput.vue'
-  import SecondaryButton from '../components/SecondaryButton.vue'
-  import ProjectTile from '../components/ProjectTile.vue'
+  import TextInput from './TextInput.vue'
+  import SecondaryButton from './SecondaryButton.vue'
+  import ProjectTile from './ProjectTile.vue'
+  import EmptyState from './EmptyState.vue'
   import router from '../router'
 
   const tabsStore = useTabsStore()
@@ -73,11 +74,17 @@
             <p class="text-[10px] opacity-40 mt-[1px] truncate w-[300px] text-left">{{ h.path }}</p>
           </div>
         </button>
-        <button type="button" v-if="h.path !== settingsStore.settings.laravelPath">
-          <TrashIcon @click="removeHistory(h)" class="w-4 h-4 hover:text-red-600" />
-        </button>
+        <SecondaryButton
+          v-if="h.path !== settingsStore.settings.laravelPath"
+          class="!p-1 !border-transparent"
+          @click="removeHistory(h)"
+        >
+          <TrashIcon class="w-4 h-4 hover:text-red-600" />
+        </SecondaryButton>
       </div>
-      <div v-if="history.length === 0">No projects found</div>
+      <div v-if="history.length === 0">
+        <EmptyState message="No projects found" />
+      </div>
     </div>
   </div>
 </template>

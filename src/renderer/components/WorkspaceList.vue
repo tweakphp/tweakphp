@@ -6,12 +6,13 @@
   import { useFoldersStore } from '../stores/folders'
   import { useSectionsStore } from '../stores/sections'
   import { useSettingsStore } from '../stores/settings'
+  import SecondaryButton from './SecondaryButton.vue'
   import router from '../router'
   import events from '../events'
   import ProjectTile from './ProjectTile.vue'
   import ProjectMenuContext from './contextMenus/ProjectMenuContext.vue'
   import FolderMenuContext from './contextMenus/FolderMenuContext.vue'
-  import NewFolderModal from './NewFolderModal.vue'
+  import NewFolderModal from './modals/NewFolderModal.vue'
   import { Tab } from '../../types/tab.type'
   import { WorkspaceFolder } from '../../types/workspace-folder.type'
 
@@ -182,9 +183,9 @@
 </script>
 
 <template>
-  <div class="h-full min-h-0 flex flex-col py-3 pl-3">
+  <div class="h-full min-h-0 flex flex-col py-3 pl-1 pr-2">
     <!-- Add new project -->
-    <div class="shrink-0 pr-3">
+    <div class="shrink-0">
       <button @click="emit('open-new-project')" class="w-full">
         <ProjectTile expanded sidebar>
           <PlusIcon class="w-4 h-4 flex-shrink-0" />
@@ -248,7 +249,7 @@
 
       <!-- Folders -->
       <div class="mt-3">
-        <div class="flex items-center h-8 px-2 text-sm font-medium opacity-50">
+        <div class="flex items-center h-8 pl-2 text-sm font-medium opacity-50">
           <button
             type="button"
             class="group flex items-center min-w-0 rounded-lg hover:opacity-80"
@@ -262,15 +263,15 @@
               class="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
             />
           </button>
-          <button
-            type="button"
-            class="ml-auto rounded-md p-1 hover:opacity-80"
+          <SecondaryButton
+            withoutBorder
+            class="ml-auto !p-1"
             title="New folder"
             aria-label="New folder"
             @click="openNewFolderModal"
           >
             <PlusIcon class="w-4 h-4" />
-          </button>
+          </SecondaryButton>
         </div>
         <draggable
           v-if="!sectionsStore.isCollapsed('folders')"
@@ -283,13 +284,22 @@
           ghost-class="opacity-40"
           class="min-h-[8px]"
         >
+          <template #header>
+            <div
+              v-if="foldersStore.folders.length === 0"
+              class="px-3 py-1 text-xs italic opacity-50"
+              :style="{ color: settingsStore.colors.foreground }"
+            >
+              No folder found
+            </div>
+          </template>
           <template #item="{ element: folder }">
             <div>
               <FolderMenuContext :folder="folder">
                 <button
                   type="button"
                   data-folder-handle
-                  class="group flex items-center w-full h-8 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all hover:bg-black/5 dark:hover:bg-white/10"
+                  class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all hover:bg-black/5 dark:hover:bg-white/10"
                   :style="{
                     color: settingsStore.colors.foreground,
                   }"
@@ -352,20 +362,20 @@
                   </template>
                 </draggable>
 
-                <button
+                <SecondaryButton
                   v-if="hiddenCount(folder) > 0"
+                  class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
                   @click="showMore(folder.id)"
-                  class="w-full text-start px-3 py-1 text-xs opacity-60 hover:opacity-100 hover:text-primary-500 transition-all"
                 >
                   Show more (+{{ nextStepCount(folder) }})
-                </button>
-                <button
+                </SecondaryButton>
+                <SecondaryButton
                   v-else-if="(extraShown[folder.id] ?? 0) > 0"
+                  class="!h-auto !w-full !min-w-0 !justify-start !border-transparent !px-3 !py-1 !text-xs text-start opacity-60 hover:opacity-100 hover:!text-primary-500"
                   @click="showLess(folder.id)"
-                  class="w-full text-start px-3 py-1 text-xs opacity-60 hover:opacity-100 hover:text-primary-500 transition-all"
                 >
                   Show less
-                </button>
+                </SecondaryButton>
               </div>
             </div>
           </template>
@@ -376,7 +386,7 @@
       <div class="mt-3">
         <button
           type="button"
-          class="group flex items-center w-full h-8 px-2 rounded-lg text-left text-sm font-medium opacity-50 hover:opacity-80 transition-opacity"
+          class="group flex items-center w-full h-6 px-2 rounded-lg text-left text-sm font-medium opacity-50 hover:opacity-80 transition-opacity"
           :aria-expanded="!sectionsStore.isCollapsed('recent')"
           @click="sectionsStore.toggleSection('recent')"
         >
@@ -400,6 +410,15 @@
           @start="onWorkspaceDragStart"
           @end="onWorkspaceDragEnd"
         >
+          <template #header>
+            <div
+              v-if="recentTabs.length === 0"
+              class="px-2 py-1 text-xs italic opacity-50"
+              :style="{ color: settingsStore.colors.foreground }"
+            >
+              No project found
+            </div>
+          </template>
           <template #item="{ element: tab }">
             <div>
               <ProjectMenuContext :tab="tab">

@@ -14,8 +14,7 @@
     ContextMenuTrigger,
   } from 'reka-ui'
   import { computed, ref } from 'vue'
-  import Modal from '@/components/Modal.vue'
-  import ChangeNameProject from '@/views/ChangeNameProject.vue'
+  import RenameTabModal from '@/components/modals/RenameTabModal.vue'
   const changeNameProject = ref()
   import { Tab } from '../../../types/tab.type'
   import { WorkspaceFolder } from '../../../types/workspace-folder.type'
@@ -29,7 +28,7 @@
     FolderPlusIcon,
     StarIcon,
   } from '@heroicons/vue/24/outline'
-  import NewFolderModal from '@/components/NewFolderModal.vue'
+  import NewFolderModal from '@/components/modals/NewFolderModal.vue'
 
   const settingsStore = useSettingsStore()
   const tabsStore = useTabsStore()
@@ -274,8 +273,6 @@
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
-  <Modal title="Change name" ref="changeNameProject" size="xl">
-    <ChangeNameProject @opened="changeNameProject.closeModal()" :tab="tab" />
-  </Modal>
+  <RenameTabModal ref="changeNameProject" :tab="tab" />
   <NewFolderModal ref="newFolderModal" @created="onFolderCreated" />
 </template>

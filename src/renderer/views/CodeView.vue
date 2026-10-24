@@ -299,7 +299,7 @@
 
     <div
       v-if="tab.info"
-      class="fixed bottom-0 left-0 right-0 border-t z-10 h-6 flex items-center justify-between text-xs"
+      class="fixed bottom-0 left-0 right-0 border-t z-10 h-10 flex items-center justify-between text-xs"
       :style="{
         paddingLeft: 'var(--sidebar-width)',
         borderColor: settingsStore.colors.border,
@@ -320,7 +320,7 @@
       <div class="px-2 flex gap-1 w-1/2 items-center">
         <div class="whitespace-nowrap">PHP {{ tab.info.php_version }}</div>
       </div>
-      <div class="pr-2 flex items-center justify-end gap-3 w-1/2">
+      <div class="pr-4 flex items-center justify-end gap-3 w-1/2">
         <ProgressBar />
         <span class="whitespace-nowrap items-end">{{ tab.info.name }} {{ tab.info.version }}</span>
       </div>

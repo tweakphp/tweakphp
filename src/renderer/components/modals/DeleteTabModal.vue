@@ -1,13 +1,11 @@
 <script setup lang="ts">
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-  import Modal from './Modal.vue'
-  import PrimaryButton from './PrimaryButton.vue'
-  import SecondaryButton from './SecondaryButton.vue'
-  import events from '../events'
-  import { useTabsStore } from '../stores/tabs'
+  import ConfirmModal from './ConfirmModal.vue'
+  import events from '../../events'
+  import { useTabsStore } from '../../stores/tabs'
 
   const tabsStore = useTabsStore()
-  const closeTabModal = ref<InstanceType<typeof Modal> | null>(null)
+  const confirmModal = ref<InstanceType<typeof ConfirmModal> | null>(null)
   const tabPendingClose = ref<number | null>(null)
   const pendingTab = computed(() => (tabPendingClose.value ? tabsStore.findTab(tabPendingClose.value) : null))
 
@@ -16,12 +14,11 @@
   const closeTabRequestListener = (event: Event) => {
     const id = (event as CustomEvent<number>).detail
     tabPendingClose.value = id
-    closeTabModal.value?.openModal()
+    confirmModal.value?.openModal()
   }
 
   const cancelCloseTab = () => {
     tabPendingClose.value = null
-    closeTabModal.value?.closeModal()
   }
 
   const confirmCloseTab = async () => {
@@ -31,7 +28,6 @@
     }
 
     tabPendingClose.value = null
-    closeTabModal.value?.closeModal()
     await tabsStore.removeTab(id)
   }
 
@@ -51,16 +47,16 @@
 </script>
 
 <template>
-  <Modal title="Remove this project" ref="closeTabModal" size="md">
-    <div class="space-y-5">
-      <p class="text-sm">
-        Are you sure you want to remove
-        <span class="font-semibold">{{ nameTab }}</span> project?
-      </p>
-      <div class="flex justify-end gap-2">
-        <SecondaryButton @click="cancelCloseTab">Cancel</SecondaryButton>
-        <PrimaryButton @click="confirmCloseTab">Remove project</PrimaryButton>
-      </div>
-    </div>
-  </Modal>
+  <ConfirmModal
+    title="Remove this project"
+    confirm-text="Remove project"
+    ref="confirmModal"
+    @confirm="confirmCloseTab"
+    @cancel="cancelCloseTab"
+  >
+    <p>
+      Are you sure you want to remove
+      <span class="font-semibold">{{ nameTab }}</span> project?
+    </p>
+  </ConfirmModal>
 </template>

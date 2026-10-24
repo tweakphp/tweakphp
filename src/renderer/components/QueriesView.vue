@@ -4,6 +4,7 @@
   import { useSettingsStore } from '../stores/settings'
   import { QueryItem, Result } from '../../types/tab.type'
   import { MagnifyingGlassIcon, ClipboardDocumentIcon, CheckIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
+  import SecondaryButton from './SecondaryButton.vue'
 
   type StatementGroup = {
     result: Result | null
@@ -274,14 +275,14 @@
               >
                 {{ formatTime(item) }}
               </span>
-              <button
-                @click="copyQuery(item, `${group.index}-${queryIndex}`)"
-                class="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              <SecondaryButton
+                class="!rounded !p-1 !border-transparent !text-gray-400 hover:!text-white hover:!bg-white/10"
                 v-tippy="{ content: 'Copy query', placement: 'top' }"
+                @click="copyQuery(item, `${group.index}-${queryIndex}`)"
               >
                 <CheckIcon v-if="copiedIndex === `${group.index}-${queryIndex}`" class="w-3.5 h-3.5 text-green-400" />
                 <ClipboardDocumentIcon v-else class="w-3.5 h-3.5" />
-              </button>
+              </SecondaryButton>
             </div>
           </div>
 

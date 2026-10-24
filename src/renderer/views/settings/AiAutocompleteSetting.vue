@@ -15,6 +15,7 @@
   } from '../../../types/ai/prompts.ts'
   import PrimaryButton from '@/components/PrimaryButton.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
+  import FormField from '@/components/forms/FormField.vue'
 
   const saved = ref(false)
   const showToast = ref(false)
@@ -79,18 +80,15 @@
     <div class="flex items-center justify-between overscroll-y-contain">
       <Title>AI Completion</Title>
     </div>
+    <p class="mt-2 text-xs opacity-70">Configure the AI provider, model, API key, and prompt templates.</p>
     <Divider class="mt-3" />
 
-    <div class="mt-3 grid grid-cols-2 items-center">
-      <div>Active</div>
+    <FormField class="mt-3" label="Active" divider>
       <SwitchInput id="ai-status" v-model="settingsStore.settings.aiStatus" @update:model-value="saveSettings()">
       </SwitchInput>
-    </div>
+    </FormField>
 
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-2 items-center">
-      <div>Provider</div>
+    <FormField class="mt-3" label="Provider">
       <SelectInput
         id="ai-provider"
         v-model="settingsStore.settings.aiProvider"
@@ -99,11 +97,10 @@
       >
         <option value="openrouter">OpenRouter</option>
       </SelectInput>
-    </div>
+    </FormField>
     <template v-if="settingsStore.settings.aiProvider === 'openrouter'">
       <Divider class="mt-3" />
-      <div class="mt-3 grid grid-cols-2 items-center">
-        <div>Models</div>
+      <FormField class="mt-3" label="Models">
         <div>
           <SelectInput
             id="ai-model"
@@ -119,25 +116,24 @@
           </SelectInput>
           <p v-if="error" class="text-xs text-red-500 mt-1">It is impossible to fetch models: {{ error }}</p>
         </div>
-      </div>
+      </FormField>
       <p class="text-xs opacity-70 mt-3">
         GPT-4o-mini is recommended. Larger models offer better performance but require more time for responses, making
         autocompletion less immediate and useful.
       </p>
     </template>
     <Divider class="mt-3" />
-    <div class="mt-3 grid grid-cols-2 items-center">
-      <div>API Key</div>
+    <FormField class="mt-3" label="API Key" divider>
       <TextInput
         id="api-key"
         type="password"
+        class="w-full"
         v-model="settingsStore.settings.aiApiKey"
         @change="saveSettings()"
         placeholder="Insert your API key here"
       />
-    </div>
+    </FormField>
 
-    <Divider class="mt-3" />
     <p class="text-xs opacity-70 mt-3">
       Your API key is stored locally and only used to send requests to the selected provider.
     </p>
