@@ -99,7 +99,7 @@
         <Toolbar v-if="router.currentRoute.value.name === 'code' && tab" />
       </div>
       <div class="flex h-full flex-grow w-full" v-if="platform === 'darwin'"></div>
-      <div class="flex-grow-0 flex items-center space-x-2">
+      <div class="flex-grow-0 flex items-center gap-1">
         <template v-if="router.currentRoute.value.name === 'code' && tab && tab.type === 'code'">
           <SecondaryButton
             without-border

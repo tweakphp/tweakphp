@@ -133,7 +133,7 @@
 </script>
 
 <template>
-  <div class="flex items-center space-x-2" v-if="tab">
+  <div class="flex items-center gap-1" v-if="tab">
     <!-- local -->
     <SecondaryButton
       without-border
