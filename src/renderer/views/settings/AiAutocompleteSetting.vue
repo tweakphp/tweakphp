@@ -5,7 +5,7 @@
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
   import { useOpenRouter } from '../../composables/useOpenrouter'
-  import { ref, onMounted } from 'vue'
+  import { ref, onMounted, computed } from 'vue'
   import SwitchInput from '@/components/SwitchInput.vue'
   import TextareaInput from '@/components/TextareaInput.vue'
   import {
@@ -20,6 +20,27 @@
   const saved = ref(false)
   const showToast = ref(false)
   const settingsStore = useSettingsStore()
+
+  const aiProvider = computed({
+    get: () => settingsStore.settings.aiProvider ?? '',
+    set: (value: string) => {
+      settingsStore.settings.aiProvider = value || null
+    },
+  })
+
+  const aiModelId = computed({
+    get: () => settingsStore.settings.aiModelId ?? '',
+    set: (value: string) => {
+      settingsStore.settings.aiModelId = value || null
+    },
+  })
+
+  const aiApiKey = computed({
+    get: () => settingsStore.settings.aiApiKey ?? '',
+    set: (value: string) => {
+      settingsStore.settings.aiApiKey = value || null
+    },
+  })
 
   const { models, loading, error, fetchModels } = useOpenRouter()
 
@@ -91,7 +112,7 @@
     <FormField class="mt-3" label="Provider">
       <SelectInput
         id="ai-provider"
-        v-model="settingsStore.settings.aiProvider"
+        v-model="aiProvider"
         @change="onProviderChange()"
         placeholder="Select the AI provider"
       >
@@ -104,7 +125,7 @@
         <div>
           <SelectInput
             id="ai-model"
-            v-model="settingsStore.settings.aiModelId"
+            v-model="aiModelId"
             @change="saveSettings()"
             placeholder="Select the AI Model"
             :disabled="loading || !!error"
@@ -128,7 +149,7 @@
         id="api-key"
         type="password"
         class="w-full"
-        v-model="settingsStore.settings.aiApiKey"
+        v-model="aiApiKey"
         @change="saveSettings()"
         placeholder="Insert your API key here"
       />
