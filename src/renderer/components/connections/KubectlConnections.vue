@@ -99,9 +99,9 @@
         <Divider />
         <template v-for="connection in projectConnections">
           <div class="grid grid-cols-5 gap-2 items-center">
-            <div class="flex items-center">
-              <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
-              {{ connection.name }}
+            <div class="flex items-center min-w-0">
+              <div class="size-4 rounded-full mr-1 shrink-0" :class="[`bg-${connection.color}-500`]"></div>
+              <AutoScrollText>{{ connection.name }}</AutoScrollText>
             </div>
             <div class="min-w-0">
               <AutoScrollText>{{ connection.context }}</AutoScrollText>

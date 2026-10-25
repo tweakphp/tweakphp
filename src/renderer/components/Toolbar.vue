@@ -37,8 +37,6 @@
   const sshModal = ref()
   const kubectlModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
-  const sshConnecting = ref(false)
-  const kubectlConnecting = ref(false)
   const connecting = ref('')
 
   onMounted(() => {
