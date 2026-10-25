@@ -310,9 +310,25 @@ export class DuplicateProjectHandler {
 
     const cloneId = Date.now()
 
-    // Connections are atomic to a project: the clone must own its own copies,
-    // never share the source's rows.
-    let copiedConnectionId: string | null = null
+    const clone: TabRecord = {
+      ...source,
+      id: cloneId,
+      connection_id: null,
+      position: (source.position ?? 0) + 0.5,
+      created_at: undefined,
+      updated_at: undefined,
+    }
+    this.tabsRepo.saveTab(clone)
+
+    const copiedIds = new Map<string, string>()
+    for (const connection of this.connectionsRepo.getConnectionsForTab(source.id)) {
+      if (connection.type === 'vapor') continue
+      const copyId = this.uniqueConnectionId()
+      const { id, ...config } = connection
+      this.connectionsRepo.saveConnection({ ...config, id: copyId, tab_id: cloneId })
+      copiedIds.set(String(connection.id), String(copyId))
+    }
+
     if (source.execution === 'vapor') {
       // Vapor configs are keyed by tab id: copy the source config over
       const vapor = this.connectionsRepo.getConnection(String(source.id))
@@ -320,34 +336,17 @@ export class DuplicateProjectHandler {
         const { id, ...config } = vapor
         this.connectionsRepo.saveConnection({ ...config, id: cloneId, tab_id: cloneId })
       }
+      clone.connection_id = String(cloneId)
+      this.tabsRepo.saveTab(clone)
     } else if (source.connection_id) {
-      const active = this.connectionsRepo.getConnection(source.connection_id)
-      if (active) {
-        const copyId = this.uniqueConnectionId()
-        const { id, ...config } = active
-        this.connectionsRepo.saveConnection({ ...config, id: copyId, tab_id: cloneId })
-        copiedConnectionId = String(copyId)
+      // Sync execution for the copied connection (same as connect)
+      const copiedConnectionId = copiedIds.get(String(source.connection_id))
+      if (copiedConnectionId) {
+        assignConnectionToProject(cloneId, copiedConnectionId, {
+          tabsRepo: this.tabsRepo,
+          connectionsRepo: this.connectionsRepo,
+        })
       }
-    }
-
-    const clone: TabRecord = {
-      ...source,
-      id: cloneId,
-      connection_id:
-        source.execution === 'vapor' ? String(cloneId) : (copiedConnectionId ?? source.connection_id ?? null),
-      position: (source.position ?? 0) + 0.5,
-      created_at: undefined,
-      updated_at: undefined,
-    }
-
-    this.tabsRepo.saveTab(clone)
-
-    // Sync execution for the copied connection (same as connect)
-    if (copiedConnectionId) {
-      assignConnectionToProject(cloneId, copiedConnectionId, {
-        tabsRepo: this.tabsRepo,
-        connectionsRepo: this.connectionsRepo,
-      })
     }
 
     broadcastAppChange('app:tabs:changed')

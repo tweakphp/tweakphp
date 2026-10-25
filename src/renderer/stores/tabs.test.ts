@@ -123,7 +123,7 @@ describe('tabs store', () => {
     expect(tabsStore.reloadVersion).toBe(before + 1)
   })
 
-  it('duplicateTab copies the active connection for the clone (atomic ownership)', async () => {
+  it('duplicateTab copies all the connections owned by the project (atomic ownership)', async () => {
     seedTabs(tabsStore, [makeTab({ id: 1, execution: 'ssh', connection_id: '101' })])
     tabsStore.setCurrent(tabsStore.tabs[0])
 
@@ -141,6 +141,21 @@ describe('tabs store', () => {
             path: '/var/www',
             tab_id: 1,
           },
+          {
+            id: '201',
+            type: 'docker',
+            name: 'app',
+            container_name: 'app',
+            working_directory: '/var/www/html',
+            tab_id: 1,
+          },
+          {
+            id: '301',
+            type: 'ssh',
+            name: 'foreign',
+            host: '9.9.9.9',
+            tab_id: 2,
+          },
         ])
       }
       if (channel === 'storage:tabs:list') {
@@ -153,12 +168,32 @@ describe('tabs store', () => {
     const clone = await tabsStore.duplicateTab(1)
 
     expect(clone).not.toBeNull()
-    // the clone owns its own copy, never the source's row
-    expect(clone!.connection_id).not.toBe('101')
+    // every owned connection is copied for the clone, never shared
     expect(invoke).toHaveBeenCalledWith(
       'storage:connections:save',
       expect.objectContaining({ type: 'ssh', host: '1.2.3.4', tab_id: clone!.id })
     )
+    expect(invoke).toHaveBeenCalledWith(
+      'storage:connections:save',
+      expect.objectContaining({ type: 'docker', container_name: 'app', tab_id: clone!.id })
+    )
+
+    const savedPayloads = (invoke.mock.calls as any[][])
+      .filter(([channel]) => channel === 'storage:connections:save')
+      .map(([, payload]) => payload)
+    // only the two owned connections: the foreign one is not copied
+    expect(savedPayloads).toHaveLength(2)
+
+    // the tab must exist in the DB before its connections (FK on connections.tab_id)
+    const callIndexOf = (channel: string) => (invoke.mock.calls as any[][]).findIndex(([c]) => c === channel)
+    const firstSaveAll = invoke.mock.invocationCallOrder[callIndexOf('storage:tabs:save-all')]
+    const firstConnectionSave = invoke.mock.invocationCallOrder[callIndexOf('storage:connections:save')]
+    expect(firstSaveAll).toBeLessThan(firstConnectionSave)
+
+    // the clone's active connection maps to its own ssh copy
+    const sshCopy = savedPayloads.find(payload => payload.type === 'ssh')
+    expect(clone!.connection_id).toBe(String(sshCopy.id))
+    expect(clone!.connection_id).not.toBe('101')
   })
 
   // ---- applyGroupOrder ----

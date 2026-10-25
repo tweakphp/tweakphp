@@ -103,6 +103,11 @@ describe('Project MCP handlers', () => {
 
     mockConnectionsRepo = {
       getConnection: vi.fn().mockImplementation((id: string) => storedConnections.get(String(id))),
+      getConnectionsForTab: vi
+        .fn()
+        .mockImplementation((tabId: number) =>
+          [...storedConnections.values()].filter((connection: any) => connection.tab_id === Number(tabId))
+        ),
       saveConnection: vi.fn().mockImplementation((connection: any) => {
         storedConnections.set(String(connection.id), { ...connection })
         return { ...connection }
@@ -353,6 +358,42 @@ describe('Project MCP handlers', () => {
       expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(
         expect.objectContaining({ id: result.id, execution: 'ssh', connection_id: String(copyCall[0].id) })
       )
+    })
+
+    it('duplicates all the connections owned by the project (never shared)', async () => {
+      tabs = [makeTab({ id: 11, execution: 'ssh', connection_id: '101' })]
+      ;(mockTabsRepo.getTab as any).mockImplementation((id: number) => tabs.find(tab => tab.id === Number(id)))
+      storedConnections.set('101', { id: '101', type: 'ssh', name: 'prod', host: '1.2.3.4', tab_id: 11 })
+      storedConnections.set('201', { id: '201', type: 'docker', name: 'app', container_name: 'app', tab_id: 11 })
+      // a connection owned by another project must not be copied
+      storedConnections.set('301', { id: '301', type: 'ssh', name: 'foreign', host: '9.9.9.9', tab_id: 99 })
+
+      const handler = new DuplicateProjectHandler({
+        tabsRepo: mockTabsRepo,
+        connectionsRepo: mockConnectionsRepo,
+      })
+
+      const result = await handler.handle({ projectId: 11 })
+
+      // the tab must exist before its connections (FK on connections.tab_id)
+      const firstSaveTab = (mockTabsRepo.saveTab as any).mock.invocationCallOrder[0]
+      const firstSaveConnection = (mockConnectionsRepo.saveConnection as any).mock.invocationCallOrder[0]
+      expect(firstSaveTab).toBeLessThan(firstSaveConnection)
+
+      const copies = (mockConnectionsRepo.saveConnection as any).mock.calls
+        .map((call: any[]) => call[0])
+        .filter((connection: any) => connection.tab_id === result.id)
+      expect(copies).toHaveLength(2)
+      expect(copies.map((connection: any) => connection.type).sort()).toEqual(['docker', 'ssh'])
+
+      // fresh ids: the clone never points at the source rows
+      const copyIds = copies.map((connection: any) => String(connection.id))
+      expect(copyIds).not.toContain('101')
+      expect(copyIds).not.toContain('201')
+
+      // the clone's active connection maps to its own ssh copy
+      const sshCopy = copies.find((connection: any) => connection.type === 'ssh')
+      expect(result.connectionId).toBe(String(sshCopy.id))
     })
   })
 

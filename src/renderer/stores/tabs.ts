@@ -144,23 +144,21 @@ export const useTabsStore = defineStore('tabs', () => {
     const source = tabs.value[index]
     const clone = { ...toPlain(source), id: Date.now() } as Tab
 
-    // Connections are atomic to a project: the clone must own its own copy
-    // of the source's active connection (never share the source's row)
-    if (source.execution !== 'vapor' && source.connection_id) {
-      const active = connectionsStore.getConnection(source.connection_id)
-      if (active) {
-        const copyId = Date.now()
-        void window.ipcRenderer.invoke('storage:connections:save', {
-          ...toPlain(active),
-          id: copyId,
-          tab_id: clone.id,
-        })
-        clone.connection_id = String(copyId)
-      }
-    }
-
+    clone.connection_id = null
     tabs.value.splice(index + 1, 0, clone)
-    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    await window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+
+    const copiedIds = new Map<string, string>()
+    let copyId = clone.id + 1
+    for (const connection of connectionsStore.connections.filter(c => c.tab_id === source.id && c.type !== 'vapor')) {
+      const newId = String(copyId++)
+      copiedIds.set(String(connection.id), newId)
+      await window.ipcRenderer.invoke('storage:connections:save', {
+        ...toPlain(connection),
+        id: newId,
+        tab_id: clone.id,
+      })
+    }
 
     // Vapor connection configs are keyed by tab id: copy the source config over
     if (source.execution === 'vapor') {
@@ -171,7 +169,12 @@ export const useTabsStore = defineStore('tabs', () => {
         vaporStore.setClientPath(clone.id, config.client_path)
         vaporStore.setEnvironment(clone.id, config.environment)
       }
-      void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    } else if (source.connection_id) {
+      clone.connection_id = copiedIds.get(String(source.connection_id)) ?? null
+    }
+
+    if (copiedIds.size > 0 || source.execution === 'vapor') {
+      await window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
     }
 
     setCurrent(clone)
