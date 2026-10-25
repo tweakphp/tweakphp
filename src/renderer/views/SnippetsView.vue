@@ -1,6 +1,7 @@
 <script setup lang="ts">
-  import { computed, nextTick, onMounted, Ref, ref, watch } from 'vue'
+  import { computed, onMounted, Ref, ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
+  import { ListboxContent, ListboxFilter, ListboxItem, ListboxRoot } from 'reka-ui'
   import Container from '../components/Container.vue'
   import Title from '../components/Title.vue'
   import Divider from '../components/Divider.vue'
@@ -34,44 +35,18 @@
   const editingSnippet: Ref<Snippet | null> = ref(null)
   const pendingDelete: Ref<Snippet | null> = ref(null)
   const deleteSnippetModal = ref()
-  const searchInput = ref<HTMLInputElement | null>(null)
-  const listContainer = ref<HTMLElement | null>(null)
+  const searchInput = ref<InstanceType<typeof ListboxFilter> | null>(null)
 
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
   const currentTab = computed(() => tabsStore.getCurrent())
 
-  const selectedIndex = computed(() => snippetsStore.snippets.findIndex(s => s.id === selected.value?.id))
-
-  const scrollSelectedIntoView = () => {
-    nextTick(() => {
-      listContainer.value
-        ?.querySelector(`[data-snippet-id="${selected.value?.id}"]`)
-        ?.scrollIntoView({ block: 'nearest' })
-    })
-  }
-
-  const moveSelection = (delta: number) => {
-    const list = snippetsStore.snippets
-    if (list.length === 0) return
-    let index = selectedIndex.value
-    if (index === -1) {
-      index = delta > 0 ? 0 : list.length - 1
-    } else {
-      index = (index + delta + list.length) % list.length
+  const emptyMessage = computed(() => {
+    if (searchQuery.value) {
+      return `No snippets matching "${searchQuery.value}".`
     }
-    selected.value = list[index]
-    scrollSelectedIntoView()
-  }
-
-  const focusList = () => {
-    if (snippetsStore.snippets.length === 0) return
-    if (!selected.value) {
-      selected.value = snippetsStore.snippets[0]
-    }
-    scrollSelectedIntoView()
-    listContainer.value?.focus()
-  }
+    return 'No snippets yet. Select code in the editor and press Cmd/Ctrl+Shift+S.'
+  })
 
   const editSelected = () => {
     if (selected.value) {
@@ -79,9 +54,12 @@
     }
   }
 
-  const deleteSelected = () => {
-    if (selected.value) {
-      requestDeleteSnippet(selected.value)
+  // keep the selection in sync with the highlighted option so the preview
+  // follows arrow-key navigation (and Enter edits the highlighted snippet)
+  const onHighlight = (payload: { value: unknown } | undefined) => {
+    const snippet = payload?.value as Snippet | undefined
+    if (snippet) {
+      selected.value = snippet
     }
   }
 
@@ -90,7 +68,6 @@
     if (!selected.value && snippetsStore.snippets.length > 0) {
       selected.value = snippetsStore.snippets[0]
     }
-    searchInput.value?.focus()
   })
 
   watch(searchQuery, term => {
@@ -114,13 +91,6 @@
     return snippet.title?.trim() ? snippet.title : 'Untitled'
   }
 
-  const emptyMessage = computed(() => {
-    if (searchQuery.value) {
-      return `No snippets matching "${searchQuery.value}".`
-    }
-    return 'No snippets yet. Select code in the editor and press Cmd/Ctrl+Shift+S.'
-  })
-
   const openNewSnippetForm = () => {
     editingSnippet.value = null
     snippetFormModal.value.openModal()
@@ -133,7 +103,7 @@
 
   const onSnippetSaved = (snippet: Snippet) => {
     selected.value = snippet
-    listContainer.value?.focus()
+    searchInput.value?.$el?.focus()
   }
 
   const requestDeleteSnippet = (snippet: Snippet) => {
@@ -161,7 +131,13 @@
 
 <template>
   <Container class="pt-[38px]">
-    <div class="h-full flex flex-col p-4 gap-3">
+    <ListboxRoot
+      v-model="selected"
+      by="id"
+      selection-behavior="replace"
+      class="h-full flex flex-col p-4 gap-3"
+      @highlight="onHighlight"
+    >
       <div class="flex items-center justify-between gap-3">
         <Title>Snippets</Title>
         <div class="flex items-center gap-2 flex-1 max-w-md">
@@ -169,20 +145,19 @@
             <MagnifyingGlassIcon
               class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none"
             />
-            <input
+            <ListboxFilter
               ref="searchInput"
               v-model="searchQuery"
-              type="text"
+              auto-focus
               placeholder="Search snippets..."
               class="w-full h-8 pl-9 pr-3 text-sm rounded-md outline focus:!outline-primary-500 transition-colors"
-              @keydown.down.prevent="focusList"
-              @keydown.up.prevent="focusList"
-              @keydown.enter.prevent="editSelected"
               :style="{
                 backgroundColor: settingsStore.colors.backgroundLight,
                 color: settingsStore.colors.foreground,
                 outlineColor: settingsStore.colors.border,
               }"
+              @keydown.enter="editSelected"
+              @keydown.esc="searchQuery = ''"
             />
           </div>
           <PrimaryButton
@@ -202,23 +177,12 @@
 
       <div v-else class="flex-1 flex gap-4 min-h-0">
         <div class="w-1/3 min-w-[220px] max-w-[320px] flex flex-col gap-2 min-h-0">
-          <div
-            ref="listContainer"
-            tabindex="0"
-            class="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1 outline-none rounded-md focus-visible:ring-1 focus-visible:ring-primary-500"
-            @keydown.up.prevent="moveSelection(-1)"
-            @keydown.down.prevent="moveSelection(1)"
-            @keydown.enter.prevent="editSelected"
-            @keydown.delete.prevent="deleteSelected"
-            @keydown.esc="searchInput?.focus()"
-          >
-            <div
+          <ListboxContent class="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-1 rounded-md">
+            <ListboxItem
               v-for="snippet in snippetsStore.snippets"
               :key="snippet.id"
-              :data-snippet-id="snippet.id"
-              @click="selected = snippet"
-              class="rounded-md border p-2 cursor-pointer transition-colors group"
-              :class="{ '!border-primary-500': selected?.id === snippet.id }"
+              :value="snippet"
+              class="rounded-md border p-2 cursor-pointer transition-colors group outline-none data-[state=checked]:!border-primary-500"
               :style="{
                 backgroundColor: settingsStore.colors.backgroundLight,
                 borderColor: settingsStore.colors.border,
@@ -231,9 +195,9 @@
                 </div>
               </div>
               <div class="text-[10px] opacity-40 mt-1">{{ formatDate(snippet.updated_at) }}</div>
-            </div>
-          </div>
-          <div class="text-[10px] opacity-40 text-center select-none">↑↓ navigate · Enter edit · Del delete</div>
+            </ListboxItem>
+          </ListboxContent>
+          <div class="text-[10px] opacity-40 text-center select-none">↑↓ navigate · Enter edit</div>
         </div>
 
         <div
@@ -248,14 +212,16 @@
             <span class="text-sm font-medium truncate">{{ snippetTitle(selected) }}</span>
             <div class="flex items-center gap-2">
               <SecondaryButton
-                class="!px-2"
+                class="!px-2 gap-1"
+                withoutBorder
                 v-tippy="{ content: 'Edit snippet', placement: 'bottom' }"
                 @click="openEditSnippetForm(selected)"
               >
                 <PencilIcon class="size-4" /><span>Edit</span>
               </SecondaryButton>
               <SecondaryButton
-                class="!px-2"
+                class="!px-2 gap-1"
+                withoutBorder
                 :disabled="!currentTab"
                 v-tippy="{
                   content: currentTab ? 'Insert at cursor position' : 'Open a project first',
@@ -266,7 +232,8 @@
                 <ArrowDownOnSquareIcon class="size-4" /><span>Insert at cursor</span>
               </SecondaryButton>
               <SecondaryButton
-                class="!px-2"
+                class="!px-2 gap-1"
+                withoutBorder
                 :disabled="!currentTab"
                 v-tippy="{
                   content: currentTab ? 'Replace all code in the tab' : 'Open a project first',
@@ -294,7 +261,7 @@
           <div class="text-sm">Select a snippet to preview</div>
         </div>
       </div>
-    </div>
+    </ListboxRoot>
 
     <SnippetFormModal ref="snippetFormModal" :snippet="editingSnippet" @saved="onSnippetSaved" />
     <DeleteSnippetModal ref="deleteSnippetModal" :snippet="pendingDelete" @deleted="onSnippetDeleted" />
