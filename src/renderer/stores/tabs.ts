@@ -9,8 +9,8 @@ import { ConnectionConfig as DockerConnectionConfig } from '../../types/docker.t
 import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
 import { useSettingsStore } from './settings'
 import { useSSHStore } from './ssh'
-import { useKubectlStore } from './kubectl'
 import { useVaporStore } from './vapor.ts'
+import { useConnectionsStore } from './connections.ts'
 import { storage, repositoryStorageKeys, toPlain } from '../storage'
 
 export const useTabsStore = defineStore('tabs', () => {
@@ -18,10 +18,13 @@ export const useTabsStore = defineStore('tabs', () => {
   const tabs: Ref<Tab[]> = ref([])
   const current: Ref<Tab | null> = ref(null)
   const scrollPosition = ref(0)
+  // Incremented after every external reload (MCP push sync): views holding a
+  // local tab reference (CodeView) watch this to re-sync with the store.
+  const reloadVersion = ref(0)
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
-  const kubectlStore = useKubectlStore()
   const vaporStore = useVaporStore()
+  const connectionsStore = useConnectionsStore()
 
   const ready = Promise.all([
     window.ipcRenderer.invoke('storage:tabs:list'),
@@ -29,6 +32,43 @@ export const useTabsStore = defineStore('tabs', () => {
   ]).then(([storedTabs, currentTabId]) => {
     tabs.value = (storedTabs as any[]).filter(tab => tab.type !== 'home').map(normalize)
     current.value = findTab(currentTabId ? parseInt(currentTabId) : null)
+  })
+
+  // Push sync: reload tabs from the database when the main process signals
+  // external changes (MCP tools). Unsaved editor content of the current tab
+  // wins over the database (last-write-wins for the active editor) — unless
+  // the change is a code write for that very tab (codeUpdatedForTabId).
+  const reloadFromDb = async (
+    changes?: {
+      currentProjectId?: number
+      codeUpdatedForTabId?: number
+    } | null
+  ) => {
+    const storedTabs = (await window.ipcRenderer.invoke('storage:tabs:list')) as any[]
+    const previousCurrent = current.value
+    const reloaded = storedTabs.filter(tab => tab.type !== 'home').map(normalize)
+
+    if (previousCurrent) {
+      const refreshed = reloaded.find(tab => tab.id === previousCurrent.id)
+      if (refreshed) {
+        const keepLocalCode = changes?.codeUpdatedForTabId !== previousCurrent.id
+        if (keepLocalCode) {
+          // keep in-memory editor state for the tab the user is working on
+          refreshed.code = previousCurrent.code
+        }
+        refreshed.result = previousCurrent.result
+        refreshed.queries = previousCurrent.queries
+        refreshed.pane = previousCurrent.pane
+      }
+    }
+
+    tabs.value = reloaded
+    current.value = findTab(changes?.currentProjectId ?? current.value?.id ?? null)
+    reloadVersion.value++
+    return tabs.value
+  }
+  window.ipcRenderer.on('app:tabs:changed', (payload?: { currentProjectId?: number; codeUpdatedForTabId?: number }) => {
+    void reloadFromDb(payload ?? null)
   })
 
   const setCurrent = (tab: Tab | null): void => {
@@ -103,17 +143,38 @@ export const useTabsStore = defineStore('tabs', () => {
     }
     const source = tabs.value[index]
     const clone = { ...toPlain(source), id: Date.now() } as Tab
+
+    clone.connection_id = null
     tabs.value.splice(index + 1, 0, clone)
-    void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+    await window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
+
+    const copiedIds = new Map<string, string>()
+    let copyId = clone.id + 1
+    for (const connection of connectionsStore.connections.filter(c => c.tab_id === source.id && c.type !== 'vapor')) {
+      const newId = String(copyId++)
+      copiedIds.set(String(connection.id), newId)
+      await window.ipcRenderer.invoke('storage:connections:save', {
+        ...toPlain(connection),
+        id: newId,
+        tab_id: clone.id,
+      })
+    }
 
     // Vapor connection configs are keyed by tab id: copy the source config over
     if (source.execution === 'vapor') {
+      clone.connection_id = String(clone.id)
       const config = vaporStore.getConnectionConfig(source.id)
       if (config) {
         vaporStore.setEnviroments(clone.id, [...config.environments])
         vaporStore.setClientPath(clone.id, config.client_path)
         vaporStore.setEnvironment(clone.id, config.environment)
       }
+    } else if (source.connection_id) {
+      clone.connection_id = copiedIds.get(String(source.connection_id)) ?? null
+    }
+
+    if (copiedIds.size > 0 || source.execution === 'vapor') {
+      await window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
     }
 
     setCurrent(clone)
@@ -188,10 +249,14 @@ export const useTabsStore = defineStore('tabs', () => {
       }
     }
 
-    if (execution === 'docker' && tab.docker) {
-      connection = tab.docker
-      if (tab.docker.ssh_id) {
-        connection.ssh = sshStore.getConnection(tab.docker.ssh_id)
+    if (execution === 'docker') {
+      const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
+      if (stored && stored.type === 'docker') {
+        // clone: never persist the embedded ssh credentials on the tab itself
+        connection = { ...(stored as DockerConnectionConfig) }
+        if (connection.ssh_id) {
+          connection.ssh = sshStore.getConnection(connection.ssh_id)
+        }
       }
     }
 
@@ -199,12 +264,18 @@ export const useTabsStore = defineStore('tabs', () => {
       connection = vaporStore.getConnectionConfig(tab.id)
     }
 
-    if (execution === 'ssh' && tab.ssh) {
-      connection = sshStore.getConnection(tab.ssh.id)
+    if (execution === 'ssh') {
+      const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
+      if (stored && stored.type === 'ssh') {
+        connection = stored as SSHConnectionConfig
+      }
     }
 
-    if (execution === 'kubectl' && tab.kubectl) {
-      connection = kubectlStore.getConnection(tab.kubectl.id)
+    if (execution === 'kubectl') {
+      const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
+      if (stored && stored.type === 'kubectl') {
+        connection = stored as KubectlConnectionConfig
+      }
     }
 
     return connection
@@ -352,6 +423,7 @@ export const useTabsStore = defineStore('tabs', () => {
   return {
     tabs,
     current,
+    reloadVersion,
     addTab,
     duplicateTab,
     removeTab,
@@ -371,6 +443,7 @@ export const useTabsStore = defineStore('tabs', () => {
     scrollPosition,
     setScrollPosition,
     getConnectionConfig,
+    reloadFromDb,
     ready,
   }
 })
@@ -392,6 +465,7 @@ const normalize = (tab: any): Tab => {
     code: (tab.code as string) ?? '',
     path: tab.path as string | undefined,
     execution: (tab.execution as 'local' | 'ssh' | 'vapor' | 'docker' | 'kubectl') ?? 'local',
+    connection_id: (tab.connection_id as string | null) ?? null,
     loader: tab.loader as string,
     folder_id: (tab.folder_id as number | null) ?? null,
     pinned: Boolean(tab.pinned),
@@ -408,31 +482,6 @@ const normalize = (tab: any): Tab => {
       php_version: (tab.info?.php_version as string) ?? '',
       version: (tab.info?.version as string) ?? '',
     },
-  }
-  if (tab.docker && tab.docker.container_name) {
-    t.docker = {
-      type: 'docker',
-      working_directory: tab.docker.working_directory,
-      container_id: tab.docker.container_id,
-      container_name: tab.docker.container_name,
-      php_version: tab.docker.php_version ?? '',
-      php_path: tab.docker.php_path ?? '',
-      client_path: tab.docker.client_path ?? tab.docker.phar_path,
-      ssh_id: tab.docker.ssh_id ?? 0,
-      user: tab.docker.user ?? '',
-    }
-  }
-
-  if (tab.ssh && tab.ssh.id) {
-    t.ssh = {
-      id: tab.ssh.id,
-    }
-  }
-
-  if (tab.kubectl && tab.kubectl.id) {
-    t.kubectl = {
-      id: tab.kubectl.id,
-    }
   }
 
   return t

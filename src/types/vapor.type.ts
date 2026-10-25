@@ -4,4 +4,5 @@ export interface ConnectionConfig {
   client_path: string | null
   environment: string | null
   environments: string[] | []
+  tab_id?: number | null
 }

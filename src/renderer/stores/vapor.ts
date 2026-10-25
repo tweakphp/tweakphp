@@ -11,14 +11,23 @@ const normalize = (connection: any): ConnectionConfig => ({
   client_path: connection.client_path ?? null,
   environment: connection.environment ?? null,
   environments: connection.environments ?? [],
+  tab_id: connection.tab_id ?? null,
 })
 
 export const useVaporStore = defineStore(TYPE, () => {
   const connectionConfigs: Ref<ConnectionConfig[]> = ref([])
-  const ready = window.ipcRenderer.invoke('storage:connections:list').then((stored: any[]) => {
+  const load = async () => {
+    const stored: any[] = await window.ipcRenderer.invoke('storage:connections:list')
     connectionConfigs.value = stored
       .filter(connection => connection.type === TYPE)
       .map(connection => normalize({ ...connection, id: Number(connection.id) || connection.id }))
+    return connectionConfigs.value
+  }
+  const ready = load()
+
+  // Push sync: reload when the main process signals external changes (MCP writes)
+  window.ipcRenderer.on('app:connections:changed', () => {
+    void load()
   })
 
   const persist = (config: ConnectionConfig) => {
@@ -27,6 +36,8 @@ export const useVaporStore = defineStore(TYPE, () => {
       toPlain({
         ...config,
         name: `vapor-${config.id}`,
+        // vapor rows are per-project: their id IS the tab id
+        tab_id: config.tab_id ?? config.id,
       })
     )
   }
@@ -43,7 +54,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: TYPE, client_path: path, environment: null, environments: [] })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: path, environment: null, environments: [] })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -55,7 +66,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment: null, environments })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: null, environment: null, environments })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -66,7 +77,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       persist(config)
       return
     }
-    connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment, environments: [] })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: null, environment, environments: [] })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -89,7 +100,14 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: 'vapor', client_path: null, environment: null, environments: [] })
+    connectionConfigs.value.push({
+      id,
+      type: 'vapor',
+      tab_id: id,
+      client_path: null,
+      environment: null,
+      environments: [],
+    })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -112,6 +130,7 @@ export const useVaporStore = defineStore(TYPE, () => {
     resetVaporConfig,
     removeVaporConfig,
     connectionConfigs,
+    reload: load,
     ready,
   }
 })
