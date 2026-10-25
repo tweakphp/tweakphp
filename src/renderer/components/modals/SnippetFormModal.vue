@@ -10,10 +10,6 @@
   import { useSnippetsStore } from '../../stores/snippets'
   import { Snippet } from '../../../types/snippet.type'
 
-  const props = defineProps<{
-    snippet?: Snippet | null
-  }>()
-
   const emit = defineEmits<{
     (e: 'saved', snippet: Snippet): void
   }>()
@@ -22,17 +18,21 @@
   const snippetsStore = useSnippetsStore()
 
   const modal = ref<InstanceType<typeof Modal> | null>(null)
+  const editingSnippet = ref<Snippet | null>(null)
   const formTitle = ref('')
   const formCode = ref('')
   const formEditorId = ref('')
 
-  const modalTitle = computed(() => (props.snippet?.id ? 'Edit Snippet' : 'New Snippet'))
+  const modalTitle = computed(() => (editingSnippet.value?.id ? 'Edit Snippet' : 'New Snippet'))
   const canSave = computed(() => formCode.value.trim().length > 0)
 
-  const openModal = () => {
-    formTitle.value = props.snippet?.title ?? ''
-    formCode.value = props.snippet?.code ?? ''
-    formEditorId.value = `snippet-form-${props.snippet?.id ?? 'new'}-${Date.now()}`
+  // the snippet is passed as an argument on purpose: reading it from the props
+  // here would return a stale value, since the parent ref updates on next tick
+  const openModal = (snippet?: Snippet | null) => {
+    editingSnippet.value = snippet ?? null
+    formTitle.value = snippet?.title ?? ''
+    formCode.value = snippet?.code ?? ''
+    formEditorId.value = `snippet-form-${snippet?.id ?? 'new'}-${Date.now()}`
     modal.value?.openModal()
   }
 
@@ -45,8 +45,8 @@
       return
     }
     const payload: Snippet = { title: formTitle.value, code: formCode.value }
-    if (props.snippet?.id) {
-      payload.id = props.snippet.id
+    if (editingSnippet.value?.id) {
+      payload.id = editingSnippet.value.id
     }
     const saved = await snippetsStore.add(payload)
     closeModal()

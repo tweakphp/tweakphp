@@ -32,7 +32,6 @@
   const searchQuery = ref('')
   const selected: Ref<Snippet | null> = ref(null)
   const snippetFormModal = ref()
-  const editingSnippet: Ref<Snippet | null> = ref(null)
   const pendingDelete: Ref<Snippet | null> = ref(null)
   const deleteSnippetModal = ref()
   const searchInput = ref<InstanceType<typeof ListboxFilter> | null>(null)
@@ -92,13 +91,11 @@
   }
 
   const openNewSnippetForm = () => {
-    editingSnippet.value = null
     snippetFormModal.value.openModal()
   }
 
   const openEditSnippetForm = (snippet: Snippet) => {
-    editingSnippet.value = snippet
-    snippetFormModal.value.openModal()
+    snippetFormModal.value.openModal(snippet)
   }
 
   const onSnippetSaved = (snippet: Snippet) => {
@@ -263,7 +260,7 @@
       </div>
     </ListboxRoot>
 
-    <SnippetFormModal ref="snippetFormModal" :snippet="editingSnippet" @saved="onSnippetSaved" />
+    <SnippetFormModal ref="snippetFormModal" @saved="onSnippetSaved" />
     <DeleteSnippetModal ref="deleteSnippetModal" :snippet="pendingDelete" @deleted="onSnippetDeleted" />
   </Container>
 </template>
