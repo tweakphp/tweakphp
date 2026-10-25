@@ -18,6 +18,7 @@
   import { UpdateInfo } from 'electron-updater'
   import DeleteTabModal from './components/modals/DeleteTabModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
+  import SaveSnippetModal from './components/modals/SaveSnippetModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -332,5 +333,6 @@
     </div>
     <NewProjectModal ref="newProjectModal" />
     <DeleteTabModal />
+    <SaveSnippetModal />
   </div>
 </template>

@@ -98,7 +98,8 @@
         }"
       >
         <SecondaryButton
-          class="!px-2"
+          without-border
+          class="!px-2 h-6"
           v-tippy="{ content: 'Snippets', placement: 'bottom' }"
           @click="router.push({ name: 'snippets' })"
         >

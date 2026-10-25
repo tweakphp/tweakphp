@@ -4,22 +4,21 @@
   import Container from '../components/Container.vue'
   import Title from '../components/Title.vue'
   import Divider from '../components/Divider.vue'
-  import Modal from '../components/Modal.vue'
   import Editor from '../components/Editor.vue'
-  import TextInput from '../components/TextInput.vue'
   import PrimaryButton from '../components/PrimaryButton.vue'
   import SecondaryButton from '../components/SecondaryButton.vue'
+  import RowActions from '../components/interactions/RowActions.vue'
+  import EmptyState from '../components/EmptyState.vue'
+  import SnippetFormModal from '../components/modals/SnippetFormModal.vue'
+  import DeleteSnippetModal from '../components/modals/DeleteSnippetModal.vue'
   import { useSnippetsStore } from '../stores/snippets'
   import { useTabsStore } from '../stores/tabs'
   import { useSettingsStore } from '../stores/settings'
   import { Snippet } from '../../types/snippet.type'
-  import { ModalSize } from '../../types/modal.type'
   import {
     MagnifyingGlassIcon,
     PencilIcon,
     PlusIcon,
-    TrashIcon,
-    DocumentIcon,
     ArrowDownOnSquareIcon,
     ArrowPathRoundedSquareIcon,
   } from '@heroicons/vue/24/outline'
@@ -33,17 +32,14 @@
   const selected: Ref<Snippet | null> = ref(null)
   const snippetFormModal = ref()
   const editingSnippet: Ref<Snippet | null> = ref(null)
-  const formTitle = ref('')
-  const formCode = ref('')
-  const formEditorId = ref('snippet-form-new')
+  const pendingDelete: Ref<Snippet | null> = ref(null)
+  const deleteSnippetModal = ref()
   const searchInput = ref<HTMLInputElement | null>(null)
   const listContainer = ref<HTMLElement | null>(null)
 
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
   const currentTab = computed(() => tabsStore.getCurrent())
-
-  const formModalTitle = computed(() => (editingSnippet.value ? 'Edit Snippet' : 'New Snippet'))
 
   const selectedIndex = computed(() => snippetsStore.snippets.findIndex(s => s.id === selected.value?.id))
 
@@ -85,7 +81,7 @@
 
   const deleteSelected = () => {
     if (selected.value) {
-      removeSnippet(selected.value)
+      requestDeleteSnippet(selected.value)
     }
   }
 
@@ -118,45 +114,39 @@
     return snippet.title?.trim() ? snippet.title : 'Untitled'
   }
 
+  const emptyMessage = computed(() => {
+    if (searchQuery.value) {
+      return `No snippets matching "${searchQuery.value}".`
+    }
+    return 'No snippets yet. Select code in the editor and press Cmd/Ctrl+Shift+S.'
+  })
+
   const openNewSnippetForm = () => {
     editingSnippet.value = null
-    formTitle.value = ''
-    formCode.value = ''
-    formEditorId.value = `snippet-form-new-${Date.now()}`
     snippetFormModal.value.openModal()
   }
 
   const openEditSnippetForm = (snippet: Snippet) => {
     editingSnippet.value = snippet
-    formTitle.value = snippet.title ?? ''
-    formCode.value = snippet.code
-    formEditorId.value = `snippet-form-${snippet.id}-${Date.now()}`
     snippetFormModal.value.openModal()
   }
 
-  const saveSnippetForm = async () => {
-    if (!formCode.value.trim()) {
-      alert('Code is required')
-      return
-    }
-    const payload: Snippet = { title: formTitle.value, code: formCode.value }
-    if (editingSnippet.value?.id) {
-      payload.id = editingSnippet.value.id
-    }
-    const saved = await snippetsStore.add(payload)
-    selected.value = saved
-    snippetFormModal.value.closeModal()
+  const onSnippetSaved = (snippet: Snippet) => {
+    selected.value = snippet
     listContainer.value?.focus()
   }
 
-  const removeSnippet = async (snippet: Snippet) => {
+  const requestDeleteSnippet = (snippet: Snippet) => {
     if (!snippet.id) return
-    if (confirm(`Are you sure you want to delete "${snippetTitle(snippet)}"?`)) {
-      await snippetsStore.remove(snippet.id)
-      if (selected.value?.id === snippet.id) {
-        selected.value = snippetsStore.snippets[0] ?? null
-      }
+    pendingDelete.value = snippet
+    deleteSnippetModal.value.openModal()
+  }
+
+  const onSnippetDeleted = () => {
+    if (selected.value?.id === pendingDelete.value?.id) {
+      selected.value = snippetsStore.snippets[0] ?? null
     }
+    pendingDelete.value = null
   }
 
   const insertIntoTab = (mode: 'insert' | 'replace') => {
@@ -197,7 +187,7 @@
           </div>
           <PrimaryButton
             v-tippy="{ content: 'New snippet', placement: 'bottom' }"
-            class="!h-8 !px-0 w-8"
+            class="!px-0 w-8"
             @click="openNewSnippetForm"
           >
             <PlusIcon class="w-4 h-4" />
@@ -207,11 +197,7 @@
       <Divider />
 
       <div v-if="snippetsStore.snippets.length === 0" class="flex-1 flex items-center justify-center">
-        <div class="text-center space-y-2 opacity-60">
-          <DocumentIcon class="w-12 h-12 mx-auto stroke-1" />
-          <div class="text-sm" v-if="searchQuery">No snippets matching "{{ searchQuery }}"</div>
-          <div class="text-sm" v-else>No snippets yet. Select code in the editor and press Cmd/Ctrl+Shift+S.</div>
-        </div>
+        <EmptyState :message="emptyMessage" />
       </div>
 
       <div v-else class="flex-1 flex gap-4 min-h-0">
@@ -241,22 +227,7 @@
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-medium truncate">{{ snippetTitle(snippet) }}</span>
                 <div class="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    @click.stop="openEditSnippetForm(snippet)"
-                    class="p-1"
-                    v-tippy="{ content: 'Edit', placement: 'top' }"
-                  >
-                    <PencilIcon class="size-4 hover:text-blue-500" />
-                  </button>
-                  <button
-                    type="button"
-                    @click.stop="removeSnippet(snippet)"
-                    class="p-1"
-                    v-tippy="{ content: 'Delete', placement: 'top' }"
-                  >
-                    <TrashIcon class="size-4 hover:text-red-500" />
-                  </button>
+                  <RowActions @edit="openEditSnippetForm(snippet)" @remove="requestDeleteSnippet(snippet)" />
                 </div>
               </div>
               <div class="text-[10px] opacity-40 mt-1">{{ formatDate(snippet.updated_at) }}</div>
@@ -281,8 +252,7 @@
                 v-tippy="{ content: 'Edit snippet', placement: 'bottom' }"
                 @click="openEditSnippetForm(selected)"
               >
-                <PencilIcon class="size-4 mr-1" />
-                <span class="text-xs">Edit</span>
+                <PencilIcon class="size-4" /><span>Edit</span>
               </SecondaryButton>
               <SecondaryButton
                 class="!px-2"
@@ -293,8 +263,7 @@
                 }"
                 @click="insertIntoTab('insert')"
               >
-                <ArrowDownOnSquareIcon class="size-4 mr-1" />
-                <span class="text-xs">Insert at cursor</span>
+                <ArrowDownOnSquareIcon class="size-4" /><span>Insert at cursor</span>
               </SecondaryButton>
               <SecondaryButton
                 class="!px-2"
@@ -305,8 +274,7 @@
                 }"
                 @click="insertIntoTab('replace')"
               >
-                <ArrowPathRoundedSquareIcon class="size-4 mr-1" />
-                <span class="text-xs">Replace all</span>
+                <ArrowPathRoundedSquareIcon class="size-4" /><span>Replace all</span>
               </SecondaryButton>
             </div>
           </div>
@@ -328,25 +296,7 @@
       </div>
     </div>
 
-    <Modal :title="formModalTitle" ref="snippetFormModal" :size="ModalSize.THREE_XL">
-      <form class="space-y-3" @submit.prevent="saveSnippetForm">
-        <TextInput v-model="formTitle" placeholder="Title (optional)" class="w-full" />
-        <Editor
-          :key="formEditorId"
-          v-model:value="formCode"
-          :editor-id="formEditorId"
-          class="w-full border rounded-md p-1"
-          :style="{
-            borderColor: settingsStore.colors.border,
-            height: '400px',
-          }"
-          language="php"
-        />
-        <div class="flex justify-end gap-2">
-          <SecondaryButton @click="snippetFormModal.closeModal()">Cancel</SecondaryButton>
-          <PrimaryButton type="submit">Save Snippet</PrimaryButton>
-        </div>
-      </form>
-    </Modal>
+    <SnippetFormModal ref="snippetFormModal" :snippet="editingSnippet" @saved="onSnippetSaved" />
+    <DeleteSnippetModal ref="deleteSnippetModal" :snippet="pendingDelete" @deleted="onSnippetDeleted" />
   </Container>
 </template>
