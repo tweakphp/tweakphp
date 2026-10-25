@@ -120,18 +120,14 @@
   const remoteConnected = (type: 'ssh' | 'kubectl', config: { id: number }) => {
     if (!tabStore.current) return
     tabStore.current.execution = type
-    tabStore.current[type] = { id: config.id }
     tabStore.current.connection_id = String(config.id)
     tabStore.updateTab(tabStore.current)
   }
 
-  const remoteRemoved = (type: 'ssh' | 'kubectl', id: number) => {
+  const remoteRemoved = (id: number) => {
     if (!tabStore.current) return
-    const ref = tabStore.current[type]
-    const isConnectionId = String(tabStore.current.connection_id) === String(id)
-    if ((ref && ref.id === id) || isConnectionId) {
+    if (String(tabStore.current.connection_id) === String(id)) {
       tabStore.current.execution = 'local'
-      tabStore.current[type] = undefined
       tabStore.current.connection_id = null
       tabStore.updateTab(tabStore.current)
     }
@@ -144,25 +140,18 @@
     kubectlStore.connections.filter(c => c.tab_id === tabStore.current?.id)
   )
 
-  // Resolve the project's active connection by connection_id (single source of
-  // truth) with the legacy inline refs as display fallback
+  // Resolve the project's active connection by connection_id (single source of truth)
   const activeConnection = computed(() =>
     tabStore.current?.connection_id ? connectionsStore.getConnection(tabStore.current.connection_id) : undefined
   )
-  const activeSshName = computed(
-    () =>
-      (activeConnection.value?.type === 'ssh' ? activeConnection.value.name : undefined) ??
-      (tabStore.current?.ssh ? sshStore.getConnection(tabStore.current.ssh.id)?.name : undefined)
+  const activeSshName = computed(() =>
+    activeConnection.value?.type === 'ssh' ? activeConnection.value.name : undefined
   )
-  const activeKubectlName = computed(
-    () =>
-      (activeConnection.value?.type === 'kubectl' ? activeConnection.value.name : undefined) ??
-      (tabStore.current?.kubectl ? kubectlStore.getConnection(tabStore.current.kubectl.id)?.name : undefined)
+  const activeKubectlName = computed(() =>
+    activeConnection.value?.type === 'kubectl' ? activeConnection.value.name : undefined
   )
-  const activeDockerName = computed(
-    () =>
-      (activeConnection.value?.type === 'docker' ? activeConnection.value.container_name : undefined) ??
-      tabStore.current?.docker?.container_name
+  const activeDockerName = computed(() =>
+    activeConnection.value?.type === 'docker' ? activeConnection.value.container_name : undefined
   )
 
   const connectDockerSaved = (id: number) => {
@@ -419,15 +408,11 @@
 
     <!-- modals -->
     <DockerConnectModal ref="dockerModal" />
-    <SSHConnectionsModal
-      ref="sshModal"
-      @connected="remoteConnected('ssh', $event)"
-      @removed="remoteRemoved('ssh', $event)"
-    />
+    <SSHConnectionsModal ref="sshModal" @connected="remoteConnected('ssh', $event)" @removed="remoteRemoved($event)" />
     <KubectlConnectionsModal
       ref="kubectlModal"
       @connected="remoteConnected('kubectl', $event)"
-      @removed="remoteRemoved('kubectl', $event)"
+      @removed="remoteRemoved($event)"
     />
   </div>
 </template>

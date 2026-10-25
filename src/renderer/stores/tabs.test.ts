@@ -155,7 +155,6 @@ describe('tabs store', () => {
     expect(clone).not.toBeNull()
     // the clone owns its own copy, never the source's row
     expect(clone!.connection_id).not.toBe('101')
-    expect(clone!.ssh).toEqual({ id: Number(clone!.connection_id) })
     expect(invoke).toHaveBeenCalledWith(
       'storage:connections:save',
       expect.objectContaining({ type: 'ssh', host: '1.2.3.4', tab_id: clone!.id })

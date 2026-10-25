@@ -36,6 +36,8 @@ export const useVaporStore = defineStore(TYPE, () => {
       toPlain({
         ...config,
         name: `vapor-${config.id}`,
+        // vapor rows are per-project: their id IS the tab id
+        tab_id: config.tab_id ?? config.id,
       })
     )
   }
@@ -52,7 +54,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: TYPE, client_path: path, environment: null, environments: [] })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: path, environment: null, environments: [] })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -64,7 +66,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment: null, environments })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: null, environment: null, environments })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -75,7 +77,7 @@ export const useVaporStore = defineStore(TYPE, () => {
       persist(config)
       return
     }
-    connectionConfigs.value.push({ id, type: TYPE, client_path: null, environment, environments: [] })
+    connectionConfigs.value.push({ id, type: TYPE, tab_id: id, client_path: null, environment, environments: [] })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 
@@ -98,7 +100,14 @@ export const useVaporStore = defineStore(TYPE, () => {
       return
     }
 
-    connectionConfigs.value.push({ id, type: 'vapor', client_path: null, environment: null, environments: [] })
+    connectionConfigs.value.push({
+      id,
+      type: 'vapor',
+      tab_id: id,
+      client_path: null,
+      environment: null,
+      environments: [],
+    })
     persist(connectionConfigs.value[connectionConfigs.value.length - 1])
   }
 

@@ -193,16 +193,14 @@
   onMounted(() => {
     fetchContainers()
 
-    // Prefill from the project's stored docker connection (connection_id first,
-    // legacy inline tab.docker as fallback for pre-migration projects)
+    // Prefill from the project's stored docker connection (connection_id)
     const currentTab = tabsStore.getCurrent()
     const stored =
       currentTab?.connection_id != null
         ? dockerStore.connections.find(c => String(c.id) === currentTab.connection_id)
         : undefined
-    const docker = stored ?? currentTab?.docker
-    if (docker) {
-      form.value = { ...docker }
+    if (stored) {
+      form.value = { ...stored }
     }
 
     selectDockerContainer()

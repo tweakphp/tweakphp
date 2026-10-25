@@ -9,7 +9,6 @@ import { ConnectionConfig as DockerConnectionConfig } from '../../types/docker.t
 import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
 import { useSettingsStore } from './settings'
 import { useSSHStore } from './ssh'
-import { useKubectlStore } from './kubectl'
 import { useVaporStore } from './vapor.ts'
 import { useConnectionsStore } from './connections.ts'
 import { storage, repositoryStorageKeys, toPlain } from '../storage'
@@ -24,7 +23,6 @@ export const useTabsStore = defineStore('tabs', () => {
   const reloadVersion = ref(0)
   const settingsStore = useSettingsStore()
   const sshStore = useSSHStore()
-  const kubectlStore = useKubectlStore()
   const vaporStore = useVaporStore()
   const connectionsStore = useConnectionsStore()
 
@@ -158,18 +156,6 @@ export const useTabsStore = defineStore('tabs', () => {
           tab_id: clone.id,
         })
         clone.connection_id = String(copyId)
-        // keep the legacy refs in sync so older UI paths keep working
-        const numericId = Number(copyId)
-        if (active.type === 'ssh') {
-          clone.ssh = { id: numericId }
-        }
-        if (active.type === 'kubectl') {
-          clone.kubectl = { id: numericId }
-        }
-        if (active.type === 'docker') {
-          const { ssh, ...config } = toPlain(active) as any
-          clone.docker = { ...config, id: numericId, type: 'docker' }
-        }
       }
     }
 
@@ -262,10 +248,9 @@ export const useTabsStore = defineStore('tabs', () => {
 
     if (execution === 'docker') {
       const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
-      const docker = stored && stored.type === 'docker' ? stored : tab.docker
-      if (docker) {
+      if (stored && stored.type === 'docker') {
         // clone: never persist the embedded ssh credentials on the tab itself
-        connection = { ...(docker as DockerConnectionConfig) }
+        connection = { ...(stored as DockerConnectionConfig) }
         if (connection.ssh_id) {
           connection.ssh = sshStore.getConnection(connection.ssh_id)
         }
@@ -280,8 +265,6 @@ export const useTabsStore = defineStore('tabs', () => {
       const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
       if (stored && stored.type === 'ssh') {
         connection = stored as SSHConnectionConfig
-      } else if (tab.ssh) {
-        connection = sshStore.getConnection(tab.ssh.id)
       }
     }
 
@@ -289,8 +272,6 @@ export const useTabsStore = defineStore('tabs', () => {
       const stored = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
       if (stored && stored.type === 'kubectl') {
         connection = stored as KubectlConnectionConfig
-      } else if (tab.kubectl) {
-        connection = kubectlStore.getConnection(tab.kubectl.id)
       }
     }
 
@@ -498,33 +479,6 @@ const normalize = (tab: any): Tab => {
       php_version: (tab.info?.php_version as string) ?? '',
       version: (tab.info?.version as string) ?? '',
     },
-  }
-  if (tab.docker && tab.docker.container_name) {
-    t.docker = {
-      type: 'docker',
-      id: tab.docker.id ?? 0,
-      name: tab.docker.name ?? tab.docker.container_name,
-      working_directory: tab.docker.working_directory,
-      container_id: tab.docker.container_id,
-      container_name: tab.docker.container_name,
-      php_version: tab.docker.php_version ?? '',
-      php_path: tab.docker.php_path ?? '',
-      client_path: tab.docker.client_path ?? tab.docker.phar_path,
-      ssh_id: tab.docker.ssh_id ?? 0,
-      user: tab.docker.user ?? '',
-    }
-  }
-
-  if (tab.ssh && tab.ssh.id) {
-    t.ssh = {
-      id: tab.ssh.id,
-    }
-  }
-
-  if (tab.kubectl && tab.kubectl.id) {
-    t.kubectl = {
-      id: tab.kubectl.id,
-    }
   }
 
   return t
