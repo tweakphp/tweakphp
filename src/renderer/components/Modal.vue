@@ -154,7 +154,7 @@
         />
       </Transition>
 
-      <div class="fixed inset-0 z-50 overflow-y-auto no-scrollbar pointer-events-none">
+      <div class="fixed inset-0 z-50 no-scrollbar pointer-events-none">
         <div class="flex min-h-full items-center justify-center p-4 text-center">
           <Transition
             appear
