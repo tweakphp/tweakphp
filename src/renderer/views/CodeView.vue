@@ -104,7 +104,7 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        events.dispatchEvent(new CustomEvent('tab.close.request', { detail: tab.value.id }))
+        events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: tab.value.id }))
       }
     }
   }

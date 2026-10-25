@@ -187,11 +187,9 @@ export const useTabsStore = defineStore('tabs', () => {
     if (index === -1) {
       return null
     }
-    const [removed] = tabs.value.splice(index, 1)
+    tabs.value.splice(index, 1)
+
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
-    if (removed.execution === 'vapor') {
-      vaporStore.removeVaporConfig(id)
-    }
     if (tabs.value.length > 0) {
       setCurrent(tabs.value[tabs.value.length - 1])
       let activeTab = tabs.value[tabs.value.length - 1]
@@ -401,11 +399,6 @@ export const useTabsStore = defineStore('tabs', () => {
     const removedCurrent = current.value ? removedIds.has(current.value.id) : false
     tabs.value = tabs.value.filter(t => !removedIds.has(t.id))
     void window.ipcRenderer.invoke('storage:tabs:save-all', toPlain(tabs.value))
-    removed.forEach(tab => {
-      if (tab.execution === 'vapor') {
-        vaporStore.removeVaporConfig(tab.id)
-      }
-    })
     if (!removedCurrent) {
       return null
     }

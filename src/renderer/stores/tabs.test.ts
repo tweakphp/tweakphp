@@ -388,7 +388,8 @@ describe('tabs store', () => {
     expect(tabsStore.tabs.map(t => t.id)).toEqual([1])
     expect(tabsStore.current?.id).toBe(1)
     expect(routerReplace).toHaveBeenCalledWith({ name: 'code', params: { id: 1 } })
-    expect(vaporStore.getConnectionConfig(4)).toBeUndefined()
+    // archiving keeps the vapor config so the project can be restored intact
+    expect(vaporStore.getConnectionConfig(4)?.environment).toBe('production')
   })
 
   it('removeFolderTabs goes home when the removed folder held the last tabs', async () => {
@@ -422,7 +423,7 @@ describe('tabs store', () => {
 
   // ---- removeTab ----
 
-  it('removeTab cleans up the vapor config', async () => {
+  it('removeTab archives the tab and keeps its vapor config for a restore', async () => {
     const vaporStore = useVaporStore()
     seedTabs(tabsStore, [makeTab({ id: 5, execution: 'vapor' }), makeTab({ id: 6 })])
     tabsStore.current = tabsStore.tabs[0]
@@ -431,7 +432,7 @@ describe('tabs store', () => {
     await tabsStore.removeTab(5)
 
     expect(tabsStore.tabs.map(t => t.id)).toEqual([6])
-    expect(vaporStore.getConnectionConfig(5)).toBeUndefined()
+    expect(vaporStore.getConnectionConfig(5)?.environment).toBe('production')
   })
 
   it('removeTab is a no-op for an unknown tab', async () => {
