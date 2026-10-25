@@ -8,6 +8,16 @@ vi.mock('electron', () => ({
   },
 }))
 
+// db_manager loads better-sqlite3 at import time: mock it so unit tests
+// never load the native module (compiled for Electron, not for Node)
+vi.mock('better-sqlite3', () => ({
+  default: class MockDatabase {
+    prepare = vi.fn().mockReturnValue({ get: vi.fn(), all: vi.fn().mockReturnValue([]), run: vi.fn() })
+    transaction = vi.fn().mockImplementation((fn: any) => fn)
+    pragma = vi.fn()
+  },
+}))
+
 import { ExecutePhpHandler } from './execute-php'
 
 describe('ExecutePhpHandler Unit Tests', () => {
@@ -24,8 +34,7 @@ describe('ExecutePhpHandler Unit Tests', () => {
     }
 
     mockConnectionManager = {
-      getActiveConnection: vi.fn().mockReturnValue({ id: 'local-1', type: 'local', php: 'php', path: '/app' }),
-      getConnection: vi.fn(),
+      getConnection: vi.fn().mockReturnValue({ id: 'local-1', type: 'local', php: 'php', path: '/app' }),
       getClient: vi.fn().mockReturnValue(mockClient),
       getConnectionName: vi.fn().mockReturnValue('Local Connection'),
     }
@@ -41,15 +50,21 @@ describe('ExecutePhpHandler Unit Tests', () => {
     await expect(handler.handle({ code: '' })).rejects.toThrow(/Parameter "code" is required/)
   })
 
-  it('throws CONNECTION_ERROR if no active connection exists', async () => {
-    mockConnectionManager.getActiveConnection.mockReturnValue(null)
-    await expect(handler.handle({ code: '<?php echo 1;' })).rejects.toThrow(/No active connection available/)
+  it('throws INVALID_PARAMETERS when neither connectionId nor projectId is provided', async () => {
+    await expect(handler.handle({ code: '<?php echo 1;' })).rejects.toThrow(/Specify a connectionId or a projectId/)
+  })
+
+  it('throws CONNECTION_ERROR when the given connectionId is unknown', async () => {
+    mockConnectionManager.getConnection.mockReturnValue(null)
+    await expect(handler.handle({ code: '<?php echo 1;', connectionId: 'unknown' })).rejects.toThrow(
+      /Connection "unknown" not found/
+    )
   })
 
   it('executes PHP code successfully and saves execution record to DB', async () => {
     mockClient.execute.mockResolvedValue('TWEAKPHP_RESULT: "Hello World"')
 
-    const result = await handler.handle({ code: '<?php echo "Hello World";' })
+    const result = await handler.handle({ code: '<?php echo "Hello World";', connectionId: 'local-1' })
 
     expect(result.output).toBe('Hello World')
     expect(result.exitCode).toBe(0)
@@ -67,7 +82,9 @@ describe('ExecutePhpHandler Unit Tests', () => {
   it('handles execution timeout and records failure in history DB', async () => {
     mockClient.execute.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve('done'), 200)))
 
-    await expect(handler.handle({ code: '<?php sleep(10);', timeout: 30 })).rejects.toThrow(/exceeded timeout of 30ms/)
+    await expect(handler.handle({ code: '<?php sleep(10);', connectionId: 'local-1', timeout: 30 })).rejects.toThrow(
+      /exceeded timeout of 30ms/
+    )
 
     expect(mockHistoryDB.insert).toHaveBeenCalledWith(
       expect.objectContaining({

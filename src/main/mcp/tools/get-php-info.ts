@@ -1,12 +1,13 @@
 /**
  * Get PHP Info Tool Handler
- * Retrieves PHP environment information from active connection
+ * Retrieves PHP environment information from a project's connection
  */
 
 import { GetPhpInfoParams } from './schemas'
 import { MCPErrorCode } from '../types'
-import { ConnectionManager } from '../connection-manager'
+import { ConnectionManager, ConnectionConfig } from '../connection-manager'
 import { getErrorHandler } from '../error-handler'
+import { resolveProjectConnection } from './project-connection'
 
 interface PhpInfoResult {
   phpVersion: string
@@ -23,14 +24,22 @@ export class GetPhpInfoHandler {
   }
 
   async handle(params: GetPhpInfoParams): Promise<PhpInfoResult> {
-    const connection = this.connectionManager.getActiveConnection()
-
-    if (!connection) {
+    // The execution connection is decided per project (tab.connection_id)
+    if (params.projectId === undefined) {
       throw this.errorHandler.createError(
-        MCPErrorCode.CONNECTION_ERROR,
-        'No active connection available. Please set an active connection first.'
+        MCPErrorCode.INVALID_PARAMETERS,
+        'Specify a projectId: the execution connection is decided per project'
       )
     }
+
+    const resolved = resolveProjectConnection(params.projectId)
+    if (!resolved) {
+      throw this.errorHandler.createError(
+        MCPErrorCode.CONNECTION_ERROR,
+        `Project ${params.projectId} has no usable connection configured`
+      )
+    }
+    const connection = resolved.connection as ConnectionConfig
 
     const client = this.connectionManager.getClient(connection)
     const section = params.section || 'all'
@@ -56,7 +65,7 @@ export class GetPhpInfoHandler {
     } catch (error: any) {
       const mcpError = this.errorHandler.createError(
         MCPErrorCode.CONNECTION_ERROR,
-        'Failed to retrieve PHP info from active connection',
+        'Failed to retrieve PHP info from the project connection',
         {
           connectionType: connection.type,
           connectionName: this.connectionManager.getConnectionName(connection),

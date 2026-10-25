@@ -1,23 +1,35 @@
 <script setup lang="ts">
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import { EyeIcon, PlusIcon, TrashIcon, WifiIcon, ArrowPathIcon, PencilIcon } from '@heroicons/vue/24/outline'
+  import PrimaryButton from '../PrimaryButton.vue'
+  import SecondaryButton from '../SecondaryButton.vue'
+  import { PlusIcon, WifiIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import AutoScrollText from '../AutoScrollText.vue'
   import { onBeforeUnmount, onMounted, ref } from 'vue'
-  import { useKubectlStore } from '../stores/kubectl'
-  import Divider from '../components/Divider.vue'
-  import Modal from '../components/Modal.vue'
-  import KubectlConnectView from './KubectlConnectView.vue'
-  import events from '../events'
-  import DropDown from '../components/DropDown.vue'
-  import { ConnectionConfig } from '../../types/kubectl.type'
-  import DropDownItem from '../components/DropDownItem.vue'
-  import { ActionReply } from '../../types/client.type'
-  import { useConnectionView } from '../composables/useConnectionView'
+  import { useKubectlStore } from '../../stores/kubectl'
+  import Divider from '../Divider.vue'
+  import KubectlConnectModal from '../modals/KubectlConnectModal.vue'
+  import events from '../../events'
+  import DropDown from '../DropDown.vue'
+  import { ConnectionConfig } from '../../../types/kubectl.type'
+  import DropDownItem from '../DropDownItem.vue'
+  import { ActionReply } from '../../../types/client.type'
+  import { useConnectionView } from '../../composables/useConnectionView'
+  import RowActions from '../interactions/RowActions.vue'
+  import EmptyState from '../EmptyState.vue'
+  import { computed } from 'vue'
+  import { useTabsStore } from '../../stores/tabs'
 
   const kubectlStore = useKubectlStore()
+  const tabsStore = useTabsStore()
   const loadingPods = ref(false)
   const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
 
+  // Connections are atomic to a project: only list the current project's own
+  const projectConnections = computed(() =>
+    kubectlStore.connections.filter(connection => connection.tab_id === tabsStore.current?.id)
+  )
+
+  /* @ts-ignore */
   const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
     store: kubectlStore,
     connectState: 'connect',
@@ -85,36 +97,30 @@
           </div>
         </div>
         <Divider />
-        <template v-for="connection in kubectlStore.connections">
+        <template v-for="connection in projectConnections">
           <div class="grid grid-cols-5 gap-2 items-center">
-            <div class="flex items-center">
-              <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
-              {{ connection.name }}
+            <div class="flex items-center min-w-0">
+              <div class="size-4 rounded-full mr-1 shrink-0" :class="[`bg-${connection.color}-500`]"></div>
+              <AutoScrollText>{{ connection.name }}</AutoScrollText>
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.context" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.context }}</AutoScrollText>
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.namespace" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.namespace }}</AutoScrollText>
             </div>
-            <div>
-              <EyeIcon v-tippy="connection.path" class="size-4 hover:text-blue-500" />
+            <div class="min-w-0">
+              <AutoScrollText>{{ connection.path }}</AutoScrollText>
             </div>
-            <div class="flex gap-1 justify-end space-x-2">
-              <button type="button" @click="edit(connection.id)" class="p-1 cursor-pointer">
-                <PencilIcon v-tippy="'Edit'" class="size-4 hover:text-blue-500" />
-              </button>
-              <button type="button" @click="remove(connection.id)" class="p-1 cursor-pointer">
-                <TrashIcon v-tippy="'Delete'" class="size-4 hover:text-red-500" />
-              </button>
-              <button type="button" v-if="connecting === connection.id" class="p-1 cursor-pointer">
+            <RowActions @edit="edit(connection.id)" @remove="remove(connection.id)">
+              <SecondaryButton v-if="connecting === connection.id" class="!p-1 !border-transparent">
                 <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
-              </button>
+              </SecondaryButton>
               <DropDown align="right" v-else>
                 <template #trigger>
-                  <button type="button" class="p-1 cursor-pointer" @click="getPods(connection)">
-                    <WifiIcon v-tippy="'Connect'" class="size-4 hover:text-green-500 cursor-pointer" />
-                  </button>
+                  <SecondaryButton class="!p-1 !border-transparent" v-tippy="'Connect'" @click="getPods(connection)">
+                    <WifiIcon class="size-4 hover:text-green-500" />
+                  </SecondaryButton>
                 </template>
                 <div class="p-1">
                   <DropDownItem v-if="loadingPods">Loading Pods...</DropDownItem>
@@ -130,18 +136,14 @@
                   </div>
                 </div>
               </DropDown>
-            </div>
+            </RowActions>
           </div>
           <Divider />
         </template>
       </div>
-      <div v-if="Object.values(kubectlStore.connections).length === 0" class="grid grid-cols-1 items-center">
-        <div>No connections yet!</div>
-      </div>
+      <EmptyState v-if="projectConnections.length === 0" message="No connections yet, click the + button to add one." />
     </div>
-    <Modal ref="connectModal" :title="editId ? 'Edit Connection' : 'Add Connection'" size="lg">
-      <KubectlConnectView @done="connectModal.closeModal()" :id="editId" />
-    </Modal>
+    <KubectlConnectModal ref="connectModal" :id="editId" />
   </div>
 </template>
 
