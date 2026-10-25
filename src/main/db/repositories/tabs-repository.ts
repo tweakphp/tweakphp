@@ -23,9 +23,6 @@ interface TabRow {
   queries: string | null
   pane: string | null
   info: string | null
-  docker: string | null
-  ssh: string | null
-  kubectl: string | null
   folder_id: number | null
   pinned: number
   color: string | null
@@ -44,11 +41,6 @@ const parseJson = <T>(value: string | null | undefined, fallback: T): T => {
   } catch {
     return fallback
   }
-}
-
-const parseOptionalJson = <T>(value: string | null | undefined): T | undefined => {
-  if (!value) return undefined
-  return parseJson<T | undefined>(value, undefined)
 }
 
 const normalizeTab = (input: Partial<TabRecord>, position = 0): TabRecord => {
@@ -74,9 +66,6 @@ const normalizeTab = (input: Partial<TabRecord>, position = 0): TabRecord => {
       php_version: input.info?.php_version ?? '',
       version: input.info?.version ?? '',
     },
-    ...(input.docker ? { docker: input.docker } : {}),
-    ...(input.ssh ? { ssh: input.ssh } : {}),
-    ...(input.kubectl ? { kubectl: input.kubectl } : {}),
     folder_id: input.folder_id ?? null,
     pinned: Boolean(input.pinned),
     color: input.color ?? null,
@@ -113,20 +102,12 @@ const deserializeTab = (row: TabRow): TabRecord => {
     deleted_at: row.deleted_at,
   }
 
-  const docker = parseOptionalJson<Tab['docker']>(row.docker)
-  const ssh = parseOptionalJson<Tab['ssh']>(row.ssh)
-  const kubectl = parseOptionalJson<Tab['kubectl']>(row.kubectl)
-
-  if (docker) tab.docker = docker
-  if (ssh) tab.ssh = ssh
-  if (kubectl) tab.kubectl = kubectl
-
   return tab
 }
 
 const tabColumns = `
   id, type, name, code, path, loader, execution, connection_id,
-  result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
+  result, queries, pane, info, folder_id, pinned,
   color, tag, position, created_at, updated_at, deleted_at
 `
 
@@ -172,10 +153,10 @@ export class TabsRepository {
     const stmt = db.prepare(`
       INSERT INTO tabs (
         id, type, name, code, path, loader, execution, connection_id,
-        result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
+        result, queries, pane, info, folder_id, pinned,
         color, tag, position, created_at, updated_at, deleted_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         name = excluded.name,
@@ -188,9 +169,6 @@ export class TabsRepository {
         queries = excluded.queries,
         pane = excluded.pane,
         info = excluded.info,
-        docker = excluded.docker,
-        ssh = excluded.ssh,
-        kubectl = excluded.kubectl,
         folder_id = excluded.folder_id,
         pinned = excluded.pinned,
         color = excluded.color,
@@ -213,9 +191,6 @@ export class TabsRepository {
       JSON.stringify(normalized.queries ?? []),
       JSON.stringify(normalized.pane),
       JSON.stringify(normalized.info),
-      normalized.docker ? JSON.stringify(normalized.docker) : null,
-      normalized.ssh ? JSON.stringify(normalized.ssh) : null,
-      normalized.kubectl ? JSON.stringify(normalized.kubectl) : null,
       normalized.folder_id ?? null,
       normalized.pinned ? 1 : 0,
       normalized.color ?? null,

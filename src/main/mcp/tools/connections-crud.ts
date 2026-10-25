@@ -46,7 +46,9 @@ export class CreateConnectionHandler {
     this.tabsRepo = deps.tabsRepo ?? new TabsRepository()
   }
 
-  async handle(params: CreateConnectionParams): Promise<{ connection: Record<string, any>; assignedToProject?: number }> {
+  async handle(
+    params: CreateConnectionParams
+  ): Promise<{ connection: Record<string, any>; assignedToProject?: number }> {
     if (params.projectId === undefined || params.projectId === null) {
       throw this.errorHandler.createError(
         MCPErrorCode.INVALID_PARAMETERS,
@@ -62,7 +64,7 @@ export class CreateConnectionHandler {
     // Local execution is implicit (settings php + project path): no row is
     // persisted, the project is simply reset to the implicit local connection
     if (params.type === 'local') {
-      resetProjectToLocal(params.projectId, undefined, {
+      resetProjectToLocal(params.projectId, {
         tabsRepo: this.tabsRepo,
         connectionsRepo: this.connectionsRepo,
       })
@@ -173,24 +175,21 @@ export class DeleteConnectionHandler {
     // Projects currently using this connection fall back to local
     const resetProjects: number[] = []
     for (const tab of this.tabsRepo.getAllTabs()) {
-      if (tab.connection_id === params.connectionId || tab.execution === existing.type) {
-        const legacyRefMatches =
-          (tab.ssh && existing.type === 'ssh' && String(tab.ssh.id) === params.connectionId) ||
-          (tab.kubectl && existing.type === 'kubectl' && String(tab.kubectl.id) === params.connectionId) ||
-          (tab.docker && existing.type === 'docker' && String((tab.docker as any).id) === params.connectionId)
-        if (tab.connection_id === params.connectionId || legacyRefMatches) {
-          resetProjectToLocal(tab.id, params.connectionId, {
-            tabsRepo: this.tabsRepo,
-            connectionsRepo: this.connectionsRepo,
-          })
-          resetProjects.push(tab.id)
-        }
+      if (tab.connection_id === params.connectionId) {
+        resetProjectToLocal(tab.id, {
+          tabsRepo: this.tabsRepo,
+          connectionsRepo: this.connectionsRepo,
+        })
+        resetProjects.push(tab.id)
       }
     }
 
     const deleted = this.connectionsRepo.deleteConnection(params.connectionId)
     if (!deleted) {
-      throw this.errorHandler.createError(MCPErrorCode.INTERNAL_ERROR, `Failed to delete connection ${params.connectionId}`)
+      throw this.errorHandler.createError(
+        MCPErrorCode.INTERNAL_ERROR,
+        `Failed to delete connection ${params.connectionId}`
+      )
     }
 
     this.connectionManager.removeConnection(params.connectionId)

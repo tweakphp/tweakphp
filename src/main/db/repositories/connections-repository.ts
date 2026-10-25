@@ -71,6 +71,13 @@ const normalizeConnection = (input: ConnectionInput): StoredConnection => {
     normalized.client_path = input.client_path ?? null
     normalized.environment = input.environment ?? null
     normalized.environments = input.environments ?? []
+    // Vapor rows are per-project by design: their id IS the tab id. Default
+    // the ownership so renderer/import paths never create orphan rows; rows
+    // with a non-numeric id (global MCP vapor) stay unassigned.
+    const numericId = Number(id)
+    if ((normalized.tab_id === null || normalized.tab_id === undefined) && Number.isFinite(numericId)) {
+      normalized.tab_id = numericId
+    }
   }
 
   if (input.type === 'docker') {

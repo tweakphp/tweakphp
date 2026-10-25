@@ -27,7 +27,12 @@ vi.mock('../../settings', () => ({
   getSettings: () => ({ php: '/usr/local/bin/php', laravelPath: '/tmp/laravel' }),
 }))
 
-import { resolveProjectConnection, getProjectTab, assignConnectionToProject, resetProjectToLocal } from './project-connection'
+import {
+  resolveProjectConnection,
+  getProjectTab,
+  assignConnectionToProject,
+  resetProjectToLocal,
+} from './project-connection'
 import type { TabsRepository, TabRecord } from '../../db/repositories/tabs-repository'
 import type { ConnectionsRepository } from '../../db/repositories/connections-repository'
 
@@ -107,33 +112,14 @@ describe('resolveProjectConnection', () => {
     expect((resolved?.connection as any).ssh).toMatchObject({ type: 'ssh', host: '1.2.3.4' })
   })
 
-  it('falls back to legacy inline docker config when connection_id is missing', () => {
-    tab.execution = 'docker'
-    tab.docker = {
-      type: 'docker',
-      id: 5,
-      working_directory: '/var/www/html',
-      container_id: 'abc',
-      container_name: 'legacy-container',
-      php_version: '8.3',
-      php_path: 'php',
-      client_path: '/tmp/client.phar',
-      ssh_id: 0,
-    }
-
-    const resolved = resolveProjectConnection(1, { tabsRepo: mockTabsRepo, connectionsRepo: mockConnectionsRepo })
-
-    expect(resolved?.connection).toMatchObject({ type: 'docker', container_name: 'legacy-container' })
-  })
-
-  it('falls back to legacy ssh ref when connection_id is missing', () => {
+  it('falls back to the implicit local connection when connection_id points to a missing row', () => {
     tab.execution = 'ssh'
-    tab.ssh = { id: 303 }
-    ;(mockConnectionsRepo.getConnection as any).mockReturnValue({ id: '303', type: 'ssh', host: 'legacy' })
+    tab.connection_id = '101'
+    ;(mockConnectionsRepo.getConnection as any).mockReturnValue(undefined)
 
     const resolved = resolveProjectConnection(1, { tabsRepo: mockTabsRepo, connectionsRepo: mockConnectionsRepo })
 
-    expect(resolved?.connection).toMatchObject({ type: 'ssh', host: 'legacy' })
+    expect(resolved?.connection).toEqual({ type: 'local', path: '/projects/app', php: '/usr/local/bin/php' })
   })
 
   it('resolves vapor through the per-tab vapor connection row', () => {
@@ -163,18 +149,24 @@ describe('assignConnectionToProject', () => {
 
   beforeEach(() => {
     mockTabsRepo = {
-      getTab: vi.fn().mockImplementation((id: number) => (Number(id) === 42 ? { id: 42, execution: 'local', connection_id: null } : undefined)),
+      getTab: vi
+        .fn()
+        .mockImplementation((id: number) =>
+          Number(id) === 42 ? { id: 42, execution: 'local', connection_id: null } : undefined
+        ),
       saveTab: vi.fn(),
     } as unknown as TabsRepository
 
     mockConnectionsRepo = {
-      getConnection: vi.fn().mockImplementation((id: string) =>
-        id === '101' ? { id: '101', type: 'ssh', host: '1.2.3.4', tab_id: 42 } : undefined
-      ),
+      getConnection: vi
+        .fn()
+        .mockImplementation((id: string) =>
+          id === '101' ? { id: '101', type: 'ssh', host: '1.2.3.4', tab_id: 42 } : undefined
+        ),
     } as unknown as ConnectionsRepository
   })
 
-  it('assigns an owned connection to the project and syncs legacy refs', () => {
+  it('assigns an owned connection to the project', () => {
     const projectId = assignConnectionToProject(42, '101', {
       tabsRepo: mockTabsRepo,
       connectionsRepo: mockConnectionsRepo,
@@ -182,7 +174,7 @@ describe('assignConnectionToProject', () => {
 
     expect(projectId).toBe(42)
     expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 42, execution: 'ssh', connection_id: '101', ssh: { id: 101 } })
+      expect.objectContaining({ id: 42, execution: 'ssh', connection_id: '101' })
     )
   })
 
@@ -210,25 +202,25 @@ describe('resetProjectToLocal', () => {
 
   beforeEach(() => {
     mockTabsRepo = {
-      getTab: vi.fn().mockImplementation((id: number) =>
-        Number(id) === 42
-          ? { id: 42, execution: 'ssh', connection_id: '101', ssh: { id: 101 }, docker: undefined, kubectl: undefined }
-          : undefined
-      ),
+      getTab: vi
+        .fn()
+        .mockImplementation((id: number) =>
+          Number(id) === 42 ? { id: 42, execution: 'ssh', connection_id: '101' } : undefined
+        ),
       saveTab: vi.fn(),
     } as unknown as TabsRepository
   })
 
-  it('resets the project to implicit local and clears matching legacy refs', () => {
-    const result = resetProjectToLocal(42, '101', { tabsRepo: mockTabsRepo })
+  it('resets the project to implicit local', () => {
+    const result = resetProjectToLocal(42, { tabsRepo: mockTabsRepo })
 
     expect(result).toBe(true)
     expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 42, execution: 'local', connection_id: null, ssh: undefined })
+      expect.objectContaining({ id: 42, execution: 'local', connection_id: null })
     )
   })
 
   it('throws for an unknown project', () => {
-    expect(() => resetProjectToLocal(999, undefined, { tabsRepo: mockTabsRepo })).toThrow(/Project 999 not found/)
+    expect(() => resetProjectToLocal(999, { tabsRepo: mockTabsRepo })).toThrow(/Project 999 not found/)
   })
 })

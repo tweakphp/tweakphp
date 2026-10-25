@@ -143,7 +143,7 @@ describe('SwitchConnectionHandler Unit Tests', () => {
 
     expect(result.assignedToProject).toBe(42)
     expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 42, execution: 'ssh', connection_id: '101', ssh: { id: 101 } })
+      expect.objectContaining({ id: 42, execution: 'ssh', connection_id: '101' })
     )
   })
 
@@ -157,7 +157,7 @@ describe('SwitchConnectionHandler Unit Tests', () => {
   })
 
   it('disconnects a project back to implicit local with connectionType local + projectId', async () => {
-    ;(mockTabsRepo.getTab as any).mockReturnValue({ id: 42, execution: 'ssh', connection_id: '101', ssh: { id: 101 } })
+    ;(mockTabsRepo.getTab as any).mockReturnValue({ id: 42, execution: 'ssh', connection_id: '101' })
 
     const result = await handler.handle({ connectionType: 'local', projectId: 42 })
 

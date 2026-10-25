@@ -46,7 +46,7 @@ export class SwitchConnectionHandler {
       params.connectionType === 'local' &&
       !params.connectionConfig
     ) {
-      resetProjectToLocal(params.projectId, undefined, {
+      resetProjectToLocal(params.projectId, {
         tabsRepo: this.tabsRepo,
         connectionsRepo: this.connectionsRepo,
       })

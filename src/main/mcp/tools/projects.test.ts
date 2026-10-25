@@ -95,9 +95,7 @@ describe('Project MCP handlers', () => {
     } as unknown as TabsRepository
 
     mockFoldersRepo = {
-      getAllFolders: vi.fn().mockReturnValue([
-        { id: 3, name: 'Work', position: 0, created_at: '', updated_at: '' },
-      ]),
+      getAllFolders: vi.fn().mockReturnValue([{ id: 3, name: 'Work', position: 0, created_at: '', updated_at: '' }]),
     } as unknown as WorkspaceFoldersRepository
 
     // in-memory store so saveConnection → getConnection round-trips like the real DB
@@ -322,7 +320,7 @@ describe('Project MCP handlers', () => {
     })
 
     it('duplicates the active ssh connection as a copy owned by the clone (never shared)', async () => {
-      tabs = [makeTab({ id: 9, execution: 'ssh', connection_id: '101', ssh: { id: 101 } })]
+      tabs = [makeTab({ id: 9, execution: 'ssh', connection_id: '101' })]
       ;(mockTabsRepo.getTab as any).mockImplementation((id: number) => tabs.find(tab => tab.id === Number(id)))
       storedConnections.set('101', {
         id: '101',

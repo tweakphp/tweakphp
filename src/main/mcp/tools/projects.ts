@@ -58,9 +58,7 @@ export class ListProjectsHandler {
   }
 
   async handle(params?: ListProjectsParams): Promise<{ projects: ProjectSummary[] }> {
-    const tabs = params?.includeTrashed
-      ? this.tabsRepo.getAllTabs(true)
-      : this.tabsRepo.getAllTabs(false)
+    const tabs = params?.includeTrashed ? this.tabsRepo.getAllTabs(true) : this.tabsRepo.getAllTabs(false)
     const folders = new Map(this.foldersRepo.getAllFolders().map(folder => [folder.id, folder.name]))
 
     let projects = tabs.map(tab => this.toSummary(tab, folders.get(tab.folder_id ?? -1) ?? null))
@@ -335,7 +333,8 @@ export class DuplicateProjectHandler {
     const clone: TabRecord = {
       ...source,
       id: cloneId,
-      connection_id: source.execution === 'vapor' ? String(cloneId) : copiedConnectionId ?? source.connection_id ?? null,
+      connection_id:
+        source.execution === 'vapor' ? String(cloneId) : (copiedConnectionId ?? source.connection_id ?? null),
       position: (source.position ?? 0) + 0.5,
       created_at: undefined,
       updated_at: undefined,
@@ -343,7 +342,7 @@ export class DuplicateProjectHandler {
 
     this.tabsRepo.saveTab(clone)
 
-    // Sync execution + legacy refs for the copied connection (same as connect)
+    // Sync execution for the copied connection (same as connect)
     if (copiedConnectionId) {
       assignConnectionToProject(cloneId, copiedConnectionId, {
         tabsRepo: this.tabsRepo,

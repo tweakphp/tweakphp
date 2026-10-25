@@ -20,7 +20,7 @@ export interface DiscoveredEnvironment {
 
 export interface ProjectConnectionInfo {
   connectionId: string | null
-  source: 'assigned' | 'legacy-docker' | 'legacy-ssh' | 'legacy-kubectl' | 'vapor' | 'local-implicit'
+  source: 'assigned' | 'vapor' | 'local-implicit'
 }
 
 export interface ProjectView {
@@ -124,12 +124,6 @@ export class ListConnectionsHandler {
     let source: ProjectConnectionInfo['source'] = 'local-implicit'
     if (tab.connection_id && connection && connection.type === tab.execution) {
       source = 'assigned'
-    } else if (tab.execution === 'docker' && tab.docker) {
-      source = 'legacy-docker'
-    } else if (tab.execution === 'ssh' && tab.ssh) {
-      source = 'legacy-ssh'
-    } else if (tab.execution === 'kubectl' && tab.kubectl) {
-      source = 'legacy-kubectl'
     } else if (tab.execution === 'vapor') {
       source = 'vapor'
     }
