@@ -112,7 +112,10 @@ export class ReorderFoldersHandler {
 
   async handle(params: ReorderFoldersParams): Promise<{ success: boolean }> {
     if (!Array.isArray(params.folderIds) || params.folderIds.length === 0) {
-      throw this.errorHandler.createError(MCPErrorCode.INVALID_PARAMETERS, 'Parameter "folderIds" must be a non-empty array')
+      throw this.errorHandler.createError(
+        MCPErrorCode.INVALID_PARAMETERS,
+        'Parameter "folderIds" must be a non-empty array'
+      )
     }
 
     const existing = new Set(this.foldersRepo.getAllFolders().map(f => f.id))

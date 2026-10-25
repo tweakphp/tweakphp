@@ -21,11 +21,7 @@ vi.mock('better-sqlite3', () => ({
   },
 }))
 
-import {
-  CreateConnectionHandler,
-  UpdateConnectionHandler,
-  DeleteConnectionHandler,
-} from './connections-crud'
+import { CreateConnectionHandler, UpdateConnectionHandler, DeleteConnectionHandler } from './connections-crud'
 import type { ConnectionsRepository } from '../../db/repositories/connections-repository'
 import type { TabsRepository } from '../../db/repositories/tabs-repository'
 
@@ -108,9 +104,7 @@ describe('Connection CRUD MCP handlers (project-atomic connections)', () => {
       expect(mockConnectionsRepo.saveConnection).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'ssh', tab_id: 1 })
       )
-      expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1, execution: 'ssh' })
-      )
+      expect(mockTabsRepo.saveTab).toHaveBeenCalledWith(expect.objectContaining({ id: 1, execution: 'ssh' }))
     })
 
     it('creates a docker connection owned by the project', async () => {
@@ -177,7 +171,11 @@ describe('Connection CRUD MCP handlers (project-atomic connections)', () => {
       })
 
       await expect(
-        handler.handle({ projectId: 404, type: 'docker', config: { container_name: 'x', container_id: 'y', working_directory: '/w' } })
+        handler.handle({
+          projectId: 404,
+          type: 'docker',
+          config: { container_name: 'x', container_id: 'y', working_directory: '/w' },
+        })
       ).rejects.toThrow(/Project 404 not found/)
     })
   })
@@ -212,9 +210,9 @@ describe('Connection CRUD MCP handlers (project-atomic connections)', () => {
         connectionsRepo: mockConnectionsRepo,
       })
 
-      await expect(
-        handler.handle({ connectionId: '101', changes: { type: 'docker' } })
-      ).rejects.toThrow(/type cannot be changed/)
+      await expect(handler.handle({ connectionId: '101', changes: { type: 'docker' } })).rejects.toThrow(
+        /type cannot be changed/
+      )
     })
 
     it('rejects changing the connection ownership', async () => {
@@ -223,9 +221,9 @@ describe('Connection CRUD MCP handlers (project-atomic connections)', () => {
         connectionsRepo: mockConnectionsRepo,
       })
 
-      await expect(
-        handler.handle({ connectionId: '101', changes: { tab_id: 2 } })
-      ).rejects.toThrow(/ownership cannot be changed/)
+      await expect(handler.handle({ connectionId: '101', changes: { tab_id: 2 } })).rejects.toThrow(
+        /ownership cannot be changed/
+      )
     })
 
     it('rejects updating an unknown connection', async () => {
