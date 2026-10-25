@@ -1,5 +1,3 @@
-import { ConnectionConfig } from './docker.type'
-
 export interface Result {
   line: number
   code: string
@@ -31,9 +29,14 @@ export interface Tab {
   code: string
   path: string | undefined
   execution: string
+  connection_id?: string | null
   loader?: string
   result: Result[]
   queries?: QueryItem[]
+  folder_id?: number | null
+  pinned?: boolean
+  color?: string | null
+  tag?: string | null
   pane: {
     code: number
     result: number
@@ -42,12 +45,5 @@ export interface Tab {
     name: string
     php_version: string
     version: string
-  }
-  docker?: ConnectionConfig
-  ssh?: {
-    id: number
-  }
-  kubectl?: {
-    id: number
   }
 }

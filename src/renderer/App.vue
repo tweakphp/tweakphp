@@ -1,23 +1,23 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon, PlusIcon } from '@heroicons/vue/24/outline'
+  import { CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import WorkspaceList from './components/WorkspaceList.vue'
+  import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
   import { useTabsStore } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
   import router from './router/index'
   import events from './events'
   import { useSettingsStore } from './stores/settings'
+  import { useLspStore } from './stores/lsp'
+  import { clampSidebarWidth, sidebarWidthBounds, useSidebarWidthStore } from './stores/sidebar-width'
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import ProjectTile from './components/ProjectTile.vue'
-  import Modal from './components/Modal.vue'
-  import CloseTabModal from './components/CloseTabModal.vue'
-  import NewProjectView from './views/NewProjectView.vue'
-  import ProjectMenuContext from '@/components/contextMenus/ProjectMenuContext.vue'
+  import DeleteTabModal from './components/modals/DeleteTabModal.vue'
+  import NewProjectModal from './components/modals/NewProjectModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -31,11 +31,112 @@
   const tabStore = useTabsStore()
   const historyStore = useHistoryStore()
   const settingsStore = useSettingsStore()
+  const sidebarWidthStore = useSidebarWidthStore()
   const updateStore = useUpdateStore()
+  const lspStore = useLspStore()
+
+  const lspStatusTooltip = computed(() => {
+    switch (lspStore.status) {
+      case 'connected':
+        return 'Status LSP: Connected'
+      case 'connecting':
+        return 'Status LSP: Connecting...'
+      case 'disconnected':
+        return 'Status LSP: Disconnected (Click to reconnect)'
+    }
+  })
+
+  const handleLspReconnect = () => {
+    window.ipcRenderer.send('lsp.restart')
+  }
+
+  const tabInfo = computed(() => {
+    const info = tabStore.current?.info
+    if (!info || (!info.php_version && !info.version)) {
+      return null
+    }
+    return info
+  })
+
+  const infoTooltip = computed(() => {
+    if (!tabInfo.value) {
+      return ''
+    }
+    const project = `${tabInfo.value.name} ${tabInfo.value.version}`.trim()
+    let content = `PHP ${tabInfo.value.php_version}`
+    if (project) {
+      content += `<br>${project}`
+    }
+    return content
+  })
+
+  const isSettingsPage = computed(() => router.currentRoute.value.name === 'settings')
 
   const newProjectModal = ref()
 
   const isAppReady = ref(false)
+  const viewportWidth = ref(window.innerWidth)
+  const isResizingSidebar = ref(false)
+  const sidebarWidth = computed(() => clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value))
+
+  let resizePointerId: number | null = null
+  let resizeHandle: HTMLElement | null = null
+  let resizeStartWidth = 0
+  let previousUserSelect = ''
+
+  const startSidebarResize = (event: PointerEvent) => {
+    if (event.button !== 0 || resizePointerId !== null) return
+
+    event.preventDefault()
+    resizePointerId = event.pointerId
+    resizeHandle = event.currentTarget as HTMLElement
+    resizeStartWidth = sidebarWidthStore.width
+    previousUserSelect = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+    isResizingSidebar.value = true
+    resizeHandle.setPointerCapture(event.pointerId)
+  }
+
+  const moveSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId !== resizePointerId) return
+    sidebarWidthStore.setWidth(clampSidebarWidth(event.clientX, viewportWidth.value))
+  }
+
+  const stopSidebarResize = (persist: boolean) => {
+    if (resizePointerId === null) return
+
+    const pointerId = resizePointerId
+    resizePointerId = null
+    isResizingSidebar.value = false
+    document.body.style.userSelect = previousUserSelect
+    if (resizeHandle?.hasPointerCapture(pointerId)) resizeHandle.releasePointerCapture(pointerId)
+    resizeHandle = null
+
+    if (persist) {
+      void sidebarWidthStore.persistWidth()
+    } else {
+      sidebarWidthStore.setWidth(resizeStartWidth)
+    }
+  }
+
+  const endSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId !== resizePointerId) return
+    moveSidebarResize(event)
+    stopSidebarResize(true)
+  }
+
+  const cancelSidebarResize = (event: PointerEvent) => {
+    if (event.pointerId === resizePointerId) stopSidebarResize(false)
+  }
+
+  const adjustSidebarWidth = (change: number) => {
+    sidebarWidthStore.setWidth(clampSidebarWidth(sidebarWidth.value + change, viewportWidth.value))
+    void sidebarWidthStore.persistWidth()
+  }
+
+  const updateViewportWidth = () => {
+    viewportWidth.value = window.innerWidth
+  }
 
   const unhandledRejectionListener = (event: PromiseRejectionEvent) => {
     const reason: any = event.reason
@@ -80,6 +181,7 @@
     })
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
+      await sidebarWidthStore.ready
       isAppReady.value = true
     })
     window.ipcRenderer.send('init')
@@ -109,13 +211,16 @@
     })
 
     window.addEventListener('keydown', keydownListener)
+    window.addEventListener('resize', updateViewportWidth)
     window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
     await initEditor()
   })
 
   onBeforeUnmount(() => {
+    stopSidebarResize(false)
     window.removeEventListener('keydown', keydownListener)
+    window.removeEventListener('resize', updateViewportWidth)
     window.removeEventListener('unhandledrejection', unhandledRejectionListener)
   })
 
@@ -135,108 +240,97 @@
       }
     }
   }
-
-  const requestCloseTab = (id: number) => {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
-  }
 </script>
 
 <template>
-  <div v-if="isAppReady" class="h-full" :style="{ color: settingsStore.colors.foreground }">
+  <div
+    v-if="isAppReady"
+    class="h-full"
+    :style="{ 'color': settingsStore.colors.foreground, '--sidebar-width': `${sidebarWidth}px` }"
+  >
     <TitleBar />
     <aside
-      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r transition-all duration-300"
-      :class="{
-        'w-12': !settingsStore.isNavigationExpanded,
-        'w-48': settingsStore.isNavigationExpanded,
-      }"
+      class="fixed z-40 left-0 bottom-0 top-[38px] justify-between border-r"
+      :class="{ 'transition-[width] duration-300': !isResizingSidebar }"
       :style="{
+        width: 'var(--sidebar-width)',
         backgroundColor: settingsStore.colors.background,
         borderColor: settingsStore.colors.border,
       }"
     >
-      <div class="relative h-full flex flex-col justify-between pb-[70px]">
-        <div class="min-h-full max-h-full no-scrollbar overflow-y-auto p-2 space-y-2">
-          <button @click="newProjectModal.openModal()" class="w-full">
-            <ProjectTile
-              tooltip="Add new project"
-              tooltip-placement="right"
-              :expanded="settingsStore.isNavigationExpanded"
-            >
-              <PlusIcon class="w-4 h-4 flex-shrink-0" />
-              <span v-if="settingsStore.isNavigationExpanded" class="ml-2 text-sm truncate block min-w-0 flex-1">
-                Add new project
-              </span>
-            </ProjectTile>
-          </button>
-          <template v-for="tab in tabStore.tabs" :key="tab.id">
-            <button
-              @click="router.replace({ name: 'code', params: { id: tab.id } })"
-              @mousedown.middle="requestCloseTab(tab.id)"
-              class="w-full"
-            >
-              <ProjectMenuContext :tab="tab">
-                <ProjectTile
-                  :active="tabStore.getCurrent()?.id === tab.id"
-                  :name="tab.name"
-                  :tooltip="settingsStore.isNavigationExpanded ? '' : tab.name"
-                  :expanded="settingsStore.isNavigationExpanded"
-                  tooltip-placement="right"
-                >
-                  <span v-if="settingsStore.isNavigationExpanded" class="text-sm truncate block min-w-0 flex-1">
-                    {{ tab.name }}
-                  </span>
-                  <span v-else class="flex-shrink-0">
-                    {{ tab.name[0] }}
-                  </span>
-                </ProjectTile>
-              </ProjectMenuContext>
-            </button>
-          </template>
-        </div>
+      <div class="relative h-full flex flex-col justify-between pb-10">
+        <WorkspaceList @open-new-project="newProjectModal.openModal()" />
         <div class="absolute bottom-0 left-0 w-full border-t" :style="{ borderColor: settingsStore.colors.border }">
-          <SidebarItem :active="router.currentRoute.value.path === '/settings'" class="relative">
+          <SidebarItem class="relative px-3 -mt-[1px]">
             <span
               v-if="
                 updateStore.update &&
                 updateStore.isUpdateAvailable(settingsStore.settings.version, updateStore.update.version)
               "
-              class="absolute bg-primary-500 text-white w-[7px] h-[7px] rounded-full"
-              :class="{
-                'top-[5px] right-[5px]': !settingsStore.isNavigationExpanded,
-                'top-[12px] right-[12px]': settingsStore.isNavigationExpanded,
-              }"
+              class="absolute top-[12px] right-[12px] bg-primary-500 text-white size-2 rounded-full"
             >
             </span>
-            <RouterLink
-              :to="{ name: 'settings' }"
-              :class="{
-                'text-primary-500': router.currentRoute.value.name === 'settings',
-                'flex items-center justify-center': !settingsStore.isNavigationExpanded,
-                'flex items-center justify-start w-full': settingsStore.isNavigationExpanded,
-              }"
-            >
-              <CogIcon class="w-6 h-6 hover:text-primary-500" />
-              <span v-if="settingsStore.isNavigationExpanded" class="ml-3 text-sm"> Settings </span>
-            </RouterLink>
+            <div class="flex items-center justify-between w-full">
+              <RouterLink
+                :to="{ name: 'settings' }"
+                :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+              >
+                <CogIcon class="size-5 hover:text-primary-500" />
+              </RouterLink>
+              <div v-if="!isSettingsPage" class="flex items-center justify-center gap-2">
+                <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
+                  <div
+                    class="rounded-full size-4"
+                    :class="{
+                      'bg-green-500': lspStore.status === 'connected',
+                      'bg-yellow-500': lspStore.status === 'connecting',
+                      'bg-red-500': lspStore.status === 'disconnected',
+                    }"
+                  ></div>
+                </div>
+                <InformationCircleIcon
+                  v-if="tabInfo"
+                  class="size-5 hover:text-primary-500"
+                  v-tippy="{ content: infoTooltip, allowHTML: true, placement: 'top' }"
+                />
+              </div>
+            </div>
           </SidebarItem>
         </div>
       </div>
+      <div
+        role="separator"
+        aria-label="Resize sidebar"
+        aria-orientation="vertical"
+        :aria-valuenow="sidebarWidth"
+        :aria-valuemin="sidebarWidthBounds(viewportWidth).min"
+        :aria-valuemax="sidebarWidthBounds(viewportWidth).max"
+        tabindex="0"
+        class="group absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none"
+        @pointerdown="startSidebarResize"
+        @pointermove="moveSidebarResize"
+        @pointerup="endSidebarResize"
+        @pointercancel="cancelSidebarResize"
+        @lostpointercapture="cancelSidebarResize"
+        @keydown.left.prevent="adjustSidebarWidth(-16)"
+        @keydown.right.prevent="adjustSidebarWidth(16)"
+      >
+        <span
+          class="absolute inset-y-0 left-1/2 w-px bg-primary-500/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          :class="{ 'opacity-100': isResizingSidebar }"
+        />
+      </div>
     </aside>
     <div
-      class="h-full flex transition-all duration-300"
-      :class="{
-        'pl-12': !settingsStore.isNavigationExpanded,
-        'pl-48': settingsStore.isNavigationExpanded,
-      }"
+      class="h-full flex"
+      :class="{ 'transition-[padding] duration-300': !isResizingSidebar }"
+      :style="{ paddingLeft: 'var(--sidebar-width)' }"
     >
       <main class="w-full h-full">
         <RouterView :key="$route.fullPath" />
       </main>
     </div>
-    <Modal title="Add new project" ref="newProjectModal" size="xl">
-      <NewProjectView @opened="newProjectModal.closeModal()" />
-    </Modal>
-    <CloseTabModal />
+    <NewProjectModal ref="newProjectModal" />
+    <DeleteTabModal />
   </div>
 </template>

@@ -1,19 +1,17 @@
 <script setup lang="ts">
-  import Divider from '../components/Divider.vue'
-  import TextInput from '../components/TextInput.vue'
+  import TextInput from '../TextInput.vue'
   import { onBeforeUnmount, onMounted, Ref, ref } from 'vue'
-  import PrimaryButton from '../components/PrimaryButton.vue'
-  import SelectInput from '../components/SelectInput.vue'
-  import { ConnectionConfig } from '../../types/kubectl.type'
-  import events from '../events'
-  import DropDown from '../components/DropDown.vue'
-  import DropDownItem from '../components/DropDownItem.vue'
-  import { useSettingsStore } from '../stores/settings'
-  import { useKubectlStore } from '../stores/kubectl'
-  import { ActionReply } from '../../types/client.type'
+  import SelectInput from '../SelectInput.vue'
+  import { ConnectionConfig } from '../../../types/kubectl.type'
+  import events from '../../events'
+  import { useKubectlStore } from '../../stores/kubectl'
+  import { ActionReply } from '../../../types/client.type'
+  import FormField from './FormField.vue'
+  import ColorPickerInput from '../interactions/ColorPickerInput.vue'
+  import { useTabsStore } from '../../stores/tabs'
 
   const kubectlStore = useKubectlStore()
-  const settingsStore = useSettingsStore()
+  const tabsStore = useTabsStore()
   const emit = defineEmits(['done'])
   const props = defineProps({
     id: {
@@ -24,27 +22,6 @@
   const contexts = ref<string[]>([])
   const namespaces = ref<string[]>([])
 
-  const colors = [
-    'slate',
-    'gray',
-    'red',
-    'orange',
-    'amber',
-    'yellow',
-    'lime',
-    'green',
-    'emerald',
-    'teal',
-    'cyan',
-    'sky',
-    'blue',
-    'indigo',
-    'violet',
-    'purple',
-    'fuchsia',
-    'pink',
-    'rose',
-  ]
   const form: Ref<ConnectionConfig> = ref({
     type: 'kubectl',
     id: Date.now(),
@@ -90,9 +67,14 @@
       emit('done')
       return
     }
+    // Connections are atomic to a project: tag the new connection with
+    // the project that created it
+    form.value.tab_id = tabsStore.current?.id ?? null
     kubectlStore.addConnection(form.value)
     emit('done')
   }
+
+  defineExpose({ save })
 
   const actionReply = (e: any) => {
     const reply = e.detail as ActionReply
@@ -118,62 +100,27 @@
 <template>
   <div class="mt-3 w-full mx-auto">
     <form class="mx-auto space-y-3">
-      <div class="grid grid-cols-2 items-center">
-        <div>Name</div>
+      <FormField label="Name">
         <div class="flex gap-3 items-center justify-between">
           <TextInput class="w-full" id="name" v-model="form.name" placeholder="production-server" />
-          <DropDown align="right" class="flex-grow-0">
-            <template #trigger>
-              <div
-                class="!w-full h-7 text-sm border-transparent py-1 px-2 outline focus:!outline-primary-500 rounded-md flex items-center"
-                :style="{
-                  backgroundColor: settingsStore.colors.backgroundLight,
-                  color: settingsStore.colors.foreground,
-                  outlineColor: settingsStore.colors.border,
-                }"
-              >
-                <div class="size-4 rounded-full" :class="[`bg-${form.color}-500`]"></div>
-              </div>
-            </template>
-            <div class="space-y-1">
-              <DropDownItem
-                v-for="color in colors"
-                :key="`color-${color}`"
-                @click="form.color = color"
-                class="flex items-center"
-              >
-                <span class="size-4 rounded-full mr-1" :class="[`bg-${color}-500`]"></span>
-                <span>{{ color }}</span>
-              </DropDownItem>
-            </div>
-          </DropDown>
+          <ColorPickerInput v-model="form.color" />
         </div>
-      </div>
-      <Divider />
-      <div class="grid grid-cols-2 items-center">
-        <div>Context</div>
+      </FormField>
+      <FormField label="Context" divider>
         <SelectInput id="context" v-model="form.context" placeholder="Select context" @change="getNamespaces()">
           <option v-for="context in contexts" :value="context" :key="`context-${context}`">{{ context }}</option>
         </SelectInput>
-      </div>
-      <Divider />
-      <div class="grid grid-cols-2 items-center">
-        <div>Namespace</div>
+      </FormField>
+      <FormField label="Namespace" divider>
         <SelectInput id="namespace" v-model="form.namespace" placeholder="Select namespace">
           <option v-for="namespace in namespaces" :value="namespace" :key="`namespace-${namespace}`">
             {{ namespace }}
           </option>
         </SelectInput>
-      </div>
-      <Divider />
-      <div class="grid grid-cols-2 items-center">
-        <div>Working Directory</div>
-        <TextInput id="path" v-model="form.path" placeholder="/var/www" />
-      </div>
-      <Divider />
-      <div class="flex items-center justify-end">
-        <PrimaryButton @click="save"> Save </PrimaryButton>
-      </div>
+      </FormField>
+      <FormField label="Working Directory" divider>
+        <TextInput class="w-full" id="path" v-model="form.path" placeholder="/var/www" />
+      </FormField>
     </form>
   </div>
 </template>

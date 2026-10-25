@@ -5,10 +5,11 @@
 
 import { ExecuteWithLoaderParams } from './schemas'
 import { MCPErrorCode } from '../types'
-import { ConnectionManager } from '../connection-manager'
+import { ConnectionManager, ConnectionConfig } from '../connection-manager'
 import { ExecutionHistoryRepository } from '../../db/repositories/execution-history-repository'
 import { getErrorHandler } from '../error-handler'
 import { getSettings } from '../../settings'
+import { resolveProjectConnection } from './project-connection'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -50,14 +51,34 @@ export class ExecuteWithLoaderHandler {
     }
 
     // Determine which connection to use
-    let connection = params.connectionId
-      ? this.connectionManager.getConnection(params.connectionId)
-      : this.connectionManager.getActiveConnection()
+    // Priority: explicit connectionId > project connection (tab.connection_id)
+    let connection: ConnectionConfig | null = null
+    if (params.connectionId) {
+      connection = this.connectionManager.getConnection(params.connectionId) ?? null
+    } else if (params.projectId !== undefined) {
+      const resolved = resolveProjectConnection(params.projectId)
+      if (!resolved) {
+        throw this.errorHandler.createError(
+          MCPErrorCode.CONNECTION_ERROR,
+          `Project ${params.projectId} has no usable connection configured`
+        )
+      }
+      connection = resolved.connection as ConnectionConfig
+      // default the project path to the project's own path
+      if (!params.projectPath && resolved.tab.path) {
+        params.projectPath = resolved.tab.path
+      }
+    } else {
+      throw this.errorHandler.createError(
+        MCPErrorCode.INVALID_PARAMETERS,
+        'Specify a connectionId or a projectId: the execution connection is decided per project'
+      )
+    }
 
     if (!connection) {
       throw this.errorHandler.createError(
         MCPErrorCode.CONNECTION_ERROR,
-        'No active connection available. Please specify a connectionId or set an active connection.'
+        `Connection "${params.connectionId}" not found`
       )
     }
 

@@ -13,6 +13,7 @@
   import { useTabsStore } from '../stores/tabs'
   import { useSettingsStore } from '../stores/settings'
   import { Snippet } from '../../types/snippet.type'
+  import { ModalSize } from '../../types/modal.type'
   import {
     MagnifyingGlassIcon,
     PencilIcon,
@@ -327,7 +328,7 @@
       </div>
     </div>
 
-    <Modal :title="formModalTitle" ref="snippetFormModal" size="3xl">
+    <Modal :title="formModalTitle" ref="snippetFormModal" :size="ModalSize.THREE_XL">
       <form class="space-y-3" @submit.prevent="saveSnippetForm">
         <TextInput v-model="formTitle" placeholder="Title (optional)" class="w-full" />
         <Editor

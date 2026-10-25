@@ -15,5 +15,6 @@ export const useKubectlStore = createConnectionStore<ConnectionConfig>(
     path: connection.path ?? '',
     php: connection.php ?? '',
     client_path: connection.client_path ?? '',
+    tab_id: connection.tab_id ?? null,
   })
 )
