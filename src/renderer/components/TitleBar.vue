@@ -104,7 +104,7 @@
           <SecondaryButton
             without-border
             class="!px-1 h-6"
-            v-tippy="{ content: 'Change layout', placement: 'left' }"
+            v-tippy="{ content: 'Change layout', placement: 'bottom' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
           >
             <VerticalSplitIcon v-if="settingsStore.settings.layout === 'horizontal'" class="cursor-pointer size-7" />

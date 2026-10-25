@@ -21,7 +21,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" title="Connect to Docker" :size="ModalSize.XL">
+  <Modal ref="modal" title="Connect to Docker" :size="ModalSize.TWO_XL">
     <DockerConnection ref="form" @connected="closeModal()" />
     <template #actions>
       <div class="flex justify-end gap-2">

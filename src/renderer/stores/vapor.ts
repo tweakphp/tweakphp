@@ -11,14 +11,23 @@ const normalize = (connection: any): ConnectionConfig => ({
   client_path: connection.client_path ?? null,
   environment: connection.environment ?? null,
   environments: connection.environments ?? [],
+  tab_id: connection.tab_id ?? null,
 })
 
 export const useVaporStore = defineStore(TYPE, () => {
   const connectionConfigs: Ref<ConnectionConfig[]> = ref([])
-  const ready = window.ipcRenderer.invoke('storage:connections:list').then((stored: any[]) => {
+  const load = async () => {
+    const stored: any[] = await window.ipcRenderer.invoke('storage:connections:list')
     connectionConfigs.value = stored
       .filter(connection => connection.type === TYPE)
       .map(connection => normalize({ ...connection, id: Number(connection.id) || connection.id }))
+    return connectionConfigs.value
+  }
+  const ready = load()
+
+  // Push sync: reload when the main process signals external changes (MCP writes)
+  window.ipcRenderer.on('app:connections:changed', () => {
+    void load()
   })
 
   const persist = (config: ConnectionConfig) => {
@@ -112,6 +121,7 @@ export const useVaporStore = defineStore(TYPE, () => {
     resetVaporConfig,
     removeVaporConfig,
     connectionConfigs,
+    reload: load,
     ready,
   }
 })

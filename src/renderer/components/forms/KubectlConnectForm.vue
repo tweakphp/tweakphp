@@ -8,8 +8,10 @@
   import { ActionReply } from '../../../types/client.type'
   import FormField from './FormField.vue'
   import ColorPickerInput from '../interactions/ColorPickerInput.vue'
+  import { useTabsStore } from '../../stores/tabs'
 
   const kubectlStore = useKubectlStore()
+  const tabsStore = useTabsStore()
   const emit = defineEmits(['done'])
   const props = defineProps({
     id: {
@@ -65,6 +67,9 @@
       emit('done')
       return
     }
+    // Connections are atomic to a project: tag the new connection with
+    // the project that created it
+    form.value.tab_id = tabsStore.current?.id ?? null
     kubectlStore.addConnection(form.value)
     emit('done')
   }

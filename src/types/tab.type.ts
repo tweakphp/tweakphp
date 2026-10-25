@@ -31,6 +31,7 @@ export interface Tab {
   code: string
   path: string | undefined
   execution: string
+  connection_id?: string | null
   loader?: string
   result: Result[]
   queries?: QueryItem[]

@@ -23,12 +23,10 @@ export interface ConnectionSummary {
   id: string
   type: string
   name: string
-  isActive: boolean
   details: Record<string, any>
 }
 
 export class ConnectionManager {
-  private activeConnection: ConnectionConfig | null = null
   private storedConnections: Map<string, ConnectionConfig> = new Map()
 
   constructor() {
@@ -47,7 +45,6 @@ export class ConnectionManager {
         path: settings.laravelPath || process.cwd(),
       }
 
-      this.activeConnection = localConnection
       this.storedConnections.set('local-default', localConnection)
     }
 
@@ -57,21 +54,9 @@ export class ConnectionManager {
       for (const conn of savedConnections) {
         this.addConnection(conn.id, conn as any)
       }
-      const active = repo.getActiveConnection()
-      if (active) {
-        this.setActiveConnection(active as any)
-      }
     } catch (e) {
       // Ignore if DB not ready
     }
-  }
-
-  getActiveConnection(): ConnectionConfig | null {
-    return this.activeConnection
-  }
-
-  setActiveConnection(connection: ConnectionConfig): void {
-    this.activeConnection = this.normalizeConnection(connection)
   }
 
   addConnection(id: string, connection: ConnectionConfig): void {
@@ -92,6 +77,34 @@ export class ConnectionManager {
 
   removeConnection(id: string): boolean {
     return this.storedConnections.delete(id)
+  }
+
+  /**
+   * Full resync from the connections table: adds new/updated rows and drops
+   * stored connections that no longer exist (e.g. removed by a project
+   * force-delete cascade). The implicit local default is always kept.
+   */
+  reloadFromRepository(): void {
+    let saved: Readonly<{ id: string; [key: string]: any }>[] = []
+    try {
+      const repo = new ConnectionsRepository()
+      saved = repo.getAllConnections() as any
+    } catch (e) {
+      // Ignore if DB not ready
+      return
+    }
+
+    const savedIds = new Set(saved.map(connection => connection.id))
+
+    for (const id of Array.from(this.storedConnections.keys())) {
+      if (id !== 'local-default' && !savedIds.has(id)) {
+        this.storedConnections.delete(id)
+      }
+    }
+
+    for (const connection of saved) {
+      this.addConnection(connection.id, connection as any)
+    }
   }
 
   public normalizeConnection(connection: ConnectionConfig): ConnectionConfig {
@@ -146,19 +159,13 @@ export class ConnectionManager {
   }
 
   getConnectionsList(): ConnectionSummary[] {
-    const active = this.getActiveConnection()
     const list: ConnectionSummary[] = []
 
     for (const [id, conn] of this.storedConnections.entries()) {
-      const activeName = active ? this.getConnectionName(active) : null
-      const connName = this.getConnectionName(conn)
-      const isActive = active !== null && active.type === conn.type && activeName === connName
-
       list.push({
         id,
         type: conn.type,
-        name: connName,
-        isActive,
+        name: this.getConnectionName(conn),
         details: this.sanitizeConnectionDetails(conn),
       })
     }

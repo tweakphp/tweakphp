@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { Tab } from '../../types/tab.type'
 import { useTabsStore } from './tabs'
 import { useVaporStore } from './vapor'
+import { useConnectionsStore } from './connections'
 
 const { invoke, routerReplace } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock('../themes', () => ({
   themeColors: {},
 }))
 
-vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn() } })
+vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn(), on: vi.fn(), once: vi.fn(), removeListener: vi.fn() } })
 
 const makeTab = (overrides: Partial<Tab> & { id: number }): Tab => ({
   name: `tab-${overrides.id}`,
@@ -54,6 +55,111 @@ describe('tabs store', () => {
     setActivePinia(createPinia())
     tabsStore = useTabsStore()
     await tabsStore.ready
+  })
+
+  // ---- reloadFromDb (MCP push sync) ----
+
+  it('reloadFromDb keeps the current tab editor code by default', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, code: '<?php\n// local edits\n' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1, code: '<?php\n// from db\n' })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb()
+
+    expect(tabsStore.current?.code).toBe('<?php\n// local edits\n')
+  })
+
+  it('reloadFromDb takes the db code when the MCP wrote code for the current tab', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, code: '<?php\n// local edits\n' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1, code: '<?php\n// written by MCP\n' })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb({ codeUpdatedForTabId: 1 })
+
+    expect(tabsStore.current?.code).toBe('<?php\n// written by MCP\n')
+  })
+
+  it('reloadFromDb switches the current project when requested', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1 }), makeTab({ id: 2 })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1 }), makeTab({ id: 2 })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb({ currentProjectId: 2 })
+
+    expect(tabsStore.current?.id).toBe(2)
+  })
+
+  it('reloadFromDb bumps the reloadVersion so views re-sync their local tab reference', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1 })])
+    const before = tabsStore.reloadVersion
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1 })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb()
+
+    expect(tabsStore.reloadVersion).toBe(before + 1)
+  })
+
+  it('duplicateTab copies the active connection for the clone (atomic ownership)', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, execution: 'ssh', connection_id: '101' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    const connectionsStore = useConnectionsStore()
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:connections:list') {
+        return Promise.resolve([
+          {
+            id: '101',
+            type: 'ssh',
+            name: 'prod',
+            host: '1.2.3.4',
+            username: 'deploy',
+            auth_type: 'password',
+            path: '/var/www',
+            tab_id: 1,
+          },
+        ])
+      }
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([])
+      }
+      return Promise.resolve(undefined)
+    })
+    await connectionsStore.reload()
+
+    const clone = await tabsStore.duplicateTab(1)
+
+    expect(clone).not.toBeNull()
+    // the clone owns its own copy, never the source's row
+    expect(clone!.connection_id).not.toBe('101')
+    expect(clone!.ssh).toEqual({ id: Number(clone!.connection_id) })
+    expect(invoke).toHaveBeenCalledWith(
+      'storage:connections:save',
+      expect.objectContaining({ type: 'ssh', host: '1.2.3.4', tab_id: clone!.id })
+    )
   })
 
   // ---- applyGroupOrder ----

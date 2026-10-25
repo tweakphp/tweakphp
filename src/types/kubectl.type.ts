@@ -9,4 +9,5 @@ export interface ConnectionConfig {
   path: string
   php: string | undefined
   client_path: string | undefined
+  tab_id?: number | null
 }

@@ -21,6 +21,18 @@ export const useFoldersStore = defineStore('folders', () => {
     collapsedIds.value = new Set((storedCollapsedIds ?? []).filter(id => existingIds.has(id)))
   })
 
+  const reload = async (): Promise<WorkspaceFolder[]> => {
+    folders.value = ((await window.ipcRenderer.invoke('storage:folders:list')) as WorkspaceFolder[]) ?? []
+    const existingIds = new Set(folders.value.map(folder => folder.id))
+    collapsedIds.value = new Set([...collapsedIds.value].filter(id => existingIds.has(id)))
+    return folders.value
+  }
+
+  // Push sync: reload when the main process signals external changes (MCP writes)
+  window.ipcRenderer.on('app:folders:changed', () => {
+    void reload()
+  })
+
   const isCollapsed = (id: number): boolean => collapsedIds.value.has(id)
 
   const toggleFolder = (id: number) => {
@@ -105,6 +117,7 @@ export const useFoldersStore = defineStore('folders', () => {
     folders,
     collapsedIds,
     ready,
+    reload,
     isCollapsed,
     toggleFolder,
     collapseFolder,

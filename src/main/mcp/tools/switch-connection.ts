@@ -8,39 +8,105 @@ import { MCPErrorCode } from '../types'
 import { ConnectionManager } from '../connection-manager'
 import { getErrorHandler } from '../error-handler'
 import { getSettings } from '../../settings'
+import { ConnectionsRepository } from '../../db/repositories/connections-repository'
+import { TabsRepository } from '../../db/repositories/tabs-repository'
+import { broadcastAppChange } from '../../ipc/broadcast'
+import { assignConnectionToProject, resetProjectToLocal } from './project-connection'
 
 interface SwitchConnectionResult {
   success: boolean
   connectionType: string
   connectionName: string
+  connectionId?: string
   phpVersion?: string
+  assignedToProject?: number
   details: Record<string, any>
 }
 
 export class SwitchConnectionHandler {
   private connectionManager: ConnectionManager
+  private connectionsRepo: ConnectionsRepository
+  private tabsRepo: TabsRepository
   private errorHandler = getErrorHandler()
 
-  constructor(connectionManager: ConnectionManager) {
+  constructor(
+    connectionManager: ConnectionManager,
+    deps: { connectionsRepo?: ConnectionsRepository; tabsRepo?: TabsRepository } = {}
+  ) {
     this.connectionManager = connectionManager
+    this.connectionsRepo = deps.connectionsRepo ?? new ConnectionsRepository()
+    this.tabsRepo = deps.tabsRepo ?? new TabsRepository()
   }
 
   async handle(params: SwitchConnectionParams): Promise<SwitchConnectionResult> {
+    // Disconnect shortcut: switch a project back to the implicit local connection
+    if (
+      params.projectId !== undefined &&
+      !params.connectionId &&
+      params.connectionType === 'local' &&
+      !params.connectionConfig
+    ) {
+      resetProjectToLocal(params.projectId, undefined, {
+        tabsRepo: this.tabsRepo,
+        connectionsRepo: this.connectionsRepo,
+      })
+      return {
+        success: true,
+        connectionType: 'local',
+        connectionName: 'Local',
+        assignedToProject: params.projectId,
+        details: { type: 'local', disconnected: true },
+      }
+    }
+
+    let result: SwitchConnectionResult
+
+    // Pre-validate project and ownership before spending a connection attempt
+    if (params.connectionId && params.projectId !== undefined) {
+      if (!this.tabsRepo.getTab(params.projectId)) {
+        throw this.errorHandler.createError(MCPErrorCode.NOT_FOUND, `Project ${params.projectId} not found`)
+      }
+      const owned = this.connectionsRepo.getConnection(params.connectionId)
+      if (!owned) {
+        throw this.errorHandler.createError(MCPErrorCode.NOT_FOUND, `Connection ${params.connectionId} not found`)
+      }
+      if (owned.tab_id !== null && owned.tab_id !== undefined && Number(owned.tab_id) !== params.projectId) {
+        throw this.errorHandler.createError(
+          MCPErrorCode.INVALID_PARAMETERS,
+          `Connection ${params.connectionId} belongs to another project (connections are atomic to a project)`,
+          { connectionId: params.connectionId, projectId: params.projectId, ownerProjectId: owned.tab_id }
+        )
+      }
+    }
+
     // Case 1: Switch to existing connection by ID
     if (params.connectionId) {
-      return await this.switchToExistingConnection(params.connectionId)
+      result = await this.switchToExistingConnection(params.connectionId)
+    } else if (params.connectionType && params.connectionConfig) {
+      // Case 2: Create new connection from config
+      result = await this.createAndSwitchConnection(params.connectionType, params.connectionConfig, params.projectId)
+    } else {
+      // Invalid parameters
+      throw this.errorHandler.createError(
+        MCPErrorCode.INVALID_PARAMETERS,
+        'Either "connectionId" or both "connectionType" and "connectionConfig" must be provided'
+      )
     }
 
-    // Case 2: Create new connection from config
-    if (params.connectionType && params.connectionConfig) {
-      return await this.createAndSwitchConnection(params.connectionType, params.connectionConfig)
+    // Optionally assign the connection as the active connection of a project.
+    // assignConnectionToProject validates that the connection belongs to the project.
+    if (params.projectId !== undefined) {
+      result.assignedToProject = assignConnectionToProject(
+        params.projectId,
+        result.connectionId ?? params.connectionId!,
+        {
+          tabsRepo: this.tabsRepo,
+          connectionsRepo: this.connectionsRepo,
+        }
+      )
     }
 
-    // Invalid parameters
-    throw this.errorHandler.createError(
-      MCPErrorCode.INVALID_PARAMETERS,
-      'Either "connectionId" or both "connectionType" and "connectionConfig" must be provided'
-    )
+    return result
   }
 
   private async switchToExistingConnection(connectionId: string): Promise<SwitchConnectionResult> {
@@ -76,13 +142,11 @@ export class SwitchConnectionHandler {
 
       await client.disconnect()
 
-      // Set as active connection
-      this.connectionManager.setActiveConnection(connection)
-
       return {
         success: true,
         connectionType: connection.type,
         connectionName: this.connectionManager.getConnectionName(connection),
+        connectionId,
         phpVersion,
         details: this.sanitizeConnectionDetails(connection),
       }
@@ -101,7 +165,8 @@ export class SwitchConnectionHandler {
 
   private async createAndSwitchConnection(
     connectionType: string,
-    connectionConfig: Record<string, unknown>
+    connectionConfig: Record<string, unknown>,
+    projectId?: number
   ): Promise<SwitchConnectionResult> {
     // Validate connection type
     const validTypes: Array<'local' | 'docker' | 'ssh' | 'kubectl' | 'vapor'> = [
@@ -152,17 +217,38 @@ export class SwitchConnectionHandler {
 
       await client.disconnect()
 
-      // Set as active connection
-      this.connectionManager.setActiveConnection(connection)
+      // Local execution is implicit: keep the connection in-memory only
+      // (no dead row in the connections table)
+      if (connection.type === 'local') {
+        const localId = this.connectionManager.generateConnectionId(connection)
+        this.connectionManager.addConnection(localId, connection)
+        return {
+          success: true,
+          connectionType: connection.type,
+          connectionName: this.connectionManager.getConnectionName(connection),
+          connectionId: localId,
+          phpVersion,
+          details: this.sanitizeConnectionDetails(connection),
+        }
+      }
 
-      // Generate an ID and store it
+      // Register the connection (in-memory + persisted like the frontend does).
+      // With a projectId the connection is owned by that project (atomic ownership);
+      // without one it is stored unassigned (visible only in the global MCP list).
       const connectionId = this.connectionManager.generateConnectionId(connection)
       this.connectionManager.addConnection(connectionId, connection)
+      const saved = this.connectionsRepo.saveConnection({
+        ...connection,
+        id: connectionId,
+        tab_id: projectId ?? null,
+      } as any)
+      broadcastAppChange('app:connections:changed')
 
       return {
         success: true,
         connectionType: connection.type,
         connectionName: this.connectionManager.getConnectionName(connection),
+        connectionId: saved.id,
         phpVersion,
         details: this.sanitizeConnectionDetails(connection),
       }

@@ -4,7 +4,6 @@ import { Tab } from '../../../types/tab.type'
 export interface TabRecord extends Omit<Tab, 'id'> {
   id: number
   connection_id?: string | null
-  active?: boolean
   position?: number
   created_at?: string
   updated_at?: string
@@ -31,7 +30,6 @@ interface TabRow {
   pinned: number
   color: string | null
   tag: string | null
-  active: number
   position: number
   created_at: string
   updated_at: string
@@ -84,7 +82,6 @@ const normalizeTab = (input: Partial<TabRecord>, position = 0): TabRecord => {
     color: input.color ?? null,
     tag: input.tag ?? null,
     connection_id: input.connection_id ?? null,
-    active: Boolean(input.active),
     position: input.position ?? position,
     created_at: input.created_at,
     updated_at: input.updated_at,
@@ -110,7 +107,6 @@ const deserializeTab = (row: TabRow): TabRecord => {
     pinned: Boolean(row.pinned),
     color: row.color ?? null,
     tag: row.tag ?? null,
-    active: Boolean(row.active),
     position: row.position,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -131,10 +127,20 @@ const deserializeTab = (row: TabRow): TabRecord => {
 const tabColumns = `
   id, type, name, code, path, loader, execution, connection_id,
   result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
-  color, tag, active, position, created_at, updated_at, deleted_at
+  color, tag, position, created_at, updated_at, deleted_at
 `
 
 export class TabsRepository {
+  getTab(id: string | number): TabRecord | undefined {
+    const stmt = db.prepare(`
+      SELECT ${tabColumns}
+      FROM tabs
+      WHERE id = ? AND deleted_at IS NULL
+    `)
+    const row = stmt.get(String(id)) as TabRow | undefined
+    return row ? deserializeTab(row) : undefined
+  }
+
   getAllTabs(includeTrashed: boolean = false): TabRecord[] {
     const whereClause = includeTrashed ? '' : 'WHERE deleted_at IS NULL'
     const stmt = db.prepare(`
@@ -167,9 +173,9 @@ export class TabsRepository {
       INSERT INTO tabs (
         id, type, name, code, path, loader, execution, connection_id,
         result, queries, pane, info, docker, ssh, kubectl, folder_id, pinned,
-        color, tag, active, position, created_at, updated_at, deleted_at
+        color, tag, position, created_at, updated_at, deleted_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         name = excluded.name,
@@ -189,7 +195,6 @@ export class TabsRepository {
         pinned = excluded.pinned,
         color = excluded.color,
         tag = excluded.tag,
-        active = excluded.active,
         position = excluded.position,
         updated_at = excluded.updated_at,
         deleted_at = excluded.deleted_at
@@ -215,7 +220,6 @@ export class TabsRepository {
       normalized.pinned ? 1 : 0,
       normalized.color ?? null,
       normalized.tag ?? null,
-      normalized.active ? 1 : 0,
       normalized.position ?? 0,
       normalized.created_at || now,
       now,
@@ -228,10 +232,28 @@ export class TabsRepository {
     const activeIds = tabs.map(tab => String(tab.id))
 
     const transaction = db.transaction(() => {
+      // Foreign keys are enforced: a tab may carry a stale connection_id
+      // (e.g. the connection was deleted via MCP while the renderer had the
+      // tab in memory). Drop unknown references instead of failing the save.
+      const referencedIds = new Set(
+        tabs.map(tab => (tab.connection_id ? String(tab.connection_id) : null)).filter(Boolean) as string[]
+      )
+      const validIds = new Set<string>()
+      if (referencedIds.size > 0) {
+        const placeholders = [...referencedIds].map(() => '?').join(',')
+        const rows = db.prepare(`SELECT id FROM connections WHERE id IN (${placeholders})`).all(...referencedIds) as {
+          id: string
+        }[]
+        rows.forEach(row => validIds.add(row.id))
+      }
+
       for (let i = 0; i < tabs.length; i++) {
         const tab = normalizeTab(tabs[i], i)
         tab.position = i
         tab.deleted_at = null
+        if (tab.connection_id && !validIds.has(String(tab.connection_id))) {
+          tab.connection_id = null
+        }
         this.saveTab(tab)
       }
 

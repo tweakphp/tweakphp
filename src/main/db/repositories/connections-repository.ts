@@ -15,7 +15,7 @@ export interface ConnectionRow {
   type: string
   name: string
   config: string
-  is_active: number
+  tab_id: number | null
   created_at: string
   updated_at: string
 }
@@ -35,6 +35,7 @@ const normalizeConnection = (input: ConnectionInput): StoredConnection => {
     id,
     type: input.type,
     name,
+    tab_id: input.tab_id ?? null,
   }
 
   if (input.type === 'local') {
@@ -88,7 +89,7 @@ const normalizeConnection = (input: ConnectionInput): StoredConnection => {
 const deserializeConnection = (row: ConnectionRow): StoredConnection | undefined => {
   try {
     const config = JSON.parse(row.config) as ConnectionInput
-    return normalizeConnection({ ...config, id: row.id, type: row.type, name: row.name })
+    return normalizeConnection({ ...config, id: row.id, type: row.type, name: row.name, tab_id: row.tab_id })
   } catch (error) {
     console.error(`Failed to parse connection config for ID ${row.id}:`, error)
     return undefined
@@ -98,7 +99,7 @@ const deserializeConnection = (row: ConnectionRow): StoredConnection | undefined
 export class ConnectionsRepository {
   getAllConnections(): Readonly<StoredConnection>[] {
     const stmt = db.prepare(`
-      SELECT id, type, name, config, is_active, created_at, updated_at
+      SELECT id, type, name, config, tab_id, created_at, updated_at
       FROM connections
       ORDER BY updated_at DESC
     `)
@@ -110,9 +111,24 @@ export class ConnectionsRepository {
     })
   }
 
+  getConnectionsForTab(tabId: number): Readonly<StoredConnection>[] {
+    const stmt = db.prepare(`
+      SELECT id, type, name, config, tab_id, created_at, updated_at
+      FROM connections
+      WHERE tab_id = ?
+      ORDER BY updated_at DESC
+    `)
+    const rows = stmt.all(String(tabId)) as ConnectionRow[]
+
+    return rows.flatMap(row => {
+      const connection = deserializeConnection(row)
+      return connection ? [connection] : []
+    })
+  }
+
   getConnection(id: string | number): Readonly<StoredConnection> | undefined {
     const stmt = db.prepare(`
-      SELECT id, type, name, config, is_active, created_at, updated_at
+      SELECT id, type, name, config, tab_id, created_at, updated_at
       FROM connections
       WHERE id = ?
     `)
@@ -120,48 +136,34 @@ export class ConnectionsRepository {
     return row ? deserializeConnection(row) : undefined
   }
 
-  saveConnection(connection: ConnectionInput, isActive: boolean = false): Readonly<StoredConnection> {
+  saveConnection(connection: ConnectionInput): Readonly<StoredConnection> {
     const normalized = normalizeConnection(connection)
     const now = new Date().toISOString()
-    const { id, type, name, ...config } = normalized
+    const { id, type, name, tab_id, ...config } = normalized
 
     const stmt = db.prepare(`
-      INSERT INTO connections (id, type, name, config, is_active, created_at, updated_at)
+      INSERT INTO connections (id, type, name, config, tab_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         name = excluded.name,
         config = excluded.config,
-        is_active = excluded.is_active,
+        tab_id = excluded.tab_id,
         updated_at = excluded.updated_at
     `)
 
-    stmt.run(id, type, name, JSON.stringify(config), isActive ? 1 : 0, now, now)
+    stmt.run(id, type, name, JSON.stringify(config), tab_id ?? null, now, now)
     return normalized
   }
 
   deleteConnection(id: string | number): boolean {
-    const stmt = db.prepare(`DELETE FROM connections WHERE id = ?`)
-    const result = stmt.run(String(id))
-    return result.changes > 0
-  }
-
-  setActiveConnection(id: string | number): void {
-    const transaction = db.transaction(() => {
-      db.prepare(`UPDATE connections SET is_active = 0`).run()
-      db.prepare(`UPDATE connections SET is_active = 1 WHERE id = ?`).run(String(id))
+    const transaction = db.transaction((): boolean => {
+      // SQLite foreign keys are not enforced by default: clear tab references manually
+      db.prepare(`UPDATE tabs SET connection_id = NULL WHERE connection_id = ?`).run(String(id))
+      const result = db.prepare(`DELETE FROM connections WHERE id = ?`).run(String(id))
+      return result.changes > 0
     })
-    transaction()
-  }
 
-  getActiveConnection(): Readonly<StoredConnection> | undefined {
-    const stmt = db.prepare(`
-      SELECT id, type, name, config, is_active, created_at, updated_at
-      FROM connections
-      WHERE is_active = 1
-      LIMIT 1
-    `)
-    const row = stmt.get() as ConnectionRow | undefined
-    return row ? deserializeConnection(row) : undefined
+    return transaction()
   }
 }
