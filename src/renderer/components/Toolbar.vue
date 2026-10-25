@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-  import { ArrowPathIcon, BoltIcon, ChevronDownIcon, FolderIcon, ServerIcon } from '@heroicons/vue/24/outline'
+  import {
+    ArrowPathIcon,
+    BoltIcon,
+    ChevronDownIcon,
+    FolderIcon,
+    ServerIcon,
+  } from '@heroicons/vue/24/outline'
   import SecondaryButton from './SecondaryButton.vue'
   import DockerIcon from './icons/DockerIcon.vue'
   import KubectlIcon from './icons/KubectlIcon.vue'

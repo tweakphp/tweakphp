@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
+  import { CogIcon, InformationCircleIcon, BookmarkIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
@@ -72,6 +72,8 @@
   })
 
   const isSettingsPage = computed(() => router.currentRoute.value.name === 'settings')
+
+  const isSnippetPage = computed(() => router.currentRoute.value.name === 'snippets')
 
   const newProjectModal = ref()
 
@@ -272,13 +274,21 @@
             >
             </span>
             <div class="flex items-center justify-between w-full">
-              <RouterLink
-                :to="{ name: 'settings' }"
-                :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
-              >
-                <CogIcon class="size-5 hover:text-primary-500" />
-              </RouterLink>
-              <div v-if="!isSettingsPage" class="flex items-center justify-center gap-2">
+              <div class="flex items-center gap-2">
+                <RouterLink
+                  :to="{ name: 'settings' }"
+                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+                >
+                  <CogIcon class="size-5 hover:text-primary-500" />
+                </RouterLink>
+                <RouterLink
+                  :to="{ name: 'snippets' }"
+                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'snippets' }"
+                >
+                  <BookmarkIcon class="size-5 hover:text-primary-500" />
+                </RouterLink>
+              </div>
+              <div v-if="!isSettingsPage && !isSnippetPage" class="flex items-center justify-center gap-2">
                 <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
                   <div
                     class="rounded-full size-4"
