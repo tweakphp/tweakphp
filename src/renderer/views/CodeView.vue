@@ -17,6 +17,7 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { joinResultOutputs } from '../utils/output'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -49,10 +50,7 @@
   })
   const route = useRoute()
 
-  const rawOutput = computed(() => {
-    const output = [...tab.value.result].reverse().find(item => item.output.trim() !== '')
-    return output ? output.output : ''
-  })
+  const rawOutput = computed(() => joinResultOutputs(tab.value.result))
 
   const lspStatusTooltip = computed(() => {
     switch (lspStore.status) {
