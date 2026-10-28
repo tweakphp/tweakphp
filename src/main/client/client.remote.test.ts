@@ -10,6 +10,15 @@ vi.mock('electron', () => ({
   },
 }))
 
+const mockSettings = vi.hoisted(() => ({
+  queryLog: false,
+  output: 'code',
+}))
+
+vi.mock('../settings', () => ({
+  getSettings: () => mockSettings,
+}))
+
 class TestRemoteClient extends RemoteClient {
   public mockExec = vi.fn()
   public uploadedFiles: { localPath: string; remotePath: string }[] = []
@@ -35,6 +44,8 @@ class TestRemoteClient extends RemoteClient {
 describe('RemoteClient Shared Logic', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.output = 'code'
   })
 
   it('setup throws error if remote PHP version is < 7.4', async () => {
@@ -85,6 +96,27 @@ describe('RemoteClient Shared Logic', () => {
     expect(client.mockExec).toHaveBeenCalled()
     const commandSent = client.mockExec.mock.calls[0][0]
     expect(commandSent).toContain("'php' '/home/mock_user/.tweakphp/client-8.2.0.phar' '/remote/project' execute")
+    expect(commandSent).toContain('--query-log=false')
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    const client = new TestRemoteClient({
+      path: '/remote/project',
+      php: '8.2.0',
+      client_path: '/home/mock_user/.tweakphp/client-8.2.0.phar',
+    })
+    client.mockExec.mockResolvedValue('output')
+    mockSettings.queryLog = true
+
+    mockSettings.output = 'stack'
+    await client.execute('echo "test";')
+
+    mockSettings.output = 'code'
+    await client.execute('echo "test";')
+
+    const [stackedCommand, codeCommand] = client.mockExec.mock.calls.map(call => call[0] as string)
+    expect(stackedCommand).toContain('--query-log=true')
+    expect(codeCommand).toContain('--query-log=false')
   })
 
   it('info runs remote command to retrieve project info', async () => {

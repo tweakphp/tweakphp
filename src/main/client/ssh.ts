@@ -3,6 +3,12 @@ import { base64Encode } from '../utils/base64-encode'
 import { SSH } from '../utils/ssh'
 import { RemoteClient } from './client.remote'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
+import { getSettings } from '../settings'
+
+const queryLogArg = () => {
+  const { queryLog, output } = getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
 
 export class SSHClient extends RemoteClient {
   private ssh: SSH
@@ -44,7 +50,10 @@ export class SSHClient extends RemoteClient {
         resolve('Client path not found')
         return
       }
-      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const optionalArgs = [loader ? `--loader=${base64Encode(loader || '')}` : '', queryLogArg()]
+        .filter(Boolean)
+        .join(' ')
+      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${optionalArgs}`
       const result = await this.ssh.exec(command)
       resolve(result)
     })
