@@ -13,8 +13,13 @@ vi.mock('../utils/ssh', () => {
   }
 })
 
+const mockSettings = vi.hoisted(() => ({
+  queryLog: false,
+  output: 'code',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({ queryLog: false }),
+  getSettings: () => mockSettings,
 }))
 
 describe('SSHClient', () => {
@@ -22,6 +27,8 @@ describe('SSHClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.output = 'code'
     const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
     mockSSHInstance = (client as any).ssh
   })
@@ -64,6 +71,27 @@ describe('SSHClient', () => {
     await client.execute('echo 1;')
 
     expect(mockSSHInstance.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=false$/))
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    const client = new SSHClient({
+      type: 'ssh',
+      path: '/var/www/laravel',
+      host: 'localhost',
+      php: '8.3',
+      client_path: '/home/user/.tweakphp/client-8.3.phar',
+    } as any)
+    const ssh = (client as any).ssh
+    ssh.exec.mockResolvedValue('output\n')
+    mockSettings.queryLog = true
+    mockSettings.output = 'stack'
+
+    await client.execute('echo 1;')
+    expect(ssh.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=true$/))
+
+    mockSettings.output = 'code'
+    await client.execute('echo 1;')
+    expect(ssh.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=false$/))
   })
 
   it('remoteUploadFile calls ssh.uploadFile()', async () => {

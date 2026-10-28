@@ -14,7 +14,10 @@ const DOCKER_SETUP_TIMEOUT = 30_000
 
 const getExecutionTimeout = () => getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
 
-const getQueryLogArg = () => `--query-log=${getSettings().queryLog === true}`
+const getQueryLogArg = () => {
+  const { queryLog, output } = getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
 
 const cleanParam = (val?: any): string | undefined => {
   if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {

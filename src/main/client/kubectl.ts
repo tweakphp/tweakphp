@@ -5,7 +5,10 @@ import { RemoteClient } from './client.remote'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
 
-const queryLogArg = () => `--query-log=${getSettings().queryLog === true}`
+const queryLogArg = () => {
+  const { queryLog, output } = getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
 
 export default class KubectlClient extends RemoteClient {
   private kubectl: Kubectl

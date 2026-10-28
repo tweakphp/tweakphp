@@ -14,8 +14,14 @@ vi.mock('../utils/kubectl', () => {
   }
 })
 
+const mockSettings = vi.hoisted(() => ({
+  dockerKubectlExecutionTimeoutSeconds: 60,
+  queryLog: false,
+  output: 'code',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60, queryLog: false }),
+  getSettings: () => mockSettings,
 }))
 
 vi.mock('electron', () => ({
@@ -29,6 +35,8 @@ describe('KubectlClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.output = 'code'
     const client = new KubectlClient({ type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any)
     mockKubectlInstance = (client as any).kubectl
   })
@@ -81,6 +89,30 @@ describe('KubectlClient', () => {
 
     await client.execute('echo 1;')
 
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=false$/),
+      conn,
+      60_000
+    )
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec.mockResolvedValue('output\n')
+    mockSettings.queryLog = true
+    mockSettings.output = 'stack'
+
+    await client.execute('echo 1;')
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=true$/),
+      conn,
+      60_000
+    )
+
+    mockSettings.output = 'code'
+    await client.execute('echo 1;')
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
       expect.stringMatching(/execute [^ ]+ --query-log=false$/),
       conn,

@@ -3,7 +3,10 @@ import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
 
-const queryLogArg = () => `--query-log=${settings.getSettings().queryLog === true}`
+const queryLogArg = () => {
+  const { queryLog, output } = settings.getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
 
 export const executeUnix = (
   connection: ConnectionConfig,

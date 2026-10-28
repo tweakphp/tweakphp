@@ -14,8 +14,14 @@ vi.mock('../utils/ssh', () => ({
   },
 }))
 
+const mockSettings = vi.hoisted(() => ({
+  dockerKubectlExecutionTimeoutSeconds: 60,
+  queryLog: false,
+  output: 'code',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60, queryLog: false }),
+  getSettings: () => mockSettings,
 }))
 
 vi.mock('child_process', () => ({
@@ -47,6 +53,8 @@ const createChildProcess = () => {
 describe('DockerClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.output = 'code'
     ;(app as any).isPackaged = false
     Object.defineProperty(process, 'resourcesPath', {
       configurable: true,
@@ -154,6 +162,37 @@ describe('DockerClient', () => {
         expect.any(String),
         '--query-log=false',
       ],
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    mockExecFile(() => 'output\n')
+    mockSettings.queryLog = true
+    mockSettings.output = 'stack'
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      user: 'sail',
+    } as any)
+
+    await client.execute('echo "test";')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      expect.arrayContaining(['--query-log=true']),
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+
+    mockSettings.output = 'code'
+    await client.execute('echo "test";')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      expect.arrayContaining(['--query-log=false']),
       expect.objectContaining({ shell: false, timeout: 60_000 }),
       expect.any(Function)
     )

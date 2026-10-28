@@ -6,7 +6,10 @@ import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 import { getSettings } from '../settings'
 
-const queryLogArg = () => `--query-log=${getSettings().queryLog === true}`
+const queryLogArg = () => {
+  const { queryLog, output } = getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
 
 export abstract class RemoteClient extends BaseClient {
   abstract remoteExec(command: string): Promise<string>
