@@ -24,15 +24,20 @@ export function registerTabsIpc(): void {
   })
 
   ipcMain.handle('storage:tabs:restore', async (_event, id: string) => {
-    return { success: tabsRepo.restoreTab(id) }
+    const success = tabsRepo.restoreTab(id)
+
+    if (success) {
+      broadcastAppChange('app:tabs:changed')
+    }
+
+    return { success }
   })
 
   ipcMain.handle('storage:tabs:force-delete', async (_event, id: string) => {
     const success = tabsRepo.deleteTab(id, true)
 
     if (success) {
-      // Force delete cascades the project's connections (FK ON DELETE CASCADE):
-      // resync the renderer stores and the MCP connection manager
+      broadcastAppChange('app:tabs:changed')
       broadcastAppChange('app:connections:changed')
       syncConnectionsToMcpManagerIfActive()
     }

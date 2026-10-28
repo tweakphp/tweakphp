@@ -29,15 +29,21 @@ vi.mock('electron', () => ({
 }))
 
 // Mock settings
+const mockSettings = vi.hoisted(() => ({
+  php: 'C:\\php\\php.exe',
+  queryLog: false,
+  output: 'code',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({
-    php: 'C:\\php\\php.exe',
-  }),
+  getSettings: () => mockSettings,
 }))
 
 describe('LocalClient WSL Support', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.output = 'code'
     vi.mocked(execFileSync).mockReturnValue('8.1\n' as any)
     vi.mocked(execSync).mockReturnValue('8.1\n')
   })
@@ -250,7 +256,51 @@ describe('LocalClient WSL Support', () => {
       await client.execute('echo "hello";')
       expect(execFile).toHaveBeenCalledWith(
         'wsl',
-        ['-d', 'Ubuntu', 'php', expect.any(String), '/home/david/project', 'execute', expect.any(String)],
+        [
+          '-d',
+          'Ubuntu',
+          'php',
+          expect.any(String),
+          '/home/david/project',
+          'execute',
+          expect.any(String),
+          '--query-log=false',
+        ],
+        expect.any(Object),
+        expect.any(Function)
+      )
+    })
+
+    it('enables the query log only when enabled and the output is stacked', async () => {
+      mockSettings.queryLog = true
+      mockSettings.output = 'stack'
+      const client = new LocalClient({
+        type: 'local',
+        path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
+        php: 'C:\\php\\php.exe',
+      })
+
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
+        return {} as any
+      })
+
+      await client.execute('echo "hello";')
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        expect.arrayContaining(['--query-log=true']),
+        expect.any(Object),
+        expect.any(Function)
+      )
+
+      mockSettings.output = 'code'
+      await client.execute('echo "hello";')
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        expect.arrayContaining(['--query-log=false']),
         expect.any(Object),
         expect.any(Function)
       )
@@ -274,7 +324,7 @@ describe('LocalClient WSL Support', () => {
       await client.execute('echo "hello";', 'my-custom-loader')
       expect(execFile).toHaveBeenCalledWith(
         'C:\\php\\php.exe',
-        expect.arrayContaining([expect.stringContaining('--loader=')]),
+        expect.arrayContaining([expect.stringContaining('--loader='), expect.stringContaining('--query-log=')]),
         expect.any(Object),
         expect.any(Function)
       )

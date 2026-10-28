@@ -14,6 +14,11 @@ const DOCKER_SETUP_TIMEOUT = 30_000
 
 const getExecutionTimeout = () => getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
 
+const getQueryLogArg = () => {
+  const { queryLog, output } = getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
+
 const cleanParam = (val?: any): string | undefined => {
   if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {
     return val.trim()
@@ -95,6 +100,7 @@ export default class DockerClient extends BaseClient {
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
+      args.push(getQueryLogArg())
 
       if (this.ssh) {
         return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
@@ -126,6 +132,7 @@ export default class DockerClient extends BaseClient {
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
+      args.push(getQueryLogArg())
 
       const parser = createStreamOutputParser(onEvent)
       if (this.ssh) {

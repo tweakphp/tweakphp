@@ -39,11 +39,14 @@
       'w-full px-3': props.expanded && !props.sidebar,
       'w-full px-2': props.expanded && props.sidebar,
     }"
-    class="text-md flex h-8 rounded-lg cursor-pointer transition-all min-w-0"
+    class="group text-md flex h-8 rounded-lg cursor-pointer transition-all min-w-0"
     v-tippy="{ content: props.tooltip, placement: props.tooltipPlacement }"
   >
     <span class="flex items-center min-w-0" :class="{ 'w-full text-start': props.expanded }">
       <slot></slot>
+      <span v-if="$slots.actions" class="hidden group-hover:flex items-center shrink-0 mr-2 gap-1">
+        <slot name="actions"></slot>
+      </span>
     </span>
   </div>
 </template>

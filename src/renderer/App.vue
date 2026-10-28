@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon, InformationCircleIcon, BookmarkIcon } from '@heroicons/vue/24/outline'
+  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon, BookmarkIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
@@ -14,9 +14,12 @@
   import { useLspStore } from './stores/lsp'
   import { clampSidebarWidth, sidebarWidthBounds, useSidebarWidthStore } from './stores/sidebar-width'
   import { initServices } from 'monaco-languageclient/vscode/services'
+  import getConfigurationServiceOverride, {
+    initUserConfiguration,
+  } from '@codingame/monaco-vscode-configuration-service-override'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import DeleteTabModal from './components/modals/DeleteTabModal.vue'
+  import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
   import SaveSnippetModal from './components/modals/SaveSnippetModal.vue'
 
@@ -71,13 +74,19 @@
     return content
   })
 
-  const isSettingsPage = computed(() => router.currentRoute.value.name === 'settings')
-
-  const isSnippetPage = computed(() => router.currentRoute.value.name === 'snippets')
+  // Pages that are not tied to an open project: hide the LSP status and the
+  // project info while visiting them.
+  const isUtilityPage = computed(() => ['settings', 'archive', 'snippets'].includes(router.currentRoute.value.name as string))
 
   const newProjectModal = ref()
 
-  const isAppReady = ref(false)
+  const isSettingsReady = ref(false)
+  const isEditorReady = ref(false)
+  // Render views only when both settings and editor services are ready:
+  // mounting editors triggers monaco API calls that would initialize the
+  // standalone services before initServices() gets a chance to install
+  // the vscode service overrides
+  const isAppReady = computed(() => isSettingsReady.value && isEditorReady.value)
   const viewportWidth = ref(window.innerWidth)
   const isResizingSidebar = ref(false)
   const sidebarWidth = computed(() => clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value))
@@ -185,7 +194,7 @@
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
       await sidebarWidthStore.ready
-      isAppReady.value = true
+      isSettingsReady.value = true
     })
     window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
@@ -217,7 +226,13 @@
     window.addEventListener('resize', updateViewportWidth)
     window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
-    await initEditor()
+    try {
+      await initEditor()
+    } catch (error) {
+      console.error('Failed to initialize editor services', error)
+    } finally {
+      isEditorReady.value = true
+    }
   })
 
   onBeforeUnmount(() => {
@@ -228,9 +243,20 @@
   })
 
   const initEditor = async () => {
+    // Seed the vscode user configuration before services start.
+    // The PHP language server pulls these settings via workspace/configuration:
+    // triggerParameterHints makes function/method completions insert parentheses
+    await initUserConfiguration(
+      JSON.stringify({
+        'intelephense.completion.triggerParameterHints': true,
+      })
+    )
     await initServices({
       serviceConfig: {
         debugLogging: true,
+        userServices: {
+          ...getConfigurationServiceOverride(),
+        },
       },
     })
   }
@@ -274,7 +300,7 @@
             >
             </span>
             <div class="flex items-center justify-between w-full">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-4">
                 <RouterLink
                   :to="{ name: 'settings' }"
                   :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
@@ -287,8 +313,14 @@
                 >
                   <BookmarkIcon class="size-5 hover:text-primary-500" />
                 </RouterLink>
+                <RouterLink
+                  :to="{ name: 'archive' }"
+                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'archive' }"
+                >
+                  <ArchiveBoxIcon class="size-5 hover:text-primary-500" />
+                </RouterLink>
               </div>
-              <div v-if="!isSettingsPage && !isSnippetPage" class="flex items-center justify-center gap-2">
+              <div v-if="!isUtilityPage" class="flex items-center justify-center gap-2">
                 <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
                   <div
                     class="rounded-full size-4"
@@ -342,7 +374,7 @@
       </main>
     </div>
     <NewProjectModal ref="newProjectModal" />
-    <DeleteTabModal />
+    <ArchiveConfirmModal />
     <SaveSnippetModal />
   </div>
 </template>

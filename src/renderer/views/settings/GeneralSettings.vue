@@ -170,6 +170,17 @@
         <option :value="false">Disabled</option>
       </SelectInput>
     </FormField>
+    <FormField class="mt-3" label="Query Log" divider>
+      <SelectInput
+        id="query-log"
+        v-model="settingsStore.settings.queryLog"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option :value="true">Enabled</option>
+        <option :value="false">Disabled</option>
+      </SelectInput>
+    </FormField>
     <FormField class="mt-3" label="Docker/Kubernetes timeout (seconds)">
       <TextInput
         id="docker-kubectl-execution-timeout"
