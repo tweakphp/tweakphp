@@ -69,7 +69,7 @@ export abstract class RemoteClient extends BaseClient {
     return buildPosixCommand('php', [this.connection.client_path, projectPath || this.connection.path])
   }
 
-  remoteExecStream?(command: string, onData: (chunk: string) => void): Promise<void>
+  remoteExecStream?(command: string, onData: (chunk: string) => void, hasStreamedOutput?: () => boolean): Promise<void>
 
   async execute(code: string, loader?: string): Promise<string> {
     if (!this.connection.php) return 'PHP version not found'
@@ -88,9 +88,13 @@ export abstract class RemoteClient extends BaseClient {
     const optionalArgs = [loader ? `--loader=${base64Encode(loader!)}` : '', queryLogArg()].filter(Boolean).join(' ')
     const cmd = `${this.command()} execute-stream ${base64Encode(code)} ${optionalArgs}`
     const parser = createStreamOutputParser(onEvent)
-    await this.remoteExecStream(cmd, (chunk: string) => {
-      parser.push(chunk)
-    })
+    await this.remoteExecStream(
+      cmd,
+      (chunk: string) => {
+        parser.push(chunk)
+      },
+      () => parser.hasStreamOutput()
+    )
     parser.finish()
   }
 

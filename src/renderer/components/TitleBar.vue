@@ -17,7 +17,8 @@
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import { computed, ComputedRef, watch } from 'vue'
+  import QueriesModal from './modals/QueriesModal.vue'
+  import { computed, ComputedRef, ref, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
 
   const settingsStore = useSettingsStore()
@@ -26,6 +27,7 @@
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
+  const queriesModal = ref()
 
   const showOutputType = computed(() => {
     return tab.value?.execution !== 'vapor'
@@ -72,6 +74,10 @@
     settingsStore.settings.queryLog = !settingsStore.settings.queryLog
     settingsStore.update()
   }
+
+  const openQueriesModal = () => {
+    queriesModal.value?.openModal()
+  }
 </script>
 
 <template>
@@ -103,7 +109,7 @@
           <SecondaryButton
             without-border
             class="!px-1 h-6"
-            v-tippy="{ content: 'Change layout', placement: 'left' }"
+            v-tippy="{ content: 'Change layout', placement: 'bottom' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
           >
             <VerticalSplitIcon v-if="settingsStore.settings.layout === 'horizontal'" class="cursor-pointer size-7" />
@@ -159,8 +165,23 @@
               :class="settingsStore.settings.queryLog ? 'text-blue-500' : 'opacity-40'"
             />
           </SecondaryButton>
+          <SecondaryButton
+            without-border
+            v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
+            class="!px-2 relative h-6"
+            v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
+            @click="openQueriesModal()"
+          >
+            <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
+            <span
+              class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
+            >
+              {{ tab.queries?.length ?? 0 }}
+            </span>
+          </SecondaryButton>
         </template>
       </div>
     </div>
+    <QueriesModal ref="queriesModal" />
   </div>
 </template>

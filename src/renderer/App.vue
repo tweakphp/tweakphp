@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
+  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
@@ -16,7 +16,7 @@
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import DeleteTabModal from './components/modals/DeleteTabModal.vue'
+  import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
@@ -70,7 +70,9 @@
     return content
   })
 
-  const isSettingsPage = computed(() => router.currentRoute.value.name === 'settings')
+  // Pages that are not tied to an open project: hide the LSP status and the
+  // project info while visiting them.
+  const isUtilityPage = computed(() => ['settings', 'archive'].includes(router.currentRoute.value.name as string))
 
   const newProjectModal = ref()
 
@@ -271,13 +273,21 @@
             >
             </span>
             <div class="flex items-center justify-between w-full">
-              <RouterLink
-                :to="{ name: 'settings' }"
-                :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
-              >
-                <CogIcon class="size-5 hover:text-primary-500" />
-              </RouterLink>
-              <div v-if="!isSettingsPage" class="flex items-center justify-center gap-2">
+              <div class="flex items-center gap-4">
+                <RouterLink
+                  :to="{ name: 'settings' }"
+                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
+                >
+                  <CogIcon class="size-5 hover:text-primary-500" />
+                </RouterLink>
+                <RouterLink
+                  :to="{ name: 'archive' }"
+                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'archive' }"
+                >
+                  <ArchiveBoxIcon class="size-5 hover:text-primary-500" />
+                </RouterLink>
+              </div>
+              <div v-if="!isUtilityPage" class="flex items-center justify-center gap-2">
                 <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
                   <div
                     class="rounded-full size-4"
@@ -331,6 +341,6 @@
       </main>
     </div>
     <NewProjectModal ref="newProjectModal" />
-    <DeleteTabModal />
+    <ArchiveConfirmModal />
   </div>
 </template>

@@ -141,9 +141,14 @@ export default class DockerClient extends BaseClient {
           getExecutionTimeout()
         )
       } else {
-        await this.runLocalDockerStream(args, getExecutionTimeout(), chunk => {
-          parser.push(chunk)
-        })
+        await this.runLocalDockerStream(
+          args,
+          getExecutionTimeout(),
+          chunk => {
+            parser.push(chunk)
+          },
+          () => parser.hasStreamOutput()
+        )
       }
       parser.finish()
     } catch (error: unknown) {
@@ -334,7 +339,8 @@ export default class DockerClient extends BaseClient {
   private async runLocalDockerStream(
     args: string[],
     timeoutMs: number,
-    onData: (chunk: string) => void
+    onData: (chunk: string) => void,
+    hasStreamedOutput?: () => boolean
   ): Promise<void> {
     return await new Promise((resolve, reject) => {
       let stderr = ''
@@ -363,7 +369,7 @@ export default class DockerClient extends BaseClient {
         if (settled) return
         settled = true
         if (timeout) clearTimeout(timeout)
-        if (code === 0) {
+        if (code === 0 || hasStreamedOutput?.()) {
           resolve()
           return
         }

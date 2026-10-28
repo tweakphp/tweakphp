@@ -67,7 +67,8 @@ describe('KubectlClient', () => {
       expect.stringMatching(/execute-stream [^ ]+ --query-log=false$/),
       conn,
       expect.any(Function),
-      60_000
+      60_000,
+      expect.any(Function)
     )
     expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
   })

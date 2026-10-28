@@ -1,3 +1,11 @@
+import type { Result } from '../../types/tab.type'
+
+export const joinResultOutputs = (results: Result[]): string =>
+  results
+    .map(result => result.output.trim())
+    .filter(output => output !== '')
+    .join('\n')
+
 export const stripAnsi = (value: string): string =>
   value
     .replace(/(?:ESC|\\e|\\x1b|\\u001b|\\033)\s*\[[\d;?]*[ -/]*[@-~]/gi, '')

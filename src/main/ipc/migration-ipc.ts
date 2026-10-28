@@ -29,6 +29,27 @@ export function registerMigrationIpc(): void {
       }
 
       if (payload.tabs && Array.isArray(payload.tabs)) {
+        // Legacy inline refs (tab.ssh/kubectl/docker from the pre-SQL
+        // localStorage) map to tab.connection_id — the single source of truth.
+        for (const tab of payload.tabs) {
+          if (!tab || typeof tab !== 'object' || tab.connection_id) continue
+          if (tab.execution === 'ssh' && tab.ssh?.id != null) {
+            tab.connection_id = String(tab.ssh.id)
+          } else if (tab.execution === 'kubectl' && tab.kubectl?.id != null) {
+            tab.connection_id = String(tab.kubectl.id)
+          } else if (tab.execution === 'docker' && tab.docker?.container_name) {
+            const { type, ssh, ...config } = tab.docker
+            const dockerId = `docker-${tab.id}`
+            connectionsRepo.saveConnection({
+              ...config,
+              id: dockerId,
+              type: 'docker',
+              name: tab.docker.container_name,
+              tab_id: tab.id,
+            })
+            tab.connection_id = dockerId
+          }
+        }
         tabsRepo.saveAllTabs(payload.tabs)
       }
 
