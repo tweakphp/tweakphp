@@ -14,6 +14,9 @@
   import { useLspStore } from './stores/lsp'
   import { clampSidebarWidth, sidebarWidthBounds, useSidebarWidthStore } from './stores/sidebar-width'
   import { initServices } from 'monaco-languageclient/vscode/services'
+  import getConfigurationServiceOverride, {
+    initUserConfiguration,
+  } from '@codingame/monaco-vscode-configuration-service-override'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
   import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
@@ -76,7 +79,13 @@
 
   const newProjectModal = ref()
 
-  const isAppReady = ref(false)
+  const isSettingsReady = ref(false)
+  const isEditorReady = ref(false)
+  // Render views only when both settings and editor services are ready:
+  // mounting editors triggers monaco API calls that would initialize the
+  // standalone services before initServices() gets a chance to install
+  // the vscode service overrides
+  const isAppReady = computed(() => isSettingsReady.value && isEditorReady.value)
   const viewportWidth = ref(window.innerWidth)
   const isResizingSidebar = ref(false)
   const sidebarWidth = computed(() => clampSidebarWidth(sidebarWidthStore.width, viewportWidth.value))
@@ -184,7 +193,7 @@
     window.ipcRenderer.on('init.reply', async (e: any) => {
       settingsStore.setSettings(e.settings)
       await sidebarWidthStore.ready
-      isAppReady.value = true
+      isSettingsReady.value = true
     })
     window.ipcRenderer.send('init')
     window.ipcRenderer.on('source.open.reply', (e: any) => {
@@ -216,7 +225,13 @@
     window.addEventListener('resize', updateViewportWidth)
     window.addEventListener('unhandledrejection', unhandledRejectionListener)
 
-    await initEditor()
+    try {
+      await initEditor()
+    } catch (error) {
+      console.error('Failed to initialize editor services', error)
+    } finally {
+      isEditorReady.value = true
+    }
   })
 
   onBeforeUnmount(() => {
@@ -227,9 +242,20 @@
   })
 
   const initEditor = async () => {
+    // Seed the vscode user configuration before services start.
+    // The PHP language server pulls these settings via workspace/configuration:
+    // triggerParameterHints makes function/method completions insert parentheses
+    await initUserConfiguration(
+      JSON.stringify({
+        'intelephense.completion.triggerParameterHints': true,
+      })
+    )
     await initServices({
       serviceConfig: {
         debugLogging: true,
+        userServices: {
+          ...getConfigurationServiceOverride(),
+        },
       },
     })
   }

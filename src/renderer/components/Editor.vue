@@ -121,6 +121,9 @@
         glyphMargin: false,
         scrollBeyondLastLine: false,
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
+        // Default word separators minus `$`, so double-clicking a PHP
+        // variable selects it including the dollar sign
+        wordSeparators: '`~!@#%^&*()-=+[{]}\\|;:\'",.<>/?',
       })
 
       if (props.enableHistory) {
