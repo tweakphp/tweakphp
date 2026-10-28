@@ -14,7 +14,13 @@
   const archiveStore = useArchiveStore()
 
   const confirmModal = ref<InstanceType<typeof ConfirmModal> | null>(null)
+
+  // Tab rendered in the confirm modal body: kept until the next
+  // askForceDelete so the name stays visible during the close animation.
   const pendingDelete = ref<ArchivedTab | null>(null)
+  // Action identity: cleared on every close path so a stray click during the
+  // leave animation cannot re-run the delete.
+  const pendingDeleteId = ref<number | null>(null)
 
   // Project whose code preview is expanded (one at a time)
   const expandedId = ref<number | null>(null)
@@ -45,21 +51,32 @@
 
   const askForceDelete = (tab: ArchivedTab) => {
     pendingDelete.value = tab
+    pendingDeleteId.value = tab.id
     confirmModal.value?.openModal()
   }
 
+  // Programmatic close (ConfirmModal's closeModal does not emit `closed`,
+  // which only fires for reka-initiated closes: X, Esc, outside click).
+  const closeAndReset = () => {
+    pendingDeleteId.value = null
+  }
+
   const cancelForceDelete = () => {
-    pendingDelete.value = null
+    closeAndReset()
+  }
+
+  const onClosed = () => {
+    pendingDeleteId.value = null
   }
 
   const confirmForceDelete = () => {
-    const tab = pendingDelete.value
-    pendingDelete.value = null
-    if (tab) {
-      if (expandedId.value === tab.id) {
+    const id = pendingDeleteId.value
+    closeAndReset()
+    if (id !== null) {
+      if (expandedId.value === id) {
         expandedId.value = null
       }
-      void archiveStore.forceDelete(tab.id)
+      void archiveStore.forceDelete(id)
     }
   }
 
@@ -167,6 +184,7 @@
     confirm-text="Delete permanently"
     @confirm="confirmForceDelete"
     @cancel="cancelForceDelete"
+    @closed="onClosed"
   >
     <p>
       Are you sure you want to permanently delete

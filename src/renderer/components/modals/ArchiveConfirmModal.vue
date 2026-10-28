@@ -1,16 +1,23 @@
 <script setup lang="ts">
   import { onBeforeUnmount, onMounted, ref } from 'vue'
-  import Modal from '../Modal.vue'
+  import ConfirmModal from './ConfirmModal.vue'
   import PrimaryButton from '../PrimaryButton.vue'
   import SecondaryButton from '../SecondaryButton.vue'
   import events from '../../events'
   import { useTabsStore } from '../../stores/tabs'
   import { useArchiveStore } from '../../stores/archive'
 
+  /**
+   * Global host for the archive flow: every "archive project" request (hover
+   * button, context menu, middle click, Cmd+W) opens a confirmation modal
+   * where the user either archives the project (soft delete, restorable from
+   * the Archive page) or deletes it permanently. Nothing happens until a
+   * choice is made: closing the modal keeps the project untouched.
+   */
   const tabsStore = useTabsStore()
   const archiveStore = useArchiveStore()
 
-  const modal = ref<InstanceType<typeof Modal> | null>(null)
+  const modal = ref<InstanceType<typeof ConfirmModal> | null>(null)
   const pendingTabId = ref<number | null>(null)
   const pendingTabName = ref('')
 
@@ -26,10 +33,13 @@
     modal.value?.openModal()
   }
 
-  const onClosed = () => {
-    pendingTabId.value = null
-  }
-
+  // Programmatic close (ConfirmModal's closeModal does not emit `closed`,
+  // which only fires for reka-initiated closes: X, Esc, outside click). Every
+  // close path must clear the id right away: the action buttons stay in the
+  // DOM during the leave animation, and a stray click must not archive/delete
+  // anything. The name is intentionally kept: it stays visible during the
+  // close animation and is always refreshed by the next request before
+  // reopening.
   const closeAndReset = () => {
     modal.value?.closeModal()
     pendingTabId.value = null
@@ -39,10 +49,16 @@
     closeAndReset()
   }
 
+  const onClosed = () => {
+    pendingTabId.value = null
+  }
+
   const archive = async () => {
     const id = pendingTabId.value
     closeAndReset()
     if (id !== null) {
+      // removeTab archives the project: the tab leaves the store and the
+      // save-all marks its row as trashed (soft delete, vapor config kept)
       await tabsStore.removeTab(id)
     }
   }
@@ -51,6 +67,9 @@
     const id = pendingTabId.value
     closeAndReset()
     if (id !== null) {
+      // removeTab takes the project out of the store first (navigation
+      // handled), then forceDelete wipes the row and its connections and
+      // broadcasts the resync
       await tabsStore.removeTab(id)
       await archiveStore.forceDelete(id)
     }
@@ -66,7 +85,7 @@
 </script>
 
 <template>
-  <Modal ref="modal" title="Archive project" @closed="onClosed">
+  <ConfirmModal ref="modal" title="Archive project" @closed="onClosed">
     <p>
       Are you sure you want to archive
       <span class="font-semibold">{{ pendingTabName }}</span> project?
@@ -84,5 +103,5 @@
         <PrimaryButton @click="archive">Archive</PrimaryButton>
       </div>
     </template>
-  </Modal>
+  </ConfirmModal>
 </template>
