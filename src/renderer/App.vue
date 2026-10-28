@@ -16,7 +16,7 @@
   import { initServices } from 'monaco-languageclient/vscode/services'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
-  import ArchiveToast from './components/ArchiveToast.vue'
+  import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
@@ -341,6 +341,6 @@
       </main>
     </div>
     <NewProjectModal ref="newProjectModal" />
-    <ArchiveToast />
+    <ArchiveConfirmModal />
   </div>
 </template>

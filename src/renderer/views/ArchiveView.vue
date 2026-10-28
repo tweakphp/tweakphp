@@ -1,7 +1,8 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
-  import { ArrowPathIcon, TrashIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, ChevronDownIcon, TrashIcon } from '@heroicons/vue/24/outline'
   import Container from '../components/Container.vue'
+  import Editor from '../components/Editor.vue'
   import { useSettingsStore } from '../stores/settings'
   import { useArchiveStore } from '../stores/archive'
   import { ArchivedTab } from '../../types/tab.type'
@@ -14,6 +15,9 @@
 
   const confirmModal = ref<InstanceType<typeof ConfirmModal> | null>(null)
   const pendingDelete = ref<ArchivedTab | null>(null)
+
+  // Project whose code preview is expanded (one at a time)
+  const expandedId = ref<number | null>(null)
 
   const trashedTabs = computed(() => archiveStore.trashedTabs)
 
@@ -28,7 +32,14 @@
     return date.toLocaleString()
   }
 
+  const toggleExpand = (tab: ArchivedTab) => {
+    expandedId.value = expandedId.value === tab.id ? null : tab.id
+  }
+
   const restore = (tab: ArchivedTab) => {
+    if (expandedId.value === tab.id) {
+      expandedId.value = null
+    }
     void archiveStore.restore(tab.id)
   }
 
@@ -45,6 +56,9 @@
     const tab = pendingDelete.value
     pendingDelete.value = null
     if (tab) {
+      if (expandedId.value === tab.id) {
+        expandedId.value = null
+      }
       void archiveStore.forceDelete(tab.id)
     }
   }
@@ -66,41 +80,78 @@
               <li
                 v-for="tab in trashedTabs"
                 :key="tab.id"
-                class="flex items-center gap-3 rounded-lg border p-2"
+                class="rounded-lg border"
                 :style="{ borderColor: settingsStore.colors.border }"
               >
-                <span
-                  v-if="tab.color || tab.tag"
-                  v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
-                  class="size-2 rounded-full shrink-0"
-                  :class="tab.color ? `bg-${tab.color}-500` : 'border border-current opacity-70'"
-                ></span>
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="truncate text-sm font-medium">{{ tab.name }}</span>
+                <div
+                  class="flex items-center gap-3 p-2 cursor-pointer select-none hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
+                  :class="expandedId === tab.id ? 'rounded-t-lg' : 'rounded-lg'"
+                  role="button"
+                  tabindex="0"
+                  :aria-expanded="expandedId === tab.id"
+                  title="Toggle code preview"
+                  @click="toggleExpand(tab)"
+                  @keydown.enter.prevent="toggleExpand(tab)"
+                  @keydown.space.prevent="toggleExpand(tab)"
+                >
+                  <ChevronDownIcon
+                    class="size-4 shrink-0 opacity-50 transition-transform"
+                    :class="expandedId === tab.id ? 'rotate-180' : ''"
+                  />
+                  <span
+                    v-if="tab.color || tab.tag"
+                    v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
+                    class="size-2 rounded-full shrink-0"
+                    :class="tab.color ? `bg-${tab.color}-500` : 'border border-current opacity-70'"
+                  ></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="truncate text-sm font-medium">{{ tab.name }}</span>
+                    </div>
+                    <div v-if="tab.path" class="truncate text-xs opacity-50">{{ tab.path }}</div>
                   </div>
-                  <div v-if="tab.path" class="truncate text-xs opacity-50">{{ tab.path }}</div>
+                  <span
+                    v-if="formatArchivedAt(tab.deleted_at)"
+                    class="hidden md:block shrink-0 text-xs opacity-50"
+                    :title="`Archived ${formatArchivedAt(tab.deleted_at)}`"
+                  >
+                    {{ formatArchivedAt(tab.deleted_at) }}
+                  </span>
+                  <SecondaryButton
+                    without-border
+                    class="!px-2 gap-1"
+                    title="Restore project"
+                    @click.stop="restore(tab)"
+                  >
+                    <ArrowPathIcon class="size-4" />
+                    Restore
+                  </SecondaryButton>
+                  <SecondaryButton
+                    class="!px-2 hover:!text-red-200 hover:bg-red-700 gap-1"
+                    title="Delete permanently"
+                    @click.stop="askForceDelete(tab)"
+                    without-border
+                  >
+                    <TrashIcon class="size-4" />
+                    Delete
+                  </SecondaryButton>
                 </div>
-                <span
-                  v-if="formatArchivedAt(tab.deleted_at)"
-                  class="hidden md:block shrink-0 text-xs opacity-50"
-                  :title="`Archived ${formatArchivedAt(tab.deleted_at)}`"
+                <div
+                  v-if="expandedId === tab.id"
+                  class="border-t"
+                  :style="{ borderColor: settingsStore.colors.border }"
                 >
-                  {{ formatArchivedAt(tab.deleted_at) }}
-                </span>
-                <SecondaryButton without-border class="!px-2 gap-1" title="Restore project" @click="restore(tab)">
-                  <ArrowPathIcon class="size-4" />
-                  Restore
-                </SecondaryButton>
-                <SecondaryButton
-                  class="!px-2 hover:!text-red-200 hover:bg-red-700 gap-1"
-                  title="Delete permanently"
-                  @click="askForceDelete(tab)"
-                  without-border
-                >
-                  <TrashIcon class="size-4" />
-                  Delete
-                </SecondaryButton>
+                  <div class="h-72 overflow-hidden">
+                    <Editor
+                      :key="tab.id"
+                      :editor-id="'archive-' + tab.id"
+                      :path="tab.path ?? ''"
+                      language="php"
+                      :value="tab.code"
+                      readonly
+                    />
+                  </div>
+                </div>
               </li>
             </ul>
           </template>

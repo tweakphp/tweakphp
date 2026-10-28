@@ -1,11 +1,6 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import {
-    ChevronDownIcon,
-    FolderIcon,
-    FolderOpenIcon,
-    PlusIcon,
-  } from '@heroicons/vue/24/outline'
+  import { ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
