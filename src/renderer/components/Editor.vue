@@ -198,7 +198,8 @@
         })
       }
 
-      if (settingsStore.settings.vimMode === 'on') {
+      // Vim mode is pointless on a read-only preview (archive)
+      if (settingsStore.settings.vimMode === 'on' && !props.readonly) {
         vimMode.value = initVimMode(editor)
       }
 
