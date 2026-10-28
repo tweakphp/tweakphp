@@ -54,6 +54,7 @@ const defaultSettings: Settings = {
   mcpEnabled: false,
   mcpPort: 3000,
   streaming: true,
+  queryLog: false,
   dockerKubectlExecutionTimeoutSeconds: DEFAULT_DOCKER_KUBECTL_EXECUTION_TIMEOUT_SECONDS,
 }
 
@@ -140,6 +141,7 @@ export const getSettings = () => {
       mcpEnabled: settingsJson.mcpEnabled ?? defaultSettings.mcpEnabled,
       mcpPort: settingsJson.mcpPort || defaultSettings.mcpPort,
       streaming: settingsJson.streaming !== undefined ? settingsJson.streaming : defaultSettings.streaming,
+      queryLog: settingsJson.queryLog !== undefined ? settingsJson.queryLog : defaultSettings.queryLog,
       dockerKubectlExecutionTimeoutSeconds: normalizeDockerKubectlExecutionTimeoutSeconds(
         settingsJson.dockerKubectlExecutionTimeoutSeconds
       ),

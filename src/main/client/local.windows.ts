@@ -3,6 +3,11 @@ import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
 
+const queryLogArg = () => {
+  const { queryLog, output } = settings.getSettings()
+  return `--query-log=${queryLog === true && output === 'stack'}`
+}
+
 export const getWslDistros = (): string[] => {
   try {
     const out = execSync('wsl -l -q', { encoding: 'utf16le', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 })
@@ -197,6 +202,7 @@ export const executeWindows = (
         if (loader) {
           args.push(`--loader=${base64Encode(loader)}`)
         }
+        args.push(queryLogArg())
 
         execFile('wsl', args, { shell: false }, (_err, stdout) => {
           resolve(stdout || '')
@@ -210,6 +216,7 @@ export const executeWindows = (
     if (loader) {
       args.push(`--loader=${base64Encode(loader)}`)
     }
+    args.push(queryLogArg())
 
     execFile(phpPath, args, { shell: process.platform === 'win32' }, (_err, stdout) => {
       resolve(stdout || '')
@@ -252,6 +259,7 @@ export const executeStreamingWindows = (
     if (loader) {
       args.push(`--loader=${base64Encode(loader)}`)
     }
+    args.push(queryLogArg())
 
     const child = spawn(phpPath || 'php', args, {
       windowsHide: true,
