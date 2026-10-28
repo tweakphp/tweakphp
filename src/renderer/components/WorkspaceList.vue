@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { PlusIcon, ChevronDownIcon, FolderIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
+  import { ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
@@ -177,8 +177,8 @@
     router.replace({ name: 'code', params: { id: tab.id } })
   }
 
-  const requestCloseTab = (id: number) => {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
+  const requestArchiveTab = (id: number) => {
+    events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: id }))
   }
 
   const isActive = (tab: Tab): boolean => {
@@ -275,7 +275,7 @@
                     expanded
                     sidebar
                     @click="openTab(tab)"
-                    @mousedown.middle="requestCloseTab(tab.id)"
+                    @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                       <span
@@ -420,7 +420,7 @@
                               expanded
                               sidebar
                               @click="openTab(tab)"
-                              @mousedown.middle="requestCloseTab(tab.id)"
+                              @mousedown.middle="requestArchiveTab(tab.id)"
                             >
                               <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                                 <span
@@ -515,7 +515,7 @@
                     expanded
                     sidebar
                     @click="openTab(tab)"
-                    @mousedown.middle="requestCloseTab(tab.id)"
+                    @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                       <span

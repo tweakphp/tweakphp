@@ -47,3 +47,10 @@ export interface Tab {
     version: string
   }
 }
+
+export interface ArchivedTab extends Tab {
+  position?: number
+  created_at?: string
+  updated_at?: string
+  deleted_at: string | null
+}

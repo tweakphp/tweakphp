@@ -15,6 +15,7 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { joinResultOutputs } from '../utils/output'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -46,10 +47,7 @@
   })
   const route = useRoute()
 
-  const rawOutput = computed(() => {
-    const output = [...tab.value.result].reverse().find(item => item.output.trim() !== '')
-    return output ? output.output : ''
-  })
+  const rawOutput = computed(() => joinResultOutputs(tab.value.result))
 
   const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
     tab,
@@ -104,7 +102,7 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        events.dispatchEvent(new CustomEvent('tab.close.request', { detail: tab.value.id }))
+        events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: tab.value.id }))
       }
     }
   }

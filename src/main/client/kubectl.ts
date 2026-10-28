@@ -17,8 +17,12 @@ export default class KubectlClient extends RemoteClient {
     return this.kubectl.exec(command, this.connection)
   }
 
-  async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {
-    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout)
+  async remoteExecStream(
+    command: string,
+    onData: (chunk: string) => void,
+    hasStreamedOutput?: () => boolean
+  ): Promise<void> {
+    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout, hasStreamedOutput)
   }
 
   execute(code: string, loader?: string, projectPath?: string): Promise<string> {
