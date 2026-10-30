@@ -512,10 +512,12 @@
                   <ProjectTile
                     :active="isActive(tab)"
                     :name="tab.name"
+                    :key="tab.id"
                     expanded
                     sidebar
                     @click="openTab(tab)"
                     @mousedown.middle="requestArchiveTab(tab.id)"
+                    :dragging="draggingWorkspace"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                       <span
