@@ -2,8 +2,9 @@
   import {
     PlayIcon,
     ArrowPathIcon,
-    CodeBracketIcon,
+    DocumentTextIcon,
     RectangleStackIcon,
+    QueueListIcon,
     CircleStackIcon,
     BoltIcon,
   } from '@heroicons/vue/24/outline'
@@ -17,9 +18,9 @@
   import Toolbar from './Toolbar.vue'
   import { useTabsStore } from '../stores/tabs'
   import SecondaryButton from './SecondaryButton.vue'
-  import QueriesModal from './modals/QueriesModal.vue'
-  import { computed, ComputedRef, ref, watch } from 'vue'
+  import { computed, ComputedRef, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
+  import { OutputMode } from '../../types/settings.type'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -27,7 +28,6 @@
   const route = useRoute()
   const platform = window.platformInfo.getPlatform()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
-  const queriesModal = ref()
 
   const showOutputType = computed(() => {
     return tab.value?.execution !== 'vapor'
@@ -37,14 +37,26 @@
     return tab.value?.execution !== 'vapor'
   })
 
+  const isQueryLogAvailable = computed(() => {
+    return settingsStore.settings.outputMode !== 'output'
+  })
+
+  const queryLogIconClass = computed(() => {
+    if (!isQueryLogAvailable.value) return 'cursor-not-allowed opacity-40'
+    return settingsStore.settings.queryLog
+      ? 'text-primary-500 hover:text-primary-400'
+      : 'opacity-40 hover:text-primary-400'
+  })
+
   watch(
     () => tab.value?.execution,
     value => {
       if (value === 'vapor') {
-        settingsStore.settings.output = 'code'
+        settingsStore.settings.outputMode = 'output'
         settingsStore.update()
       }
-    }
+    },
+    { immediate: true }
   )
 
   const execute = () => {
@@ -60,8 +72,17 @@
     settingsStore.update()
   }
 
-  const updateOutput = (output: 'code' | 'stack') => {
-    settingsStore.settings.output = output
+  const outputModes: OutputMode[] = ['output', 'stacked', 'full']
+
+  const outputModeLabels: Record<OutputMode, string> = {
+    output: 'Output only',
+    stacked: 'Stacked output',
+    full: 'Full stack',
+  }
+
+  const cycleOutputMode = () => {
+    const index = outputModes.indexOf(settingsStore.settings.outputMode)
+    settingsStore.settings.outputMode = outputModes[(index + 1) % outputModes.length]
     settingsStore.update()
   }
 
@@ -70,8 +91,10 @@
     settingsStore.update()
   }
 
-  const openQueriesModal = () => {
-    queriesModal.value?.openModal()
+  const toggleQueryLog = () => {
+    if (settingsStore.settings.outputMode === 'output') return
+    settingsStore.settings.queryLog = !settingsStore.settings.queryLog
+    settingsStore.update()
   }
 </script>
 
@@ -104,7 +127,7 @@
           <SecondaryButton
             without-border
             class="!px-1 h-6"
-            v-tippy="{ content: 'Change layout', placement: 'left' }"
+            v-tippy="{ content: 'Change layout', placement: 'bottom' }"
             @click="updateLayout(settingsStore.settings.layout === 'horizontal' ? 'vertical' : 'horizontal')"
           >
             <VerticalSplitIcon v-if="settingsStore.settings.layout === 'horizontal'" class="cursor-pointer size-7" />
@@ -114,11 +137,15 @@
             without-border
             v-if="showOutputType"
             class="!px-2 h-6"
-            v-tippy="{ content: 'Output Style', placement: 'bottom' }"
-            @click="updateOutput(settingsStore.settings.output === 'stack' ? 'code' : 'stack')"
+            v-tippy="{
+              content: `Output Mode: ${outputModeLabels[settingsStore.settings.outputMode]}`,
+              placement: 'bottom',
+            }"
+            @click="cycleOutputMode"
           >
-            <CodeBracketIcon v-if="settingsStore.settings.output === 'stack'" class="cursor-pointer size-4" />
-            <RectangleStackIcon v-if="settingsStore.settings.output === 'code'" class="cursor-pointer size-4" />
+            <DocumentTextIcon v-if="settingsStore.settings.outputMode === 'output'" class="cursor-pointer size-4" />
+            <RectangleStackIcon v-if="settingsStore.settings.outputMode === 'stacked'" class="cursor-pointer size-4" />
+            <QueueListIcon v-if="settingsStore.settings.outputMode === 'full'" class="cursor-pointer size-4" />
           </SecondaryButton>
           <SecondaryButton
             without-border
@@ -148,20 +175,20 @@
           <SecondaryButton
             without-border
             v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
-            class="!px-2 relative h-6"
-            v-tippy="{ content: 'Executed Queries', placement: 'bottom' }"
-            @click="openQueriesModal()"
+            class="!px-2 h-6"
+            :class="isQueryLogAvailable ? '' : 'cursor-not-allowed opacity-40'"
+            v-tippy="{
+              content: isQueryLogAvailable
+                ? `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`
+                : 'Query Log: available in Stacked output or Full stack modes',
+              placement: 'bottom',
+            }"
+            @click="toggleQueryLog"
           >
-            <CircleStackIcon class="size-4 text-blue-500 hover:text-blue-400" />
-            <span
-              class="ml-1 text-[10px] font-semibold leading-none bg-blue-500/20 text-blue-400 px-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full"
-            >
-              {{ tab.queries?.length ?? 0 }}
-            </span>
+            <CircleStackIcon class="size-4" :class="queryLogIconClass" />
           </SecondaryButton>
         </template>
       </div>
     </div>
-    <QueriesModal ref="queriesModal" />
   </div>
 </template>

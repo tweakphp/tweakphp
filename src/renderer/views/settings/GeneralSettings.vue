@@ -59,13 +59,26 @@
     </div>
     <p class="mt-2 text-xs opacity-70">Configure application preferences, the PHP executable, and editor behavior.</p>
     <Divider class="mt-3" />
-    <FormField class="mt-3" label="App version" divider>
+    <FormField
+      class="mt-3"
+      label="App version"
+      align="start"
+      description="Current application version, with a check for available updates."
+      divider
+    >
       <div class="flex items-center justify-between w-full">
         <span v-if="!updateStore.downloading">{{ settingsStore.settings.version }}</span>
         <UpdateApp class="flex-1" />
       </div>
     </FormField>
-    <FormField class="mt-3" label="PHP path" align="start" label-class="pt-2" divider>
+    <FormField
+      class="mt-3"
+      label="PHP path"
+      align="start"
+      description="Absolute path to the PHP binary used to run your code. Click Detect to scan common locations."
+      label-class="pt-2"
+      divider
+    >
       <div class="flex flex-col w-full">
         <div class="flex items-center space-x-2 w-full">
           <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" class="flex-1" />
@@ -80,7 +93,7 @@
               v-for="p in detectedPaths"
               :key="p"
               @click="selectDetectedPhp(p)"
-              class="!h-auto !border-transparent !bg-zinc-800 hover:!bg-zinc-700 !px-2 !py-1 !text-[10px] !text-white text-left truncate max-w-[280px]"
+              class="!h-auto !border-transparent !bg-zinc-800 hover:!bg-primary-500/20 !px-2 !py-1 !text-[10px] !text-white text-left truncate max-w-[280px]"
               :title="p"
             >
               {{ p }}
@@ -89,7 +102,13 @@
         </div>
       </div>
     </FormField>
-    <FormField class="mt-3" label="Theme" divider>
+    <FormField
+      class="mt-3"
+      label="Theme"
+      align="start"
+      description="Color scheme applied to the interface and the code editor."
+      divider
+    >
       <SelectInput
         id="theme"
         v-model="settingsStore.settings.theme"
@@ -101,7 +120,13 @@
         </option>
       </SelectInput>
     </FormField>
-    <FormField class="mt-3" label="Editor font size" divider>
+    <FormField
+      class="mt-3"
+      label="Editor font size"
+      align="start"
+      description="Font size (in pixels) used in the code editor."
+      divider
+    >
       <TextInput
         id="editor-font-size"
         v-model="settingsStore.settings.editorFontSize"
@@ -109,7 +134,13 @@
         class="w-full"
       />
     </FormField>
-    <FormField class="mt-3" label="Editor word wrap" divider>
+    <FormField
+      class="mt-3"
+      label="Editor word wrap"
+      align="start"
+      description="Wrap long lines onto the next line instead of requiring horizontal scrolling."
+      divider
+    >
       <SelectInput
         id="editor-word-wrap"
         v-model="settingsStore.settings.editorWordWrap"
@@ -120,7 +151,13 @@
         <option value="off">No Wrap</option>
       </SelectInput>
     </FormField>
-    <FormField class="mt-3" label="Vim mode" divider>
+    <FormField
+      class="mt-3"
+      label="Vim mode"
+      align="start"
+      description="Enable Vim keybindings (modes, motions, commands) in the code editor."
+      divider
+    >
       <SelectInput
         id="editor-vim-mode"
         v-model="settingsStore.settings.vimMode"
@@ -148,7 +185,13 @@
         autocomplete="off"
       />
     </FormField>
-    <FormField class="mt-3" label="Stacked Dump" divider>
+    <FormField
+      class="mt-3"
+      label="Stacked Dump"
+      align="start"
+      description="Display format of stacked dump cards: Compact shows a condensed view, Extended shows full detail."
+      divider
+    >
       <SelectInput
         id="editor-vim-mode"
         v-model="settingsStore.settings.stackedDump"
@@ -159,7 +202,31 @@
         <option value="extended">Extended</option>
       </SelectInput>
     </FormField>
-    <FormField class="mt-3" label="Streaming Output" divider>
+    <FormField
+      class="mt-3"
+      label="Output Mode"
+      align="start"
+      description="Choose what the result panel shows: only explicit output such as echo, dump, or var_dump, explicit output as rich dump cards, or everything including intermediate values."
+      divider
+    >
+      <SelectInput
+        id="output-mode"
+        v-model="settingsStore.settings.outputMode"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option value="output">Output only</option>
+        <option value="stacked">Stacked output</option>
+        <option value="full">Full stack</option>
+      </SelectInput>
+    </FormField>
+    <FormField
+      class="mt-3"
+      label="Streaming Output"
+      align="start"
+      description="Show output progressively while the code runs, instead of only at the end."
+      divider
+    >
       <SelectInput
         id="streaming-output"
         v-model="settingsStore.settings.streaming"
@@ -170,7 +237,29 @@
         <option :value="false">Disabled</option>
       </SelectInput>
     </FormField>
-    <FormField class="mt-3" label="Docker/Kubernetes timeout (seconds)">
+    <FormField
+      class="mt-3"
+      label="Query Log"
+      align="start"
+      description="Log executed database queries so you can inspect them in the query log view."
+      divider
+    >
+      <SelectInput
+        id="query-log"
+        v-model="settingsStore.settings.queryLog"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option :value="true">Enabled</option>
+        <option :value="false">Disabled</option>
+      </SelectInput>
+    </FormField>
+    <FormField
+      class="mt-3"
+      label="Docker/Kubernetes timeout (seconds)"
+      align="start"
+      description="Maximum time in seconds to wait for Docker or Kubernetes command execution before timing out."
+    >
       <TextInput
         id="docker-kubectl-execution-timeout"
         class="w-full"

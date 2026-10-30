@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-  import { nextTick, PropType, watch } from 'vue'
+  import { computed, nextTick, PropType, watch } from 'vue'
   import { QueryItem, Result } from '../../types/tab.type'
   import { useSettingsStore } from '../stores/settings'
+  import { visibleResults } from '../utils/output'
 
   const props = defineProps({
     output: {
@@ -11,6 +12,7 @@
   })
 
   const settingsStore = useSettingsStore()
+  const outputFilter = computed(() => (settingsStore.settings.outputMode === 'full' ? 'all' : 'explicit'))
   const initializedDumps = new WeakSet<HTMLElement>()
 
   const getSql = (item: QueryItem): string => {
@@ -81,12 +83,15 @@
     }"
   >
     <div
-      v-for="item in props.output.filter(
-        item =>
-          (item.output && item.output !== '') ||
-          (item.html && item.html !== '') ||
-          (item.queries && item.queries.length > 0) ||
-          (item.query_errors && item.query_errors.length > 0)
+      v-for="item in visibleResults(
+        props.output.filter(
+          item =>
+            (item.output && item.output !== '') ||
+            (item.html && item.html !== '') ||
+            (item.queries && item.queries.length > 0) ||
+            (item.query_errors && item.query_errors.length > 0)
+        ),
+        outputFilter
       )"
       :key="`stack-${item.line}`"
       class="w-full rounded-md relative p-3 border"

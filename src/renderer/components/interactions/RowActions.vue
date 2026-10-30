@@ -22,7 +22,7 @@
 <template>
   <div class="flex gap-1 justify-end space-x-2">
     <SecondaryButton class="!p-1 !border-transparent" v-tippy="editLabel" @click="$emit('edit')">
-      <PencilIcon class="size-4 hover:text-blue-500" />
+      <PencilIcon class="size-4 hover:text-primary-500" />
     </SecondaryButton>
     <SecondaryButton class="!p-1 !border-transparent" v-tippy="removeLabel" @click="$emit('remove')">
       <TrashIcon class="size-4 hover:text-red-500" />

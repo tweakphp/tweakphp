@@ -1,7 +1,8 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { PlusIcon, ChevronDownIcon, FolderIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
+  import { ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon, StarIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
+  import { whenever } from '@vueuse/core'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
   import { useSectionsStore } from '../stores/sections'
@@ -90,6 +91,48 @@
   // measured from the first hover event instead of resetting a timer each time
   const SPRING_LOAD_DELAY = 600
   const draggingWorkspace = ref(false)
+  // Folders can be dragged too (reorder): their drag lifecycle is separate
+  // from workspace drags.
+  const draggingFolder = ref(false)
+  const isDraggingAny = computed(() => draggingWorkspace.value || draggingFolder.value)
+  // Manual hover state for folder headers: CSS :hover still applies while
+  // dragging (Chromium keeps :hover active during a drag), so headers lit up
+  // when dragging a workspace over them. Same treatment as ProjectTile.
+  const hoveredFolderId = ref<number | null>(null)
+
+  const isFolderHeaderHovered = (id: number): boolean => hoveredFolderId.value === id
+
+  whenever(isDraggingAny, () => {
+    hoveredFolderId.value = null
+  })
+
+  // SortableJS takes the native drag image right after the dragstart handlers
+  // run, before Vue can flush the reactive class update: clear the hover
+  // background synchronously, inline, so the snapshot does not carry it.
+  const onFolderHeaderDragStart = (event: DragEvent) => {
+    const el = event.currentTarget as HTMLElement
+    el.style.transition = 'none'
+    el.style.background = 'transparent'
+  }
+
+  const restoreFolderHeaderBackground = (event: Event) => {
+    const el = event.currentTarget as HTMLElement
+    el.style.background = ''
+    el.style.transition = ''
+  }
+
+  const onFolderHeaderMouseEnter = (folder: WorkspaceFolder, event: Event) => {
+    restoreFolderHeaderBackground(event)
+    if (!isDraggingAny.value) {
+      hoveredFolderId.value = folder.id
+    }
+  }
+
+  const onFolderHeaderMouseLeave = (event: Event) => {
+    restoreFolderHeaderBackground(event)
+    hoveredFolderId.value = null
+  }
+
   const autoExpandedDuringDrag = new Set<number>()
   const springLoadHoveredAt = new Map<number, number>()
   let droppedIntoFolderId: number | null = null
@@ -143,6 +186,14 @@
     droppedIntoFolderId = null
   }
 
+  const onFolderDragStart = () => {
+    draggingFolder.value = true
+  }
+
+  const onFolderDragEnd = () => {
+    draggingFolder.value = false
+  }
+
   // ---- collapse/expand animation ----
   // `height: auto` is not animatable in CSS, so these hooks measure the block
   // (scrollHeight) and drive an inline height: the `.collapse-*` classes in the
@@ -177,8 +228,8 @@
     router.replace({ name: 'code', params: { id: tab.id } })
   }
 
-  const requestCloseTab = (id: number) => {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: id }))
+  const requestArchiveTab = (id: number) => {
+    events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: id }))
   }
 
   const isActive = (tab: Tab): boolean => {
@@ -236,6 +287,7 @@
           :aria-expanded="!sectionsStore.isCollapsed('pinned')"
           @click="sectionsStore.toggleSection('pinned')"
         >
+          <StarIcon class="w-4 h-4 mr-3 shrink-0" />
           <span>Pinned</span>
           <ChevronDownIcon
             class="w-4 h-4 ml-1 transition-[transform,opacity] duration-200"
@@ -274,8 +326,9 @@
                     :name="tab.name"
                     expanded
                     sidebar
+                    :dragging="isDraggingAny"
                     @click="openTab(tab)"
-                    @mousedown.middle="requestCloseTab(tab.id)"
+                    @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                       <span
@@ -340,6 +393,8 @@
             :animation="150"
             ghost-class="opacity-40"
             class="min-h-[8px]"
+            @start="onFolderDragStart"
+            @end="onFolderDragEnd"
           >
             <template #header>
               <div
@@ -356,27 +411,37 @@
                   <button
                     type="button"
                     data-folder-handle
-                    class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all hover:bg-black/5 dark:hover:bg-white/10"
+                    class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all"
+                    :class="{ 'bg-primary-500/10': isFolderHeaderHovered(folder.id) && !isDraggingAny }"
                     :style="{
                       color: settingsStore.colors.foreground,
                     }"
                     :aria-expanded="!isFolderCollapsed(folder.id)"
                     @click="toggleFolder(folder.id)"
+                    @mouseenter="onFolderHeaderMouseEnter(folder, $event)"
+                    @mouseleave="onFolderHeaderMouseLeave"
+                    @dragstart="onFolderHeaderDragStart"
+                    @dragend="restoreFolderHeaderBackground"
                     @dragover="onFolderHeaderDragOver(folder)"
                     @dragleave="onFolderHeaderDragLeave(folder, $event)"
                   >
-                    <Transition name="folder-icon" mode="out-in">
-                      <FolderOpenIcon
-                        v-if="!isFolderCollapsed(folder.id)"
-                        key="open"
-                        class="w-4 h-4 mr-3 shrink-0 opacity-70"
-                      />
-                      <FolderIcon v-else key="closed" class="w-4 h-4 mr-3 shrink-0 opacity-70" />
-                    </Transition>
+                    <span class="relative flex w-4 h-4 mr-3 shrink-0 opacity-70">
+                      <Transition name="folder-icon">
+                        <FolderOpenIcon
+                          v-if="!isFolderCollapsed(folder.id)"
+                          key="open"
+                          class="absolute inset-0 w-4 h-4"
+                        />
+                        <FolderIcon v-else key="closed" class="absolute inset-0 w-4 h-4" />
+                      </Transition>
+                    </span>
                     <span class="truncate">{{ folder.name }}</span>
                     <ChevronDownIcon
-                      class="w-4 h-4 ml-auto shrink-0 opacity-0 group-hover:opacity-50 transition-[transform,opacity] duration-200"
-                      :class="{ '-rotate-90': isFolderCollapsed(folder.id) }"
+                      class="w-4 h-4 ml-auto shrink-0 opacity-0 transition-[transform,opacity] duration-200"
+                      :class="{
+                        'opacity-50': isFolderHeaderHovered(folder.id) && !isDraggingAny,
+                        '-rotate-90': isFolderCollapsed(folder.id),
+                      }"
                     />
                   </button>
                 </FolderMenuContext>
@@ -419,8 +484,9 @@
                               :name="tab.name"
                               expanded
                               sidebar
+                              :dragging="isDraggingAny"
                               @click="openTab(tab)"
-                              @mousedown.middle="requestCloseTab(tab.id)"
+                              @mousedown.middle="requestArchiveTab(tab.id)"
                             >
                               <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                                 <span
@@ -512,10 +578,12 @@
                   <ProjectTile
                     :active="isActive(tab)"
                     :name="tab.name"
+                    :key="tab.id"
                     expanded
                     sidebar
                     @click="openTab(tab)"
-                    @mousedown.middle="requestCloseTab(tab.id)"
+                    @mousedown.middle="requestArchiveTab(tab.id)"
+                    :dragging="isDraggingAny"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
                       <span
@@ -588,10 +656,12 @@
     pointer-events: none;
   }
 
-  /* Folder open/closed icon crossfade */
+  /* Folder open/closed icon crossfade: enter and leave run at the same time
+     (no `out-in` gap) with both icons absolutely stacked inside a fixed-size
+     wrapper, so they fade into each other without layout shifts. */
   .folder-icon-enter-active,
   .folder-icon-leave-active {
-    transition: opacity 100ms ease-in-out;
+    transition: opacity 150ms ease-in-out;
   }
 
   .folder-icon-enter-from,

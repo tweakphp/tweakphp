@@ -15,6 +15,7 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { joinResultOutputs, visibleResults } from '../utils/output'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -46,10 +47,7 @@
   })
   const route = useRoute()
 
-  const rawOutput = computed(() => {
-    const output = [...tab.value.result].reverse().find(item => item.output.trim() !== '')
-    return output ? output.output : ''
-  })
+  const rawOutput = computed(() => joinResultOutputs(visibleResults(tab.value.result, 'explicit')))
 
   const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
     tab,
@@ -104,7 +102,7 @@
 
       if (event.key === 'w') {
         event.preventDefault()
-        events.dispatchEvent(new CustomEvent('tab.close.request', { detail: tab.value.id }))
+        events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: tab.value.id }))
       }
     }
   }
@@ -215,6 +213,47 @@
     await router.replace({ name: 'code', params: { id: t.id } })
   }
 
+  // Push sync (MCP tools): the store reloads tabs from the database and swaps
+  // the tab objects. This view keeps a local `tab` reference for the editor,
+  // so re-sync it after every external reload: pick up code/metadata written
+  // via MCP, follow an MCP-driven project switch, and fall back when the open
+  // project was removed.
+  watch(
+    () => tabsStore.reloadVersion,
+    () => {
+      const openId = tab.value.id
+      if (!openId) {
+        return
+      }
+
+      const fresh = tabsStore.findTab(openId)
+      const storeCurrent = tabsStore.getCurrent()
+
+      if (fresh && storeCurrent && storeCurrent.id !== openId) {
+        // MCP switched the active project (set_active_project): follow it.
+        // router.replace on the same route does not remount this view, so
+        // the local tab reference must be swapped explicitly.
+        tab.value = storeCurrent
+        void setCurrentTab(storeCurrent)
+        return
+      }
+
+      if (fresh) {
+        // same project: take the fresh object (MCP code/metadata writes)
+        tab.value = fresh
+        return
+      }
+
+      // the open project was removed via MCP: fall back to another one
+      if (storeCurrent) {
+        tab.value = storeCurrent
+        void setCurrentTab(storeCurrent)
+      } else {
+        void router.replace({ name: 'home' })
+      }
+    }
+  )
+
   watch(
     () => settingsStore.colors.backgroundLight,
     color => {
@@ -225,7 +264,7 @@
   )
 
   watch(
-    () => settingsStore.settings.output,
+    () => settingsStore.settings.outputMode,
     async () => {
       await nextTick()
       if (resultEditor.value) {
@@ -262,7 +301,7 @@
       </pane>
       <pane :size="tab.pane.result">
         <Editor
-          v-if="settingsStore.settings.output === 'code'"
+          v-if="settingsStore.settings.outputMode === 'output'"
           :key="`result-${tab.id}`"
           ref="resultEditor"
           :editor-id="`${tab.id}-result`"

@@ -1,11 +1,10 @@
-import { ConnectionConfig } from './docker.type'
-
 export interface Result {
   line: number
   code: string
   output: string
   html: string
   htmlReady?: boolean
+  implicit?: boolean
   queries?: any[]
   query_errors?: any[]
 }
@@ -31,6 +30,7 @@ export interface Tab {
   code: string
   path: string | undefined
   execution: string
+  connection_id?: string | null
   loader?: string
   result: Result[]
   queries?: QueryItem[]
@@ -47,11 +47,11 @@ export interface Tab {
     php_version: string
     version: string
   }
-  docker?: ConnectionConfig
-  ssh?: {
-    id: number
-  }
-  kubectl?: {
-    id: number
-  }
+}
+
+export interface ArchivedTab extends Tab {
+  position?: number
+  created_at?: string
+  updated_at?: string
+  deleted_at: string | null
 }

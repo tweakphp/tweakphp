@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import * as monaco from 'monaco-editor'
   import { MonacoLanguageClient } from 'monaco-languageclient'
   import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
@@ -60,6 +60,7 @@
   const vimMode = ref<ReturnType<typeof initVimMode> | null>(null)
 
   const isUpdatingFromHistory = ref(false)
+
   function saveHistoryNow(tabId: number, code: string, cursor: monaco.IPosition) {
     if (!window.historyApi) {
       console.warn('History API is not available')
@@ -71,6 +72,27 @@
   let languageClient: MonacoLanguageClient | null = null
   let editor: monaco.editor.IStandaloneCodeEditor | null = null
   const emit = defineEmits(['update:value'])
+
+  // External value changes (e.g. code written by the MCP tools via the tabs
+  // store reload): keep the Monaco editor in sync with props.value.
+  // The identity check prevents feedback loops with our own update:value
+  // emissions (user typing round-trips through the parent with equal value),
+  // and the flag keeps the programmatic setValue from re-emitting.
+  watch(
+    () => props.value,
+    value => {
+      if (!editor || value === undefined || value === null) return
+      if (editor.getValue() === value) return
+
+      const position = editor.getPosition()
+      isUpdatingFromHistory.value = true
+      editor.setValue(value)
+      if (position) {
+        editor.setPosition(position)
+      }
+      isUpdatingFromHistory.value = false
+    }
+  )
 
   if (props.language === 'php') {
     installPHPLanguage()
@@ -99,6 +121,9 @@
         glyphMargin: false,
         scrollBeyondLastLine: false,
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
+        // Default word separators minus `$`, so double-clicking a PHP
+        // variable selects it including the dollar sign
+        wordSeparators: '`~!@#%^&*()-=+[{]}\\|;:\'",.<>/?',
       })
 
       if (props.enableHistory) {
@@ -176,7 +201,8 @@
         })
       }
 
-      if (settingsStore.settings.vimMode === 'on') {
+      // Vim mode is pointless on a read-only preview (archive)
+      if (settingsStore.settings.vimMode === 'on' && !props.readonly) {
         vimMode.value = initVimMode(editor)
       }
 
@@ -395,7 +421,7 @@
 </script>
 
 <template>
-  <div ref="editorContainer" class="w-full h-full">
+  <div ref="editorContainer" class="relative w-full h-full">
     <ToastAlert
       :key="new Date().getTime()"
       v-if="errorAiCompletion"

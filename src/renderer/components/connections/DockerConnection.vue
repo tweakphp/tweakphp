@@ -8,6 +8,7 @@
   import { ConnectionConfig } from '../../../types/docker.type.ts'
   import { ConnectReply, ActionReply } from '../../../types/client.type.ts'
   import { useSSHStore } from '../../stores/ssh'
+  import { useDockerStore } from '../../stores/docker'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { PlusIcon } from '@heroicons/vue/24/outline'
   import SSHConnectModal from '../modals/SSHConnectModal.vue'
@@ -16,6 +17,7 @@
 
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
+  const dockerStore = useDockerStore()
   const emit = defineEmits(['connected'])
 
   const loading = ref<boolean>(false)
@@ -24,6 +26,7 @@
   const phpVersion = ref<string | null>(null)
   const form = ref<ConnectionConfig>({
     type: 'docker',
+    id: Date.now(),
     container_id: '',
     container_name: '',
     php_version: '',
@@ -73,13 +76,36 @@
     errorResponse.value = ''
     let tab = tabsStore.getCurrent()
     if (tab) {
-      form.value = reply.connection
-      form.value.ssh = undefined
-      tab.docker = form.value
-      tab.execution = form.value.type
+      const connected = reply.connection as ConnectionConfig
+      connected.ssh = undefined
+      connected.id = matchingDockerConnectionId(connected) ?? Date.now()
+      connected.name = connected.container_name
+      // Connections are atomic to a project: the docker connection belongs to this project
+      connected.tab_id = tab.id
+      form.value = connected
+
+      // Persist the docker connection in the connections table (like ssh/kubectl)
+      dockerStore.upsertConnection(connected)
+
+      tab.execution = 'docker'
+      tab.connection_id = String(connected.id)
       tabsStore.updateTab(tab)
     }
     emit('connected')
+  }
+
+  // Reuse the stored connection id when reconnecting to the same
+  // container on the same host with the same working directory.
+  // Connections are atomic to a project: only match this project's own.
+  const matchingDockerConnectionId = (config: ConnectionConfig): number | null => {
+    const match = dockerStore.connections.find(
+      c =>
+        c.tab_id === tabsStore.current?.id &&
+        c.container_name === config.container_name &&
+        String(c.ssh_id ?? 0) === String(config.ssh_id ?? 0) &&
+        c.working_directory === config.working_directory
+    )
+    return match ? match.id : null
   }
 
   const selectDockerContainer = () => {
@@ -167,9 +193,14 @@
   onMounted(() => {
     fetchContainers()
 
-    const docker = tabsStore.getCurrent()?.docker
-    if (docker) {
-      form.value = docker
+    // Prefill from the project's stored docker connection (connection_id)
+    const currentTab = tabsStore.getCurrent()
+    const stored =
+      currentTab?.connection_id != null
+        ? dockerStore.connections.find(c => String(c.id) === currentTab.connection_id)
+        : undefined
+    if (stored) {
+      form.value = { ...stored }
     }
 
     selectDockerContainer()
@@ -227,38 +258,26 @@
                 </option>
               </SelectInput>
             </div>
-            <div class="size-6 overflow-hidden">
-              <ArrowPathIcon
-                :spin="true"
-                @click="refreshContainers"
-                :class="{ 'animate-spin': loading }"
-                class="w-6 cursor-pointer h-6 hover:text-primary-500"
-              />
-            </div>
+            <SecondaryButton @click="refreshContainers" v-tippy="{ content: 'Refresh containers' }">
+              <ArrowPathIcon :spin="true" :class="{ 'animate-spin': loading }" class="size-6" />
+            </SecondaryButton>
           </div>
         </FormField>
 
-        <div class="space-y-3">
-          <FormField label="PHP Version" divider>
-            <span v-if="phpVersion" class="text-sm">{{ phpVersion }}</span>
-            <span v-else-if="loading && form.container_name" class="text-sm opacity-50">Detecting…</span>
-            <span v-else class="text-sm opacity-50">Select a container first</span>
-          </FormField>
+        <FormField label="PHP Version" divider>
+          <span v-if="phpVersion" class="text-sm">{{ phpVersion }}</span>
+          <span v-else-if="loading && form.container_name" class="text-sm opacity-50">Detecting…</span>
+          <span v-else class="text-sm opacity-50">Select a container first</span>
+        </FormField>
 
-          <FormField label="Working directory" divider>
-            <TextInput
-              class="w-full"
-              placeholder="/var/www/html"
-              id="work_directory"
-              v-model="form.working_directory"
-            />
-          </FormField>
+        <FormField label="Working directory" divider>
+          <TextInput class="w-full" placeholder="/var/www/html" id="work_directory" v-model="form.working_directory" />
+        </FormField>
 
-          <FormField label="User" divider>
-            <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
-            <TextInput class="w-full" placeholder="e.g. sail" id="docker_user" v-model="form.user" />
-          </FormField>
-        </div>
+        <FormField label="User" divider>
+          <template #label> User <span class="text-xs text-gray-400">(optional)</span> </template>
+          <TextInput class="w-full" placeholder="e.g. sail" id="docker_user" v-model="form.user" />
+        </FormField>
 
         <div class="mt-2">
           <span v-text="errorResponse" class="text-xs text-red-500"></span>
