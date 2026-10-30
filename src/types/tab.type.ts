@@ -4,6 +4,7 @@ export interface Result {
   output: string
   html: string
   htmlReady?: boolean
+  implicit?: boolean
   queries?: any[]
   query_errors?: any[]
 }

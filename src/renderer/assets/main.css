@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:where(:focus-visible) {
+  outline-color: rgb(var(--color-primary-500));
+}
+
 html,
 body {
   height: 100vh !important;

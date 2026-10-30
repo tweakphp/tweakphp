@@ -32,7 +32,7 @@ vi.mock('electron', () => ({
 const mockSettings = vi.hoisted(() => ({
   php: 'C:\\php\\php.exe',
   queryLog: false,
-  output: 'code',
+  outputMode: 'output',
 }))
 
 vi.mock('../settings', () => ({
@@ -43,7 +43,7 @@ describe('LocalClient WSL Support', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettings.queryLog = false
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     vi.mocked(execFileSync).mockReturnValue('8.1\n' as any)
     vi.mocked(execSync).mockReturnValue('8.1\n')
   })
@@ -273,7 +273,7 @@ describe('LocalClient WSL Support', () => {
 
     it('enables the query log only when enabled and the output is stacked', async () => {
       mockSettings.queryLog = true
-      mockSettings.output = 'stack'
+      mockSettings.outputMode = 'stacked'
       const client = new LocalClient({
         type: 'local',
         path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
@@ -296,7 +296,7 @@ describe('LocalClient WSL Support', () => {
         expect.any(Function)
       )
 
-      mockSettings.output = 'code'
+      mockSettings.outputMode = 'output'
       await client.execute('echo "hello";')
       expect(execFile).toHaveBeenCalledWith(
         'wsl',

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Settings } from '../../types/settings.type.ts'
 import { themeNames, themeColors } from '../themes'
+import { applyPrimaryColors } from '../theme-primary-colors'
 
 export const useSettingsStore = defineStore('settings', () => {
   const themes = ref(themeNames)
@@ -14,7 +15,7 @@ export const useSettingsStore = defineStore('settings', () => {
     editorFontSize: 15,
     editorWordWrap: 'on',
     layout: 'vertical',
-    output: 'code',
+    outputMode: 'output',
     vimMode: 'off',
     stackedDump: 'extended',
     windowWidth: 1100,
@@ -35,6 +36,15 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   const settings = ref<Settings>(defaultSettings)
+
+  // Keep the app-wide `primary` color in sync with the selected editor theme.
+  applyPrimaryColors(settings.value.theme)
+  watch(
+    () => settings.value.theme,
+    theme => {
+      applyPrimaryColors(theme)
+    }
+  )
 
   const colors = computed(() => {
     return themeColors[settings.value.theme as keyof typeof themeColors]

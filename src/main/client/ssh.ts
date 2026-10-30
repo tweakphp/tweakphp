@@ -6,8 +6,8 @@ import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 import { getSettings } from '../settings'
 
 const queryLogArg = () => {
-  const { queryLog, output } = getSettings()
-  return `--query-log=${queryLog === true && output === 'stack'}`
+  const { queryLog, outputMode } = getSettings()
+  return `--query-log=${queryLog === true && (outputMode === 'stacked' || outputMode === 'full')}`
 }
 
 export class SSHClient extends RemoteClient {

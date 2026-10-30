@@ -17,7 +17,7 @@ vi.mock('../utils/ssh', () => ({
 const mockSettings = vi.hoisted(() => ({
   dockerKubectlExecutionTimeoutSeconds: 60,
   queryLog: false,
-  output: 'code',
+  outputMode: 'output',
 }))
 
 vi.mock('../settings', () => ({
@@ -54,7 +54,7 @@ describe('DockerClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettings.queryLog = false
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     ;(app as any).isPackaged = false
     Object.defineProperty(process, 'resourcesPath', {
       configurable: true,
@@ -170,7 +170,7 @@ describe('DockerClient', () => {
   it('enables the query log only when enabled and the output is stacked', async () => {
     mockExecFile(() => 'output\n')
     mockSettings.queryLog = true
-    mockSettings.output = 'stack'
+    mockSettings.outputMode = 'stacked'
     const client = new DockerClient({
       type: 'docker',
       container_name: 'my-container',
@@ -188,7 +188,7 @@ describe('DockerClient', () => {
       expect.any(Function)
     )
 
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     await client.execute('echo "test";')
     expect(execFile).toHaveBeenCalledWith(
       'docker',

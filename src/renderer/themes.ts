@@ -6,6 +6,7 @@ import githubLightTheme from './assets/editor-themes/github-light.json'
 import catppuccinTheme from './assets/editor-themes/catppuccin.json'
 import nightOwlTheme from './assets/editor-themes/night-owl.json'
 import rosePineTheme from './assets/editor-themes/rose-pine.json'
+import ultraDarkTheme from './assets/editor-themes/ultra-dark.json'
 
 const themes: Record<string, monaco.editor.IStandaloneThemeData> = {
   'nord': nordTheme as monaco.editor.IStandaloneThemeData,
@@ -15,6 +16,7 @@ const themes: Record<string, monaco.editor.IStandaloneThemeData> = {
   'catppuccin': catppuccinTheme as monaco.editor.IStandaloneThemeData,
   'night-owl': nightOwlTheme as monaco.editor.IStandaloneThemeData,
   'rose-pine': rosePineTheme as monaco.editor.IStandaloneThemeData,
+  'ultra-dark': ultraDarkTheme as monaco.editor.IStandaloneThemeData,
 }
 
 export const themeNames = Object.keys(themes)

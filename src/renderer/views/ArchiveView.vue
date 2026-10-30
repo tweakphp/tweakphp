@@ -101,7 +101,7 @@
                 :style="{ borderColor: settingsStore.colors.border }"
               >
                 <div
-                  class="flex items-center gap-3 p-2 cursor-pointer select-none hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors"
+                  class="flex items-center gap-3 p-2 cursor-pointer select-none hover:bg-primary-500/5 transition-colors"
                   :class="expandedId === tab.id ? 'rounded-t-lg' : 'rounded-lg'"
                   role="button"
                   tabindex="0"
@@ -158,7 +158,7 @@
                   class="border-t"
                   :style="{ borderColor: settingsStore.colors.border }"
                 >
-                  <div class="h-72 overflow-hidden">
+                  <div class="relative h-72 overflow-hidden">
                     <Editor
                       :key="tab.id"
                       :editor-id="'archive-' + tab.id"
