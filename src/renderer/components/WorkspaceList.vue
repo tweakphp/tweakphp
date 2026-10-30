@@ -233,7 +233,7 @@
   }
 
   const isActive = (tab: Tab): boolean => {
-    return router.currentRoute.value.name === 'code' && tabsStore.getCurrent()?.id === tab.id
+    return tabsStore.getCurrent()?.id === tab.id
   }
 
   // reset a folder's "Show more" steps when it gets collapsed (any path:

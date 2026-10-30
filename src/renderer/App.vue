@@ -21,6 +21,7 @@
   import { UpdateInfo } from 'electron-updater'
   import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
+  import SaveSnippetModal from './components/modals/SaveSnippetModal.vue'
 
   const colorSchemeStore = useColorSchemeStore()
   const colorSchemeSetup = () => {
@@ -368,5 +369,6 @@
     </div>
     <NewProjectModal ref="newProjectModal" />
     <ArchiveConfirmModal />
+    <SaveSnippetModal />
   </div>
 </template>

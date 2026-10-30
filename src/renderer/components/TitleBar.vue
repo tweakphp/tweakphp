@@ -114,7 +114,7 @@
       }"
     >
       <div
-        class="flex-grow-0 transition-all duration-300"
+        class="flex-grow-0 transition-all duration-300 flex items-center space-x-2"
         :class="{
           'pl-[80px]': platform === 'darwin',
         }"

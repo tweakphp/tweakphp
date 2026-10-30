@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-  import { ArrowPathIcon, BoltIcon, ChevronDownIcon, FolderIcon, ServerIcon } from '@heroicons/vue/24/outline'
+  import {
+    ArrowPathIcon,
+    BoltIcon,
+    BookmarkIcon,
+    ChevronDownIcon,
+    FolderIcon,
+    ServerIcon,
+  } from '@heroicons/vue/24/outline'
   import SecondaryButton from './SecondaryButton.vue'
   import DockerIcon from './icons/DockerIcon.vue'
   import KubectlIcon from './icons/KubectlIcon.vue'
@@ -22,6 +29,7 @@
   import DockerConnectModal from './modals/DockerConnectModal.vue'
   import SSHConnectionsModal from './modals/SSHConnectionsModal.vue'
   import KubectlConnectionsModal from './modals/KubectlConnectionsModal.vue'
+  import SnippetsModal from './modals/SnippetsModal.vue'
   import { useDockerStore } from '../stores/docker.ts'
 
   const tabStore = useTabsStore()
@@ -36,6 +44,7 @@
   const dockerModal = ref()
   const sshModal = ref()
   const kubectlModal = ref()
+  const snippetsModal = ref()
   const tab: ComputedRef<Tab | null> = computed(() => tabStore.getCurrent())
   const connecting = ref('')
 
@@ -215,6 +224,12 @@
 
 <template>
   <div class="flex items-center gap-1" v-if="tab">
+    <!-- snippets -->
+    <SecondaryButton without-border class="!px-2 h-6" @click="snippetsModal.openModal()">
+      <BookmarkIcon class="size-4 mr-1" />
+      <span class="text-xs">Snippets</span>
+    </SecondaryButton>
+
     <!-- local -->
     <SecondaryButton
       without-border
@@ -412,5 +427,6 @@
       @connected="remoteConnected('kubectl', $event)"
       @removed="remoteRemoved($event)"
     />
+    <SnippetsModal ref="snippetsModal" />
   </div>
 </template>

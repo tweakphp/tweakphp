@@ -25,7 +25,15 @@ export const themeColors: Record<string, Record<string, string>> = Object.fromEn
   Object.entries(themes).map(([name, theme]) => [name, theme.colors as Record<string, string>])
 )
 
+let themesInstalled = false
+
 export const installThemes = () => {
+  // Re-defining themes on every Editor mount makes Monaco re-apply the
+  // active theme globally; guard it so editors can call this freely.
+  if (themesInstalled) {
+    return
+  }
+  themesInstalled = true
   for (const [name, theme] of Object.entries(themes)) {
     monaco.editor.defineTheme(name, theme)
   }
