@@ -176,11 +176,11 @@
             @click="toggleQueryLog"
           >
             <CircleStackIcon
-              class="size-4 cursor-pointer hover:text-blue-400"
+              class="size-4 hover:text-blue-400"
               :class="
                 settingsStore.settings.queryLog && settingsStore.settings.outputMode !== 'output'
-                  ? 'text-blue-500'
-                  : 'opacity-40'
+                  ? 'text-blue-500 cursor-pointer'
+                  : 'opacity-40 cursor-not-allowed'
               "
             />
           </SecondaryButton>
