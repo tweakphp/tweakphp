@@ -19,31 +19,57 @@ export const useSnippetsStore = defineStore('snippets', () => {
   const snippets: Ref<Snippet[]> = ref([])
   const pendingInsert: Ref<PendingSnippetInsert | null> = ref(null)
   const lastCursor: Ref<{ tabId: number; position: SnippetCursor } | null> = ref(null)
+  const searchTerm = ref('')
+  const loading = ref(false)
+  const searchError = ref('')
 
-  const ready = window.ipcRenderer.invoke('storage:snippets:list').then((stored: Snippet[]) => {
-    snippets.value = stored
-  })
+  let listVersion = 0
+  const setSearchTerm = (term: string) => {
+    searchTerm.value = term
+    listVersion++
+    loading.value = true
+    searchError.value = ''
+  }
 
   const search = async (term: string): Promise<void> => {
-    snippets.value = await window.ipcRenderer.invoke('storage:snippets:list', { search: term })
+    searchTerm.value = term
+    const version = ++listVersion
+    loading.value = true
+    searchError.value = ''
+    try {
+      const results = await window.ipcRenderer.invoke('storage:snippets:list', { search: term })
+      if (version === listVersion) snippets.value = results
+    } catch (error) {
+      if (version === listVersion) searchError.value = 'Could not load snippets. Please try again.'
+      throw error
+    } finally {
+      if (version === listVersion) loading.value = false
+    }
+  }
+
+  const ready = search('')
+  // The store can be created before a snippets UI is mounted.
+  void ready.catch(() => {})
+
+  const refreshAfterMutation = async () => {
+    // A failed refresh must not make a successful save/delete look unsuccessful.
+    try {
+      await search(searchTerm.value)
+    } catch {
+      // searchError exposes the refresh failure separately.
+    }
   }
 
   const add = async (snippet: Snippet): Promise<Snippet> => {
     const saved: Snippet = await window.ipcRenderer.invoke('storage:snippets:save', toPlain(snippet))
-    const index = snippets.value.findIndex(s => s.id === saved.id)
-    if (index !== -1) {
-      snippets.value.splice(index, 1)
-    }
-    snippets.value.unshift(saved)
+    await refreshAfterMutation()
     return saved
   }
 
   const remove = async (id: string): Promise<void> => {
-    const index = snippets.value.findIndex(s => s.id === id)
-    if (index !== -1) {
-      snippets.value.splice(index, 1)
-      await window.ipcRenderer.invoke('storage:snippets:delete', id)
-    }
+    const result = await window.ipcRenderer.invoke('storage:snippets:delete', id)
+    if (!result.success) throw new Error('Snippet not found')
+    await refreshAfterMutation()
   }
 
   const setLastCursor = (tabId: number, position: SnippetCursor | null) => {
@@ -67,6 +93,10 @@ export const useSnippetsStore = defineStore('snippets', () => {
   return {
     snippets,
     ready,
+    searchTerm,
+    loading,
+    searchError,
+    setSearchTerm,
     search,
     add,
     remove,

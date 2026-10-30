@@ -17,6 +17,7 @@
   import { useCodeExecution } from '../composables/useCodeExecution'
   import { joinResultOutputs, visibleResults } from '../utils/output'
   import { useSnippetsStore } from '../stores/snippets'
+  import { handleProjectShortcut } from '../utils/project-shortcuts'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -93,20 +94,14 @@
     }
   }
 
-  const keydownListener = (event: any) => {
-    if ((event.metaKey || event.ctrlKey) && !event.shiftKey) {
-      if (event.key === 'r') {
-        event.preventDefault()
-        if (tab.value.type === 'code') {
-          executeHandler()
-        }
-      }
-
-      if (event.key === 'w') {
-        event.preventDefault()
-        events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: tab.value.id }))
-      }
-    }
+  const keydownListener = (event: KeyboardEvent) => {
+    handleProjectShortcut(
+      event,
+      () => {
+        if (tab.value.type === 'code') executeHandler()
+      },
+      () => events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: tab.value.id }))
+    )
   }
 
   const infoReplyListener = (e: any) => {
@@ -119,15 +114,27 @@
     if (!pending || pending.tabId !== tab.value.id) {
       return
     }
-    snippetsStore.consumePendingInsert()
     await nextTick()
+    if (snippetsStore.pendingInsert !== pending || pending.tabId !== tab.value.id || !codeEditor.value?.isReady())
+      return
+    snippetsStore.consumePendingInsert()
     if (pending.mode === 'replace') {
-      codeEditor.value?.updateValue(pending.code)
+      codeEditor.value.updateValue(pending.code)
+      codeEditor.value.focusEditor()
     } else {
-      codeEditor.value?.insertTextAtPosition(pending.code, pending.position)
+      codeEditor.value.insertTextAtPosition(pending.code, pending.position)
+      codeEditor.value.focusEditor(false)
     }
-    codeEditor.value?.focusEditor()
   }
+
+  // The snippets modal lives above this view: apply inserts as soon as they
+  // are requested instead of waiting for a route-driven remount
+  watch(
+    () => snippetsStore.pendingInsert,
+    () => {
+      void applyPendingSnippetInsert()
+    }
+  )
 
   const getInfo = () => {
     vaporRequestEnvironmentTab()
@@ -319,6 +326,8 @@
           :auto-focus="true"
           :enable-history="true"
           :with-ai-completion="true"
+          @cursor-change="snippetsStore.setLastCursor(tab.id, $event)"
+          @ready="applyPendingSnippetInsert"
         />
       </pane>
       <pane :size="tab.pane.result">

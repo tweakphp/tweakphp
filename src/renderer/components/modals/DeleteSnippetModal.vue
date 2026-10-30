@@ -12,6 +12,7 @@
 
   const emit = defineEmits<{
     (e: 'deleted'): void
+    (e: 'error'): void
   }>()
 
   const confirmModal = ref<InstanceType<typeof ConfirmModal> | null>(null)
@@ -26,8 +27,12 @@
     if (!props.snippet?.id) {
       return
     }
-    await snippetsStore.remove(props.snippet.id)
-    emit('deleted')
+    try {
+      await snippetsStore.remove(props.snippet.id)
+      emit('deleted')
+    } catch {
+      emit('error')
+    }
   }
 
   defineExpose({ openModal })

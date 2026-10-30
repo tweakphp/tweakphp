@@ -15,6 +15,7 @@
   import { XMarkIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { ModalSize } from '../../types/modal.type'
+  import { useModalActivity } from '../composables/useModalActivity'
 
   const settingsStore = useSettingsStore()
   const slots = useSlots()
@@ -71,6 +72,7 @@
   }>()
 
   const isModalOpen = ref(false)
+  useModalActivity(isModalOpen, () => props.modal)
 
   const openModal = () => {
     isModalOpen.value = true

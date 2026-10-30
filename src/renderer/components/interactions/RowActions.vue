@@ -21,10 +21,20 @@
 
 <template>
   <div class="flex gap-1 justify-end space-x-2">
-    <SecondaryButton class="!p-1 !border-transparent" v-tippy="editLabel" @click="$emit('edit')">
+    <SecondaryButton
+      class="!p-1 !border-transparent"
+      :aria-label="editLabel"
+      v-tippy="editLabel"
+      @click="$emit('edit')"
+    >
       <PencilIcon class="size-4 hover:text-primary-500" />
     </SecondaryButton>
-    <SecondaryButton class="!p-1 !border-transparent" v-tippy="removeLabel" @click="$emit('remove')">
+    <SecondaryButton
+      class="!p-1 !border-transparent"
+      :aria-label="removeLabel"
+      v-tippy="removeLabel"
+      @click="$emit('remove')"
+    >
       <TrashIcon class="size-4 hover:text-red-500" />
     </SecondaryButton>
     <slot />

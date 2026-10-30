@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon, BookmarkIcon } from '@heroicons/vue/24/outline'
+  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
@@ -76,7 +76,7 @@
 
   // Pages that are not tied to an open project: hide the LSP status and the
   // project info while visiting them.
-  const isUtilityPage = computed(() => ['settings', 'archive', 'snippets'].includes(router.currentRoute.value.name as string))
+  const isUtilityPage = computed(() => ['settings', 'archive'].includes(router.currentRoute.value.name as string))
 
   const newProjectModal = ref()
 
@@ -306,12 +306,6 @@
                   :class="{ 'text-primary-500': router.currentRoute.value.name === 'settings' }"
                 >
                   <CogIcon class="size-5 hover:text-primary-500" />
-                </RouterLink>
-                <RouterLink
-                  :to="{ name: 'snippets' }"
-                  :class="{ 'text-primary-500': router.currentRoute.value.name === 'snippets' }"
-                >
-                  <BookmarkIcon class="size-5 hover:text-primary-500" />
                 </RouterLink>
                 <RouterLink
                   :to="{ name: 'archive' }"
