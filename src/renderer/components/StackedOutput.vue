@@ -49,8 +49,9 @@
     props.output.forEach(item => {
       if (item.htmlReady === false) return
 
-      const el = document.getElementById(`dump-${item.line}`)?.querySelector<HTMLElement>('.sf-dump')
-      if (el && !initializedDumps.has(el)) {
+      const elements = document.getElementById(`dump-${item.line}`)?.querySelectorAll<HTMLElement>('.sf-dump') ?? []
+      elements.forEach(el => {
+        if (initializedDumps.has(el)) return
         window.Sfdump(el.id)
         initializedDumps.add(el)
         if (settingsStore.settings.stackedDump === 'compact') {
@@ -65,14 +66,21 @@
             toggle.click()
           }
         }
-      }
+      })
     })
   }
 
-  watch(() => props.output.map(item => `${item.line}:${item.htmlReady}:${item.html}`), applyDump, {
-    flush: 'post',
-    immediate: true,
-  })
+  watch(
+    () => [
+      outputFilter.value,
+      ...props.output.map(item => `${item.line}:${item.htmlReady}:${item.html}:${item.explicitHtml}`),
+    ],
+    applyDump,
+    {
+      flush: 'post',
+      immediate: true,
+    }
+  )
 </script>
 
 <template>
@@ -104,14 +112,27 @@
       <div class="absolute top-0 right-0 px-2 py-1 bg-opacity-50 text-xs bg-black/10 rounded-tr-md" :style="{}">
         Line {{ item.line }}
       </div>
-      <div
-        :id="`dump-${item.line}`"
-        class="text-sm"
-        v-html="item.htmlReady === false ? item.output : item.html || item.output"
-        :style="{
-          // fontSize: settingsStore.settings.editorFontSize + 'px !important',
-        }"
-      ></div>
+      <div :id="`dump-${item.line}`" class="text-sm">
+        <template v-if="item.parts">
+          <div v-for="(part, index) in item.parts" :key="index">
+            <div
+              v-if="outputFilter === 'all' && part.implicit && item.parts.some(part => !part.implicit)"
+              class="mt-2 mb-1 font-sans text-xs text-gray-400"
+            >
+              Return value
+            </div>
+            <div v-if="item.htmlReady !== false && part.html" v-html="part.html"></div>
+            <div v-else class="whitespace-pre-wrap break-words">{{ part.output }}</div>
+          </div>
+        </template>
+        <div
+          v-else-if="
+            item.htmlReady !== false && item.html && !(item.implicit === false && /\bprint\b/i.test(item.code))
+          "
+          v-html="item.html"
+        ></div>
+        <div v-else class="whitespace-pre-wrap break-words">{{ item.output }}</div>
+      </div>
 
       <div
         v-for="(query, queryIndex) in item.queries || []"

@@ -29,13 +29,22 @@ const explicitOutputPattern = new RegExp(
 export const isExplicitResult = (result: Result): boolean => {
   if (result.implicit === true) return false
 
+  if (result.explicitOutput !== undefined) return result.explicitOutput !== '' || !!result.explicitHtml
+
   if (result.code.trim() === '') return true
 
   return explicitOutputPattern.test(result.code)
 }
 
 export const visibleResults = (results: Result[], filter: OutputFilter): Result[] =>
-  filter === 'all' ? results : results.filter(isExplicitResult)
+  filter === 'all'
+    ? results
+    : results.filter(isExplicitResult).map(result => ({
+        ...result,
+        output: result.explicitOutput ?? result.output,
+        html: result.explicitHtml ?? result.html,
+        ...(result.parts ? { parts: result.parts.filter(part => !part.implicit) } : {}),
+      }))
 
 export const stripAnsi = (value: string): string =>
   value

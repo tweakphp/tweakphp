@@ -45,7 +45,7 @@ interface DetailEvent extends Event {
 type StreamEvent =
   | { type: 'started' }
   | { type: 'statement.started'; index: number; line: number; code: string }
-  | { type: 'output'; index?: number; data: string; html?: string }
+  | { type: 'output'; index?: number; data: string; html?: string; implicit?: boolean }
   | {
       type: 'statement.completed'
       index?: number
@@ -96,6 +96,7 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
         index: typeof value.index === 'number' ? value.index : undefined,
         data: value.data,
         html: typeof value.html === 'string' ? value.html : undefined,
+        implicit: typeof value.implicit === 'boolean' ? value.implicit : undefined,
       }
     case 'statement.completed':
       return {
@@ -228,9 +229,23 @@ export function useCodeExecution(options: {
         }
       }
 
-      options.tab.value.result[index].output += stripAnsi(streamEvent.data)
+      const result = options.tab.value.result[index]
+      result.explicitOutput ??= result.output
+      result.explicitHtml ??= result.html
+      const output = stripAnsi(streamEvent.data)
+      result.output += output
+      if (streamEvent.implicit !== true) result.explicitOutput += output
+      result.parts ??= []
+      const implicit = streamEvent.implicit === true
+      const previousPart = result.parts[result.parts.length - 1]
+      if (previousPart && previousPart.implicit === implicit && !previousPart.html && !streamEvent.html) {
+        previousPart.output += output
+      } else {
+        result.parts.push({ output, html: streamEvent.html ?? '', implicit })
+      }
       if (streamEvent.html !== undefined) {
-        options.tab.value.result[index].html += streamEvent.html
+        result.html += streamEvent.html
+        if (streamEvent.implicit !== true) result.explicitHtml += streamEvent.html
       }
     } else if (streamEvent.type === 'statement.completed') {
       const index = streamEvent.index ?? 0
@@ -239,7 +254,10 @@ export function useCodeExecution(options: {
       if (result) {
         if (streamEvent.queries) result.queries = streamEvent.queries
         if (streamEvent.query_errors) result.query_errors = streamEvent.query_errors
-        if (streamEvent.html !== undefined && !result.html) result.html = streamEvent.html
+        if (streamEvent.html !== undefined && !result.html) {
+          result.html = streamEvent.html
+          if (streamEvent.implicit !== true) result.explicitHtml = streamEvent.html
+        }
         if (streamEvent.implicit !== undefined) result.implicit = streamEvent.implicit
         result.htmlReady = true
       }

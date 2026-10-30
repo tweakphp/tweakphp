@@ -114,6 +114,34 @@ describe('visibleResults', () => {
 
     expect(visibleResults([implicit, explicit], 'explicit')).toEqual([explicit])
   })
+
+  it('excludes implicit return values from mixed output without changing full results', () => {
+    const mixed: Result = {
+      ...echo('print($user->email);', 'feil.noel@example.com1'),
+      html: '<pre>1</pre>',
+      explicitOutput: 'feil.noel@example.com',
+      explicitHtml: '',
+      implicit: false,
+    }
+
+    const explicit = visibleResults([mixed], 'explicit')
+    expect(joinResultOutputs(explicit)).toBe('feil.noel@example.com')
+    expect(explicit[0].html).toBe('')
+    expect(visibleResults([mixed], 'all')).toEqual([mixed])
+    expect(mixed.output).toBe('feil.noel@example.com1')
+  })
+
+  it('uses explicit streaming output even for custom functions', () => {
+    const explicit = { ...echo('writeMessage();', 'hello'), explicitOutput: 'hello', explicitHtml: '' }
+
+    expect(visibleResults([explicit], 'explicit')).toEqual([explicit])
+  })
+
+  it('hides implicit-only chunks even before the statement completes', () => {
+    const implicit = { ...echo('print_r($value, true);', 'value'), explicitOutput: '', explicitHtml: '' }
+
+    expect(visibleResults([implicit], 'explicit')).toEqual([])
+  })
 })
 
 describe('normalizeVaporOutput', () => {
