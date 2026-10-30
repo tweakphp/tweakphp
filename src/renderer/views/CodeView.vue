@@ -15,7 +15,7 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
-  import { joinResultOutputs } from '../utils/output'
+  import { joinResultOutputs, visibleResults } from '../utils/output'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -47,7 +47,7 @@
   })
   const route = useRoute()
 
-  const rawOutput = computed(() => joinResultOutputs(tab.value.result))
+  const rawOutput = computed(() => joinResultOutputs(visibleResults(tab.value.result, 'explicit')))
 
   const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
     tab,
@@ -264,7 +264,7 @@
   )
 
   watch(
-    () => settingsStore.settings.output,
+    () => settingsStore.settings.outputMode,
     async () => {
       await nextTick()
       if (resultEditor.value) {
@@ -301,7 +301,7 @@
       </pane>
       <pane :size="tab.pane.result">
         <Editor
-          v-if="settingsStore.settings.output === 'code'"
+          v-if="settingsStore.settings.outputMode === 'output'"
           :key="`result-${tab.id}`"
           ref="resultEditor"
           :editor-id="`${tab.id}-result`"

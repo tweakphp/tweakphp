@@ -15,7 +15,7 @@ vi.mock('../utils/ssh', () => {
 
 const mockSettings = vi.hoisted(() => ({
   queryLog: false,
-  output: 'code',
+  outputMode: 'output',
 }))
 
 vi.mock('../settings', () => ({
@@ -28,7 +28,7 @@ describe('SSHClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettings.queryLog = false
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
     mockSSHInstance = (client as any).ssh
   })
@@ -84,12 +84,12 @@ describe('SSHClient', () => {
     const ssh = (client as any).ssh
     ssh.exec.mockResolvedValue('output\n')
     mockSettings.queryLog = true
-    mockSettings.output = 'stack'
+    mockSettings.outputMode = 'stacked'
 
     await client.execute('echo 1;')
     expect(ssh.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=true$/))
 
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     await client.execute('echo 1;')
     expect(ssh.exec).toHaveBeenCalledWith(expect.stringMatching(/execute [^ ]+ --query-log=false$/))
   })

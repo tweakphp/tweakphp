@@ -2,8 +2,9 @@
   import {
     PlayIcon,
     ArrowPathIcon,
-    CodeBracketIcon,
+    DocumentTextIcon,
     RectangleStackIcon,
+    QueueListIcon,
     CircleStackIcon,
     BoltIcon,
   } from '@heroicons/vue/24/outline'
@@ -19,6 +20,7 @@
   import SecondaryButton from './SecondaryButton.vue'
   import { computed, ComputedRef, watch } from 'vue'
   import { Tab } from '../../types/tab.type'
+  import { OutputMode } from '../../types/settings.type'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -39,10 +41,11 @@
     () => tab.value?.execution,
     value => {
       if (value === 'vapor') {
-        settingsStore.settings.output = 'code'
+        settingsStore.settings.outputMode = 'output'
         settingsStore.update()
       }
-    }
+    },
+    { immediate: true }
   )
 
   const execute = () => {
@@ -58,8 +61,17 @@
     settingsStore.update()
   }
 
-  const updateOutput = (output: 'code' | 'stack') => {
-    settingsStore.settings.output = output
+  const outputModes: OutputMode[] = ['output', 'stacked', 'full']
+
+  const outputModeLabels: Record<OutputMode, string> = {
+    output: 'Output only',
+    stacked: 'Stacked output',
+    full: 'Full stack',
+  }
+
+  const cycleOutputMode = () => {
+    const index = outputModes.indexOf(settingsStore.settings.outputMode)
+    settingsStore.settings.outputMode = outputModes[(index + 1) % outputModes.length]
     settingsStore.update()
   }
 
@@ -69,6 +81,7 @@
   }
 
   const toggleQueryLog = () => {
+    if (settingsStore.settings.outputMode === 'output') return
     settingsStore.settings.queryLog = !settingsStore.settings.queryLog
     settingsStore.update()
   }
@@ -113,11 +126,15 @@
             without-border
             v-if="showOutputType"
             class="!px-2 h-6"
-            v-tippy="{ content: 'Output Style', placement: 'bottom' }"
-            @click="updateOutput(settingsStore.settings.output === 'stack' ? 'code' : 'stack')"
+            v-tippy="{
+              content: `Output Mode: ${outputModeLabels[settingsStore.settings.outputMode]}`,
+              placement: 'bottom',
+            }"
+            @click="cycleOutputMode"
           >
-            <CodeBracketIcon v-if="settingsStore.settings.output === 'stack'" class="cursor-pointer size-4" />
-            <RectangleStackIcon v-if="settingsStore.settings.output === 'code'" class="cursor-pointer size-4" />
+            <DocumentTextIcon v-if="settingsStore.settings.outputMode === 'output'" class="cursor-pointer size-4" />
+            <RectangleStackIcon v-if="settingsStore.settings.outputMode === 'stacked'" class="cursor-pointer size-4" />
+            <QueueListIcon v-if="settingsStore.settings.outputMode === 'full'" class="cursor-pointer size-4" />
           </SecondaryButton>
           <SecondaryButton
             without-border
@@ -146,22 +163,25 @@
           </SecondaryButton>
           <SecondaryButton
             without-border
-            v-if="
-              router.currentRoute.value.name === 'code' &&
-              tab &&
-              isRealtimeSupported &&
-              settingsStore.settings.output === 'stack'
-            "
+            v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
             class="!px-2 h-6"
+            :class="settingsStore.settings.outputMode === 'output' ? 'cursor-not-allowed opacity-40' : ''"
             v-tippy="{
-              content: `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`,
+              content:
+                settingsStore.settings.outputMode === 'output'
+                  ? 'Query Log: available in Stacked output or Full stack modes'
+                  : `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`,
               placement: 'bottom',
             }"
             @click="toggleQueryLog"
           >
             <CircleStackIcon
               class="size-4 cursor-pointer hover:text-blue-400"
-              :class="settingsStore.settings.queryLog ? 'text-blue-500' : 'opacity-40'"
+              :class="
+                settingsStore.settings.queryLog && settingsStore.settings.outputMode !== 'output'
+                  ? 'text-blue-500'
+                  : 'opacity-40'
+              "
             />
           </SecondaryButton>
         </template>

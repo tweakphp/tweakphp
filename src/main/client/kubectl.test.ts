@@ -17,7 +17,7 @@ vi.mock('../utils/kubectl', () => {
 const mockSettings = vi.hoisted(() => ({
   dockerKubectlExecutionTimeoutSeconds: 60,
   queryLog: false,
-  output: 'code',
+  outputMode: 'output',
 }))
 
 vi.mock('../settings', () => ({
@@ -36,7 +36,7 @@ describe('KubectlClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettings.queryLog = false
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     const client = new KubectlClient({ type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any)
     mockKubectlInstance = (client as any).kubectl
   })
@@ -102,7 +102,7 @@ describe('KubectlClient', () => {
     mockKubectlInstance = (client as any).kubectl
     mockKubectlInstance.exec.mockResolvedValue('output\n')
     mockSettings.queryLog = true
-    mockSettings.output = 'stack'
+    mockSettings.outputMode = 'stacked'
 
     await client.execute('echo 1;')
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
@@ -111,7 +111,7 @@ describe('KubectlClient', () => {
       60_000
     )
 
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     await client.execute('echo 1;')
     expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
       expect.stringMatching(/execute [^ ]+ --query-log=false$/),

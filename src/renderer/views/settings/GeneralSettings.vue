@@ -159,6 +159,24 @@
         <option value="extended">Extended</option>
       </SelectInput>
     </FormField>
+    <FormField
+      class="mt-3"
+      label="Output Mode"
+      align="start"
+      description="Choose what the result panel shows: only explicit output such as echo, dump, or var_dump, explicit output as rich dump cards, or everything including intermediate values."
+      divider
+    >
+      <SelectInput
+        id="output-mode"
+        v-model="settingsStore.settings.outputMode"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option value="output">Output only</option>
+        <option value="stacked">Stacked output</option>
+        <option value="full">Full stack</option>
+      </SelectInput>
+    </FormField>
     <FormField class="mt-3" label="Streaming Output" divider>
       <SelectInput
         id="streaming-output"

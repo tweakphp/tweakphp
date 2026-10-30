@@ -6,6 +6,7 @@ import { Settings } from '../types/settings.type'
 import os from 'os'
 import { isWindows } from './system/platform.ts'
 import { execSync } from 'child_process'
+import { resolveOutputMode } from './utils/output-mode'
 
 const homeDir = os.homedir()
 
@@ -38,7 +39,7 @@ const defaultSettings: Settings = {
   editorFontSize: 15,
   editorWordWrap: 'on',
   layout: 'vertical',
-  output: 'code',
+  outputMode: 'output',
   vimMode: 'off',
   stackedDump: 'extended',
   windowWidth: 1100,
@@ -120,7 +121,7 @@ export const getSettings = () => {
       editorFontSize: settingsJson.editorFontSize || defaultSettings.editorFontSize,
       editorWordWrap: settingsJson.editorWordWrap || defaultSettings.editorWordWrap,
       layout: settingsJson.layout || defaultSettings.layout,
-      output: settingsJson.output || defaultSettings.output,
+      outputMode: resolveOutputMode(settingsJson),
       vimMode: settingsJson.vimMode || defaultSettings.vimMode,
       stackedDump: settingsJson.stackedDump || defaultSettings.stackedDump,
       windowWidth: settingsJson.windowWidth || defaultSettings.windowWidth,

@@ -12,7 +12,7 @@ vi.mock('electron', () => ({
 
 const mockSettings = vi.hoisted(() => ({
   queryLog: false,
-  output: 'code',
+  outputMode: 'output',
 }))
 
 vi.mock('../settings', () => ({
@@ -45,7 +45,7 @@ describe('RemoteClient Shared Logic', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettings.queryLog = false
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
   })
 
   it('setup throws error if remote PHP version is < 7.4', async () => {
@@ -108,10 +108,10 @@ describe('RemoteClient Shared Logic', () => {
     client.mockExec.mockResolvedValue('output')
     mockSettings.queryLog = true
 
-    mockSettings.output = 'stack'
+    mockSettings.outputMode = 'stacked'
     await client.execute('echo "test";')
 
-    mockSettings.output = 'code'
+    mockSettings.outputMode = 'output'
     await client.execute('echo "test";')
 
     const [stackedCommand, codeCommand] = client.mockExec.mock.calls.map(call => call[0] as string)
