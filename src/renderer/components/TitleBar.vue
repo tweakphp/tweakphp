@@ -43,7 +43,9 @@
 
   const queryLogIconClass = computed(() => {
     if (!isQueryLogAvailable.value) return 'cursor-not-allowed opacity-40'
-    return settingsStore.settings.queryLog ? 'text-blue-500 hover:text-blue-400' : 'opacity-40 hover:text-blue-400'
+    return settingsStore.settings.queryLog
+      ? 'text-primary-500 hover:text-primary-400'
+      : 'opacity-40 hover:text-primary-400'
   })
 
   watch(

@@ -93,7 +93,7 @@
               v-for="p in detectedPaths"
               :key="p"
               @click="selectDetectedPhp(p)"
-              class="!h-auto !border-transparent !bg-zinc-800 hover:!bg-zinc-700 !px-2 !py-1 !text-[10px] !text-white text-left truncate max-w-[280px]"
+              class="!h-auto !border-transparent !bg-zinc-800 hover:!bg-primary-500/20 !px-2 !py-1 !text-[10px] !text-white text-left truncate max-w-[280px]"
               :title="p"
             >
               {{ p }}
