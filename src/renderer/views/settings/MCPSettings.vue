@@ -186,7 +186,13 @@
       <SwitchInput v-model="mcpEnabled" />
     </FormField>
 
-    <FormField class="mt-3" label="Server Port" divider>
+    <FormField
+      class="mt-3"
+      label="Server Port"
+      align="start"
+      description="TCP port the MCP server listens on (1-65535). The change takes effect after a server restart."
+      divider
+    >
       <TextInput
         id="mcp-port"
         v-model="mcpPort"
@@ -198,7 +204,13 @@
       />
     </FormField>
 
-    <FormField class="mt-3" label="Server Status" align="start" divider>
+    <FormField
+      class="mt-3"
+      label="Server Status"
+      align="start"
+      description="Live state of the MCP server with uptime, request and error counts."
+      divider
+    >
       <div class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <div class="w-2 h-2 rounded-full" :class="serverStatus.running ? 'bg-green-500' : 'bg-gray-400'"></div>
@@ -221,7 +233,12 @@
       </div>
     </FormField>
 
-    <FormField class="mt-3" label="Connection Info" align="start">
+    <FormField
+      class="mt-3"
+      label="Connection Info"
+      align="start"
+      description="Snippet to register this server with your AI agent (Claude Desktop, Cursor, VS Code, etc.)."
+    >
       <div class="flex flex-col gap-2">
         <div v-if="!mcpEnabled" class="text-[11px] opacity-60">Enable the MCP server to allow AI agent connections</div>
         <template v-else>

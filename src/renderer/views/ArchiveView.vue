@@ -158,7 +158,7 @@
                   class="border-t"
                   :style="{ borderColor: settingsStore.colors.border }"
                 >
-                  <div class="h-72 overflow-hidden">
+                  <div class="relative h-72 overflow-hidden">
                     <Editor
                       :key="tab.id"
                       :editor-id="'archive-' + tab.id"

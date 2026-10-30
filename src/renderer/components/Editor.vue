@@ -421,7 +421,7 @@
 </script>
 
 <template>
-  <div ref="editorContainer" class="w-full h-full">
+  <div ref="editorContainer" class="relative w-full h-full">
     <ToastAlert
       :key="new Date().getTime()"
       v-if="errorAiCompletion"

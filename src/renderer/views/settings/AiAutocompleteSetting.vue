@@ -104,12 +104,23 @@
     <p class="mt-2 text-xs opacity-70">Configure the AI provider, model, API key, and prompt templates.</p>
     <Divider class="mt-3" />
 
-    <FormField class="mt-3" label="Active" divider>
+    <FormField
+      class="mt-3"
+      label="Active"
+      align="start"
+      description="Enable AI-powered code completion and generation in the editor."
+      divider
+    >
       <SwitchInput id="ai-status" v-model="settingsStore.settings.aiStatus" @update:model-value="saveSettings()">
       </SwitchInput>
     </FormField>
 
-    <FormField class="mt-3" label="Provider">
+    <FormField
+      class="mt-3"
+      label="Provider"
+      align="start"
+      description="The AI service used for completion and code generation requests."
+    >
       <SelectInput
         id="ai-provider"
         v-model="aiProvider"
@@ -121,7 +132,7 @@
     </FormField>
     <template v-if="settingsStore.settings.aiProvider === 'openrouter'">
       <Divider class="mt-3" />
-      <FormField class="mt-3" label="Models">
+      <FormField class="mt-3" label="Models" align="start" description="The model that handles AI completion requests.">
         <div>
           <SelectInput
             id="ai-model"
@@ -144,7 +155,13 @@
       </p>
     </template>
     <Divider class="mt-3" />
-    <FormField class="mt-3" label="API Key" divider>
+    <FormField
+      class="mt-3"
+      label="API Key"
+      align="start"
+      description="Authentication key issued by the selected provider."
+      divider
+    >
       <TextInput
         id="api-key"
         type="password"
