@@ -37,6 +37,36 @@
     }
   )
 
+  // SortableJS takes the native drag image (and clones the ghost) right after
+  // the dragstart handlers run, before Vue can flush the reactive class
+  // update: clear the hover background synchronously, inline, so the snapshot
+  // does not carry it for the whole drag.
+  const onDragStart = (event: DragEvent) => {
+    const el = event.currentTarget as HTMLElement
+    el.style.transition = 'none'
+    el.style.background = 'transparent'
+  }
+
+  // Drop the inline background forced in onDragStart and let the class-driven
+  // hover styling take over again.
+  const restoreBackground = (event: Event) => {
+    const el = event.currentTarget as HTMLElement
+    el.style.background = ''
+    el.style.transition = ''
+  }
+
+  const onMouseEnter = (event: Event) => {
+    restoreBackground(event)
+    if (!props.dragging) {
+      isHovered.value = true
+    }
+  }
+
+  const onMouseLeave = (event: Event) => {
+    restoreBackground(event)
+    isHovered.value = false
+  }
+
   const settingsStore = useSettingsStore()
 </script>
 
@@ -54,8 +84,10 @@
       'w-full px-3': props.expanded && !props.sidebar,
       'w-full px-2': props.expanded && props.sidebar,
     }"
-    @mouseenter="() => { if(!dragging) isHovered = true; }"
-    @mouseleave="isHovered = false"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+    @dragstart="onDragStart"
+    @dragend="restoreBackground"
     class="group text-md flex h-8 rounded-lg cursor-pointer transition-all min-w-0"
     v-tippy="{ content: props.tooltip, placement: props.tooltipPlacement }"
   >
