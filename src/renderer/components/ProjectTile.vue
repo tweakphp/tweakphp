@@ -73,13 +73,12 @@
 <template>
   <div
     :style="{
-      color: props.active && !props.sidebar ? '' : settingsStore.colors.foreground,
+      color: props.active ? '' : settingsStore.colors.foreground,
     }"
     :class="{
-      'bg-primary-500/15 text-primary-400': props.active && !props.sidebar,
-      'bg-black/20 dark:bg-white/15 font-medium': props.active && props.sidebar,
-      'bg-black/10 dark:bg-white/10': isHovered && !props.dragging && !props.active && !props.sidebar,
-      'bg-black/5 dark:bg-white/5': isHovered && !props.dragging && !props.active && props.sidebar,
+      'bg-primary-500/15 text-primary-400': props.active,
+      'font-medium': props.active && props.sidebar,
+      'bg-primary-500/10': isHovered && !props.dragging && !props.active,
       'w-8 justify-center capitalize': !props.expanded,
       'w-full px-3': props.expanded && !props.sidebar,
       'w-full px-2': props.expanded && props.sidebar,

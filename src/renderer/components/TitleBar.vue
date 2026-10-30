@@ -37,6 +37,15 @@
     return tab.value?.execution !== 'vapor'
   })
 
+  const isQueryLogAvailable = computed(() => {
+    return settingsStore.settings.outputMode !== 'output'
+  })
+
+  const queryLogIconClass = computed(() => {
+    if (!isQueryLogAvailable.value) return 'cursor-not-allowed opacity-40'
+    return settingsStore.settings.queryLog ? 'text-blue-500 hover:text-blue-400' : 'opacity-40 hover:text-blue-400'
+  })
+
   watch(
     () => tab.value?.execution,
     value => {
@@ -165,24 +174,16 @@
             without-border
             v-if="router.currentRoute.value.name === 'code' && tab && isRealtimeSupported"
             class="!px-2 h-6"
-            :class="settingsStore.settings.outputMode === 'output' ? 'cursor-not-allowed opacity-40' : ''"
+            :class="isQueryLogAvailable ? '' : 'cursor-not-allowed opacity-40'"
             v-tippy="{
-              content:
-                settingsStore.settings.outputMode === 'output'
-                  ? 'Query Log: available in Stacked output or Full stack modes'
-                  : `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`,
+              content: isQueryLogAvailable
+                ? `Query Log: ${settingsStore.settings.queryLog ? 'ON' : 'OFF'}`
+                : 'Query Log: available in Stacked output or Full stack modes',
               placement: 'bottom',
             }"
             @click="toggleQueryLog"
           >
-            <CircleStackIcon
-              class="size-4 hover:text-blue-400"
-              :class="
-                settingsStore.settings.queryLog && settingsStore.settings.outputMode !== 'output'
-                  ? 'text-blue-500 cursor-pointer'
-                  : 'opacity-40 cursor-not-allowed'
-              "
-            />
+            <CircleStackIcon class="size-4" :class="queryLogIconClass" />
           </SecondaryButton>
         </template>
       </div>

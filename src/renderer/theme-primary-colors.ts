@@ -57,6 +57,13 @@ const themePrimaryPalettes: Record<string, PrimaryPalette> = {
     600: '#b0536e',
     700: '#813d50',
   },
+  'ultra-dark': {
+    300: '#b3c7fb',
+    400: '#96b4f9',
+    500: '#7aa2f7',
+    600: '#5678b6',
+    700: '#3f5884',
+  },
 }
 
 const defaultTheme = 'dracula'

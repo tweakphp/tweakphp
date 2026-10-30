@@ -412,7 +412,7 @@
                     type="button"
                     data-folder-handle
                     class="group flex items-center w-full h-6 px-2 rounded-lg text-left cursor-pointer select-none text-sm transition-all"
-                    :class="{ 'bg-black/5 dark:bg-white/10': isFolderHeaderHovered(folder.id) && !isDraggingAny }"
+                    :class="{ 'bg-primary-500/10': isFolderHeaderHovered(folder.id) && !isDraggingAny }"
                     :style="{
                       color: settingsStore.colors.foreground,
                     }"
