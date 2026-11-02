@@ -334,6 +334,39 @@ describe('tabs store', () => {
     expect(tabsStore.tabs[0].folder_id).toBe(5)
   })
 
+  // ---- updateTabPath ----
+
+  it('updateTabPath updates the path and keeps the auto-generated name in sync', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, name: 'old-folder', path: '/tmp/old-folder' })])
+
+    tabsStore.updateTabPath(1, '/home/user/new-project')
+
+    expect(tabsStore.tabs[0].path).toBe('/home/user/new-project')
+    expect(tabsStore.tabs[0].name).toBe('new-project')
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
+  it('updateTabPath keeps a custom name untouched', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, name: 'My project', path: '/tmp/old-folder' })])
+
+    tabsStore.updateTabPath(1, '/home/user/new-project')
+
+    expect(tabsStore.tabs[0].path).toBe('/home/user/new-project')
+    expect(tabsStore.tabs[0].name).toBe('My project')
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
+  it('updateTabPath is a no-op for an unknown tab or an empty path', () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, path: '/tmp/1' })])
+    invoke.mockClear()
+
+    tabsStore.updateTabPath(999, '/home/user/new-project')
+    tabsStore.updateTabPath(1, '   ')
+
+    expect(tabsStore.tabs[0].path).toBe('/tmp/1')
+    expect(invoke).not.toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
   // ---- duplicateTab ----
 
   it('duplicateTab clones the tab right after the original and activates it', async () => {
