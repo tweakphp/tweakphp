@@ -1,9 +1,19 @@
+export interface OutputPart {
+  output: string
+  html: string
+  implicit: boolean
+}
+
 export interface Result {
   line: number
   code: string
   output: string
   html: string
+  explicitOutput?: string
+  explicitHtml?: string
+  parts?: OutputPart[]
   htmlReady?: boolean
+  implicit?: boolean
   queries?: any[]
   query_errors?: any[]
 }
@@ -46,4 +56,11 @@ export interface Tab {
     php_version: string
     version: string
   }
+}
+
+export interface ArchivedTab extends Tab {
+  position?: number
+  created_at?: string
+  updated_at?: string
+  deleted_at: string | null
 }

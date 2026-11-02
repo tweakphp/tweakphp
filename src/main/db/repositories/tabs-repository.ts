@@ -255,15 +255,22 @@ export class TabsRepository {
   }
 
   deleteTab(id: string | number, force: boolean = false): boolean {
+    const tabId = String(id)
+
     if (force) {
-      const stmt = db.prepare(`DELETE FROM tabs WHERE id = ?`)
-      const result = stmt.run(String(id))
-      return result.changes > 0
+      const transaction = db.transaction(() => {
+        db.prepare(`DELETE FROM code_histories WHERE tab_id = ?`).run(tabId)
+        db.prepare(`DELETE FROM tab_states WHERE tab_id = ?`).run(tabId)
+        db.prepare(`DELETE FROM connections WHERE tab_id = ?`).run(tabId)
+        const result = db.prepare(`DELETE FROM tabs WHERE id = ?`).run(tabId)
+        return result.changes > 0
+      })
+      return transaction()
     }
 
     const now = new Date().toISOString()
     const stmt = db.prepare(`UPDATE tabs SET deleted_at = ? WHERE id = ?`)
-    const result = stmt.run(now, String(id))
+    const result = stmt.run(now, tabId)
     return result.changes > 0
   }
 
