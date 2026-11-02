@@ -1,9 +1,19 @@
+export interface OutputPart {
+  output: string
+  html: string
+  implicit: boolean
+}
+
 export interface Result {
   line: number
   code: string
   output: string
   html: string
+  explicitOutput?: string
+  explicitHtml?: string
+  parts?: OutputPart[]
   htmlReady?: boolean
+  implicit?: boolean
   queries?: any[]
   query_errors?: any[]
 }

@@ -29,8 +29,15 @@ interface DetailEvent extends Event {
 type StreamEvent =
   | { type: 'started' }
   | { type: 'statement.started'; index: number; line: number; code: string }
-  | { type: 'output'; index?: number; data: string; html?: string }
-  | { type: 'statement.completed'; index?: number; queries?: unknown[]; query_errors?: unknown[]; html?: string }
+  | { type: 'output'; index?: number; data: string; html?: string; implicit?: boolean }
+  | {
+      type: 'statement.completed'
+      index?: number
+      queries?: unknown[]
+      query_errors?: unknown[]
+      html?: string
+      implicit?: boolean
+    }
   | { type: 'error'; error?: unknown }
 
 type ResultPayload = Omit<Result, 'html'> & { html?: string }
@@ -73,6 +80,7 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
         index: typeof value.index === 'number' ? value.index : undefined,
         data: value.data,
         html: typeof value.html === 'string' ? value.html : undefined,
+        implicit: typeof value.implicit === 'boolean' ? value.implicit : undefined,
       }
     case 'statement.completed':
       return {
@@ -81,6 +89,7 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
         queries: Array.isArray(value.queries) ? value.queries : undefined,
         query_errors: Array.isArray(value.query_errors) ? value.query_errors : undefined,
         html: typeof value.html === 'string' ? value.html : undefined,
+        implicit: typeof value.implicit === 'boolean' ? value.implicit : undefined,
       }
     case 'error':
       return { type: 'error', error: value.error }
@@ -190,9 +199,23 @@ const handleExecuteStream = (event: Event) => {
       }
     }
 
-    results[index].output += stripAnsi(streamEvent.data)
+    const result = results[index]
+    result.explicitOutput ??= result.output
+    result.explicitHtml ??= result.html
+    const output = stripAnsi(streamEvent.data)
+    result.output += output
+    if (streamEvent.implicit !== true) result.explicitOutput += output
+    result.parts ??= []
+    const implicit = streamEvent.implicit === true
+    const previousPart = result.parts[result.parts.length - 1]
+    if (previousPart && previousPart.implicit === implicit && !previousPart.html && !streamEvent.html) {
+      previousPart.output += output
+    } else {
+      result.parts.push({ output, html: streamEvent.html ?? '', implicit })
+    }
     if (streamEvent.html !== undefined) {
-      results[index].html += streamEvent.html
+      result.html += streamEvent.html
+      if (streamEvent.implicit !== true) result.explicitHtml += streamEvent.html
     }
   } else if (streamEvent.type === 'statement.completed') {
     const index = streamEvent.index ?? 0
@@ -201,7 +224,11 @@ const handleExecuteStream = (event: Event) => {
     if (result) {
       if (streamEvent.queries) result.queries = streamEvent.queries
       if (streamEvent.query_errors) result.query_errors = streamEvent.query_errors
-      if (streamEvent.html !== undefined && !result.html) result.html = streamEvent.html
+      if (streamEvent.html !== undefined && !result.html) {
+        result.html = streamEvent.html
+        if (streamEvent.implicit !== true) result.explicitHtml = streamEvent.html
+      }
+      if (streamEvent.implicit !== undefined) result.implicit = streamEvent.implicit
       result.htmlReady = true
     }
   } else if (streamEvent.type === 'error') {

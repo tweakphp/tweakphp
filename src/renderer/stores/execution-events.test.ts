@@ -4,6 +4,7 @@ import events from '../events'
 import { initExecutionEvents, prepareExecution } from './execution-events'
 import { useExecuteStore } from './execute'
 import { useTabsStore } from './tabs'
+import { joinResultOutputs, visibleResults } from '../utils/output'
 import { Tab } from '../../types/tab.type'
 
 const { routerMock } = vi.hoisted(() => ({
@@ -241,5 +242,80 @@ describe('execution-events router', () => {
     replyEvent({ tabId: 8, output: 'plain vapor output' })
 
     expect(tabsStore.findTab(8)!.result[0].output).toBe('plain vapor output')
+  })
+
+  it('separates the print return value from its explicit output and HTML', () => {
+    const tabsStore = useTabsStore()
+    seedTabs(tabsStore, [makeTab({ id: 5 })])
+
+    start(5, true)
+    streamEvent(5, { type: 'statement.started', index: 0, line: 8, code: 'print $user->email;' })
+    streamEvent(5, { type: 'output', index: 0, data: 'feil.noel@' })
+    streamEvent(5, { type: 'output', index: 0, data: 'example.com' })
+    streamEvent(5, { type: 'output', index: 0, data: '1', html: '<pre>1</pre>', implicit: true })
+    streamEvent(5, { type: 'statement.completed', index: 0, implicit: false })
+
+    const results = tabsStore.findTab(5)!.result
+    expect(joinResultOutputs(visibleResults(results, 'explicit'))).toBe('feil.noel@example.com')
+    expect(visibleResults(results, 'explicit')[0]).toMatchObject({
+      output: 'feil.noel@example.com',
+      html: '',
+      htmlReady: true,
+    })
+    expect(visibleResults(results, 'all')[0]).toMatchObject({
+      output: 'feil.noel@example.com1',
+      html: '<pre>1</pre>',
+      parts: [
+        { output: 'feil.noel@example.com', html: '', implicit: false },
+        { output: '1', html: '<pre>1</pre>', implicit: true },
+      ],
+    })
+    expect(visibleResults(results, 'explicit')[0].parts).toEqual([
+      { output: 'feil.noel@example.com', html: '', implicit: false },
+    ])
+  })
+
+  it('preserves an explicitly printed 1 instead of stripping output by its value', () => {
+    const tabsStore = useTabsStore()
+    seedTabs(tabsStore, [makeTab({ id: 5 })])
+
+    start(5, true)
+    streamEvent(5, { type: 'statement.started', index: 0, line: 1, code: 'print 1;' })
+    streamEvent(5, { type: 'output', index: 0, data: '1' })
+    streamEvent(5, { type: 'output', index: 0, data: '1', implicit: true })
+    streamEvent(5, { type: 'statement.completed', index: 0, implicit: false })
+
+    const results = tabsStore.findTab(5)!.result
+    expect(joinResultOutputs(visibleResults(results, 'explicit'))).toBe('1')
+  })
+
+  it('preserves explicit dumps and hides only their implicit return HTML', () => {
+    const tabsStore = useTabsStore()
+    seedTabs(tabsStore, [makeTab({ id: 5 })])
+
+    start(5, true)
+    streamEvent(5, { type: 'statement.started', index: 0, line: 1, code: 'print_r([1]);' })
+    streamEvent(5, { type: 'output', index: 0, data: 'Array (1)', html: '<pre>Array (1)</pre>' })
+    streamEvent(5, { type: 'output', index: 0, data: 'true', html: '<pre>true</pre>', implicit: true })
+    streamEvent(5, { type: 'statement.completed', index: 0, implicit: false })
+
+    const results = tabsStore.findTab(5)!.result
+    expect(joinResultOutputs(visibleResults(results, 'explicit'))).toBe('Array (1)')
+    expect(visibleResults(results, 'explicit')[0].html).toBe('<pre>Array (1)</pre>')
+  })
+
+  it('hides implicit-only output throughout streaming, retaining it for Full stack', () => {
+    const tabsStore = useTabsStore()
+    seedTabs(tabsStore, [makeTab({ id: 5 })])
+
+    start(5, true)
+    streamEvent(5, { type: 'statement.started', index: 0, line: 1, code: '$user = User::first();' })
+    streamEvent(5, { type: 'output', index: 0, data: 'User {...}', html: '<pre>User {...}</pre>', implicit: true })
+    expect(joinResultOutputs(visibleResults(tabsStore.findTab(5)!.result, 'explicit'))).toBe('')
+    streamEvent(5, { type: 'statement.completed', index: 0, implicit: true })
+
+    const results = tabsStore.findTab(5)!.result
+    expect(joinResultOutputs(visibleResults(results, 'explicit'))).toBe('')
+    expect(visibleResults(results, 'all')[0].output).toBe('User {...}')
   })
 })

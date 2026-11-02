@@ -1,3 +1,5 @@
+export type OutputMode = 'output' | 'stacked' | 'full'
+
 export interface Settings {
   version: string
   laravelPath: string
@@ -6,7 +8,7 @@ export interface Settings {
   editorFontSize: number
   editorWordWrap: string
   layout: string
-  output: string
+  outputMode: OutputMode
   vimMode: string
   stackedDump: string
   windowWidth: number
