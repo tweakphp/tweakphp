@@ -49,15 +49,22 @@
 
   const rawOutput = computed(() => joinResultOutputs(tab.value.result))
 
-  const { executeHandler, executeReplyListener, executeStreamListener, getLoader } = useCodeExecution({
+  const { executeHandler, getLoader } = useCodeExecution({
     tab,
-    rawOutput,
-    resultEditor,
     codeEditor,
     settingsStore,
     executeStore,
     tabsStore,
     loadersStore,
+  })
+
+  // The global execution router (execution-events.ts) applies stream events and
+  // replies straight to the store tab: mirror the result into the code editor
+  // whenever it changes, whatever run updated it.
+  watch(rawOutput, () => {
+    if (resultEditor.value) {
+      resultEditor.value.updateValue(rawOutput.value)
+    }
   })
 
   const lspRestartSuccessListener = () => {
@@ -173,8 +180,6 @@
 
     window.addEventListener('keydown', keydownListener)
     events.addEventListener('execute', executeHandler)
-    events.addEventListener('client.execute.reply', executeReplyListener)
-    events.addEventListener('client.execute.stream', executeStreamListener)
     events.addEventListener('client.info.reply', infoReplyListener)
     events.addEventListener('client.action.reply', vaporResponseEnvironmentTab)
     if (tabsContainer.value) {
@@ -186,8 +191,6 @@
   onBeforeUnmount(async () => {
     window.ipcRenderer.removeListener('lsp.restart.success', lspRestartSuccessListener)
     window.removeEventListener('keydown', keydownListener)
-    events.removeEventListener('client.execute.reply', executeReplyListener)
-    events.removeEventListener('client.execute.stream', executeStreamListener)
     events.removeEventListener('client.info.reply', infoReplyListener)
     events.removeEventListener('client.action.reply', vaporResponseEnvironmentTab)
     events.removeEventListener('execute', executeHandler)

@@ -19,6 +19,7 @@
   } from '@codingame/monaco-vscode-configuration-service-override'
   import { useUpdateStore } from './stores/update'
   import { UpdateInfo } from 'electron-updater'
+  import { initExecutionEvents } from './stores/execution-events'
   import ArchiveConfirmModal from './components/modals/ArchiveConfirmModal.vue'
   import NewProjectModal from './components/modals/NewProjectModal.vue'
 
@@ -164,6 +165,9 @@
 
   onMounted(async () => {
     colorSchemeSetup()
+    // route execution stream events and replies per-tab from a global place,
+    // so runs keep processing when the user switches tabs
+    initExecutionEvents()
     let media = window.matchMedia('(prefers-color-scheme: dark)')
     media.addEventListener('change', () => {
       colorSchemeStore.change()

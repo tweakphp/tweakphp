@@ -1,11 +1,12 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { useTabsStore } from '../stores/tabs'
   import { useFoldersStore } from '../stores/folders'
   import { useSectionsStore } from '../stores/sections'
   import { useSettingsStore } from '../stores/settings'
+  import { useExecuteStore } from '../stores/execute'
   import SecondaryButton from './SecondaryButton.vue'
   import router from '../router'
   import events from '../events'
@@ -26,6 +27,7 @@
   const foldersStore = useFoldersStore()
   const sectionsStore = useSectionsStore()
   const settingsStore = useSettingsStore()
+  const executeStore = useExecuteStore()
 
   // put: '<group>' rejects drops coming from other groups. With `put: true`
   // SortableJS accepts any group, so a dragged folder could land in a
@@ -278,6 +280,11 @@
                     @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <ArrowPathIcon
+                        v-if="executeStore.isExecuting(tab.id)"
+                        v-tippy="{ content: 'Executing…', placement: 'top' }"
+                        class="size-3 mr-2 shrink-0 text-primary-500 animate-spin"
+                      />
                       <span
                         v-if="tab.color || tab.tag"
                         v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
@@ -423,6 +430,11 @@
                               @mousedown.middle="requestArchiveTab(tab.id)"
                             >
                               <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                                <ArrowPathIcon
+                                  v-if="executeStore.isExecuting(tab.id)"
+                                  v-tippy="{ content: 'Executing…', placement: 'top' }"
+                                  class="size-3 mr-2 shrink-0 text-primary-500 animate-spin"
+                                />
                                 <span
                                   v-if="tab.color || tab.tag"
                                   v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
@@ -518,6 +530,11 @@
                     @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <ArrowPathIcon
+                        v-if="executeStore.isExecuting(tab.id)"
+                        v-tippy="{ content: 'Executing…', placement: 'top' }"
+                        class="size-3 mr-2 shrink-0 text-primary-500 animate-spin"
+                      />
                       <span
                         v-if="tab.color || tab.tag"
                         v-tippy="{ content: tab.tag ?? null, placement: 'top' }"

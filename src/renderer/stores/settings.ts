@@ -37,11 +37,17 @@ export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>(defaultSettings)
 
   const colors = computed(() => {
-    return themeColors[settings.value.theme as keyof typeof themeColors]
+    return themeColors[settings.value.theme as keyof typeof themeColors] ?? themeColors[defaultSettings.theme]
   })
 
   const setSettings = (s: any) => {
-    settings.value = s
+    const merged: Settings = { ...defaultSettings, ...s }
+    // A persisted theme may no longer exist in this build (removed or renamed
+    // themes): fall back to the default instead of leaving `colors` undefined.
+    if (!themes.value.includes(merged.theme)) {
+      merged.theme = defaultSettings.theme
+    }
+    settings.value = merged
   }
 
   const update = () => {
