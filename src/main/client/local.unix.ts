@@ -1,4 +1,4 @@
-import { execFile, execFileSync, spawn } from 'child_process'
+import { execFile, execFileSync, spawn, ChildProcess } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
@@ -35,7 +35,8 @@ export const executeStreamingUnix = (
   pharPath: string,
   code: string,
   loader?: string,
-  onEvent?: (event: any) => void
+  onEvent?: (event: any) => void,
+  onChild?: (child: ChildProcess) => void
 ): Promise<void> => {
   return new Promise(resolve => {
     const targetPath = connection.path
@@ -49,6 +50,7 @@ export const executeStreamingUnix = (
     const child = spawn(phpPath, args, {
       shell: false,
     })
+    onChild?.(child)
 
     let buffer = ''
     child.stdout.on('data', (chunk: Buffer) => {

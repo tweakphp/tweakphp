@@ -4,6 +4,7 @@ import { SSH } from '../utils/ssh'
 import { RemoteClient } from './client.remote'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
 import { getSettings } from '../settings'
+import { STOP_TIMEOUT_MS } from '../utils/timeouts'
 
 const queryLogArg = () => {
   const { queryLog, output } = getSettings()
@@ -61,6 +62,19 @@ export class SSHClient extends RemoteClient {
 
   async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {
     return this.ssh.execStream(command, onData)
+  }
+
+  async stop(pid?: number): Promise<void> {
+    if (!pid) {
+      this.ssh.interrupt()
+      return
+    }
+    try {
+      await this.ssh.exec(`kill ${pid}`, STOP_TIMEOUT_MS)
+    } catch (error) {
+      console.error('Failed to stop the remote PHP process', error)
+      this.ssh.interrupt()
+    }
   }
 
   async remoteUploadFile(localPath: string, remotePath: string): Promise<void> {

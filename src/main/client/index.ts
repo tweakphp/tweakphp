@@ -6,10 +6,22 @@ import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
 import { parseTweakPhpError } from '../../shared/tweakphp-error'
+import {
+  getExecution,
+  isExecutionStopped,
+  registerExecution,
+  setExecutionChild,
+  setExecutionPid,
+  stopExecution,
+  unregisterExecution,
+} from './executions'
+
+const STOPPED_MESSAGE = 'Execution stopped by user'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
   ipcMain.on('client.execute', execute)
+  ipcMain.on('client.execute.stop', stop)
   ipcMain.on('client.action', action)
   ipcMain.on('client.info', info)
 }
@@ -42,25 +54,79 @@ const connect = async (event: Electron.IpcMainEvent, payload: any) => {
   }
 }
 
+const stop = async (event: Electron.IpcMainEvent, payload: any) => {
+  if (!payload || typeof payload.tabId !== 'number') {
+    return
+  }
+  const stopped = await stopExecution(payload.tabId)
+  if (!stopped && !getExecution(payload.tabId)) {
+    // nothing running for this tab: let the renderer reset its executing state
+    event.reply('client.execute.reply', { tabId: payload.tabId, streamingDone: true })
+  }
+}
+
 const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   const client = getClient(payload)
+  const tabId = payload.tabId
+
+  const hasTabId = typeof tabId === 'number'
+  if (hasTabId) {
+    registerExecution(tabId, client)
+  }
+
+  const stoppedReply = () => {
+    event.reply('client.execute.stream', {
+      tabId,
+      event: { type: 'output', index: 0, data: STOPPED_MESSAGE },
+    })
+    event.reply('client.execute.reply', { tabId, streamingDone: true })
+  }
+
   try {
     await client.connect()
 
-    if (payload.streaming && typeof client.executeStreaming === 'function') {
+    if (hasTabId && isExecutionStopped(tabId)) {
+      stoppedReply()
+      return
+    }
+
+    // payload.streaming is display-only now: the transport always streams when supported
+    if (typeof client.executeStreaming === 'function') {
       event.reply('client.execute.stream', {
-        tabId: payload.tabId,
+        tabId,
         event: { type: 'started' },
       })
 
-      await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
-        event.reply('client.execute.stream', {
-          tabId: payload.tabId,
-          event: streamEvent,
-        })
-      })
+      await client.executeStreaming(
+        payload.code,
+        payload.loader,
+        (streamEvent: any) => {
+          if (
+            streamEvent &&
+            typeof streamEvent === 'object' &&
+            streamEvent.type === 'started' &&
+            typeof streamEvent.pid === 'number'
+          ) {
+            setExecutionPid(tabId, streamEvent.pid)
+          }
+          event.reply('client.execute.stream', {
+            tabId,
+            event: streamEvent,
+          })
+        },
+        (child: any) => {
+          if (hasTabId) {
+            setExecutionChild(tabId, child)
+          }
+        }
+      )
 
-      event.reply('client.execute.reply', { streamingDone: true })
+      if (hasTabId && isExecutionStopped(tabId)) {
+        stoppedReply()
+        return
+      }
+
+      event.reply('client.execute.reply', { tabId, streamingDone: true })
       return
     }
 
@@ -83,10 +149,17 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       }
     }
 
-    event.reply('client.execute.reply', output ?? result)
+    event.reply('client.execute.reply', { tabId, output: output ?? result })
   } catch (error: any) {
-    event.reply('client.execute.reply', error)
+    if (hasTabId && isExecutionStopped(tabId)) {
+      stoppedReply()
+      return
+    }
+    event.reply('client.execute.reply', { tabId, error })
   } finally {
+    if (hasTabId) {
+      unregisterExecution(tabId, client)
+    }
     client.disconnect()
   }
 }

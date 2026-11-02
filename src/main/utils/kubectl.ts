@@ -1,5 +1,6 @@
-import { execFile, spawn } from 'child_process'
+import { execFile, spawn, ChildProcess } from 'child_process'
 import path from 'path'
+import { STOP_TIMEOUT_MS } from './timeouts'
 
 const KUBECTL_SETUP_TIMEOUT = 30_000
 const KUBECTL_EXECUTION_TIMEOUT = 60_000
@@ -87,12 +88,25 @@ export class Kubectl {
     }
   }
 
+  async kill(
+    pid: number,
+    params: { pod: string; context: string; namespace: string },
+    timeout = STOP_TIMEOUT_MS
+  ): Promise<void> {
+    try {
+      await this.run(this.getExecArgs(`kill ${pid}`, params), timeout)
+    } catch (error: any) {
+      throw new Error(error)
+    }
+  }
+
   async execStream(
     command: string,
     params: { pod: string; context: string; namespace: string },
     onData: (chunk: string) => void,
     timeoutMs = KUBECTL_EXECUTION_TIMEOUT,
-    hasStreamedOutput?: () => boolean
+    hasStreamedOutput?: () => boolean,
+    onChild?: (child: ChildProcess) => void
   ): Promise<void> {
     const args = this.getExecArgs(command, params)
     return await new Promise((resolve, reject) => {
@@ -100,6 +114,7 @@ export class Kubectl {
       let settled = false
       let timeout: ReturnType<typeof setTimeout> | undefined
       const child = spawn('kubectl', args, { shell: false, windowsHide: true })
+      onChild?.(child)
       const fail = (error: Error) => {
         if (settled) return
         settled = true

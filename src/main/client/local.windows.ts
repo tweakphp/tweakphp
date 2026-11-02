@@ -1,4 +1,4 @@
-import { execFile, execFileSync, execSync, spawn } from 'child_process'
+import { execFile, execFileSync, execSync, spawn, ChildProcess } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
@@ -229,7 +229,8 @@ export const executeStreamingWindows = (
   pharPath: string,
   code: string,
   loader?: string,
-  onEvent?: (event: any) => void
+  onEvent?: (event: any) => void,
+  onChild?: (child: ChildProcess) => void
 ): Promise<void> => {
   return new Promise(resolve => {
     const targetPath = connection.path
@@ -265,6 +266,7 @@ export const executeStreamingWindows = (
       windowsHide: true,
       shell: useShell,
     })
+    onChild?.(child)
 
     let buffer = ''
     child.stdout.on('data', (chunk: Buffer) => {

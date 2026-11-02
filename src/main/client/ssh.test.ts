@@ -8,7 +8,9 @@ vi.mock('../utils/ssh', () => {
       connect = vi.fn()
       disconnect = vi.fn()
       exec = vi.fn()
+      execStream = vi.fn()
       uploadFile = vi.fn()
+      interrupt = vi.fn()
     },
   }
 })
@@ -136,5 +138,37 @@ describe('SSHClient', () => {
       .mockResolvedValueOnce('/usr/bin/php\n') // which php check
 
     await expect((client as any).preSetupChecks()).resolves.toBeUndefined()
+  })
+
+  it('stop kills the remote PHP process by pid', async () => {
+    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+    mockSSHInstance = (client as any).ssh
+    mockSSHInstance.exec.mockResolvedValue('')
+
+    await client.stop(4321)
+
+    expect(mockSSHInstance.exec).toHaveBeenCalledWith('kill 4321', 5_000)
+    expect(mockSSHInstance.interrupt).not.toHaveBeenCalled()
+  })
+
+  it('stop interrupts the active stream when no pid is known', async () => {
+    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+    mockSSHInstance = (client as any).ssh
+
+    await client.stop()
+
+    expect(mockSSHInstance.interrupt).toHaveBeenCalledOnce()
+  })
+
+  it('stop interrupts the stream as a fallback when the remote kill fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+    mockSSHInstance = (client as any).ssh
+    mockSSHInstance.exec.mockRejectedValue(new Error('channel closed'))
+
+    await client.stop(4321)
+
+    expect(mockSSHInstance.interrupt).toHaveBeenCalledOnce()
+    consoleError.mockRestore()
   })
 })

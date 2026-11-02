@@ -6,6 +6,7 @@
     RectangleStackIcon,
     CircleStackIcon,
     BoltIcon,
+    StopIcon,
   } from '@heroicons/vue/24/outline'
   import events from '../events'
   import { useRoute } from 'vue-router'
@@ -34,6 +35,15 @@
   const isRealtimeSupported = computed(() => {
     return tab.value?.execution !== 'vapor'
   })
+
+  const isCurrentTabExecuting = computed(() => executeStore.isExecuting(tab.value?.id))
+
+  const stopExecution = () => {
+    const tabId = tab.value?.id
+    if (typeof tabId === 'number') {
+      window.ipcRenderer.send('client.execute.stop', { tabId })
+    }
+  }
 
   watch(
     () => tab.value?.execution,
@@ -121,13 +131,24 @@
           </SecondaryButton>
           <SecondaryButton
             without-border
+            v-if="!isCurrentTabExecuting"
             class="!px-2 h-6"
             v-tippy="{ content: `${platform === 'darwin' ? 'Cmd' : 'Ctrl'} + R`, placement: 'bottom' }"
             @click="execute"
-            :disabled="executeStore.executing"
           >
-            <ArrowPathIcon v-if="executeStore.executing" :spin="true" class="text-primary-500 animate-spin size-4" />
-            <PlayIcon v-else class="size-4 cursor-pointer" />
+            <PlayIcon class="size-4 cursor-pointer" />
+          </SecondaryButton>
+          <SecondaryButton
+            without-border
+            v-else-if="isRealtimeSupported"
+            class="!px-2 h-6"
+            v-tippy="{ content: 'Stop execution', placement: 'bottom' }"
+            @click="stopExecution"
+          >
+            <StopIcon class="size-4 text-red-500" />
+          </SecondaryButton>
+          <SecondaryButton without-border v-else class="!px-2 h-6" disabled>
+            <ArrowPathIcon :spin="true" class="text-primary-500 animate-spin size-4" />
           </SecondaryButton>
           <SecondaryButton
             without-border

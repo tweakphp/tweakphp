@@ -11,6 +11,7 @@ vi.mock('../utils/ssh', () => ({
     exec = vi.fn()
     execStream = vi.fn()
     uploadFile = vi.fn()
+    interrupt = vi.fn()
   },
 }))
 
@@ -384,5 +385,96 @@ describe('DockerClient', () => {
     const client = new DockerClient({ type: 'docker', container_name: 'my-container' } as any)
 
     await expect(client.setup()).rejects.toThrow('PHP version must be 7.4 or higher')
+  })
+
+  it('stops a remote PHP process by pid inside the container', async () => {
+    mockExecFile(() => '')
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      user: 'sail',
+    } as any)
+
+    await client.stop(4321)
+
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      ['exec', '-u', 'sail', 'my-container', 'kill', '4321'],
+      expect.objectContaining({ shell: false, timeout: 5_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('stops a remote PHP process through SSH when configured', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      ssh: { host: 'docker-host-stop' },
+    } as any)
+    const sshInstance = (client as any).ssh
+    sshInstance.exec.mockResolvedValue('')
+
+    await client.stop(4321)
+
+    expect(sshInstance.exec).toHaveBeenCalledWith(expect.stringContaining("'kill' '4321'"), 5_000)
+    expect(sshInstance.interrupt).not.toHaveBeenCalled()
+  })
+
+  it('interrupts the ssh stream when stopping without a pid', async () => {
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      ssh: { host: 'docker-host-stop-no-pid' },
+    } as any)
+    const sshInstance = (client as any).ssh
+
+    await client.stop()
+
+    expect(sshInstance.interrupt).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to interrupting the ssh stream when the remote kill fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      ssh: { host: 'docker-host-stop-fail' },
+    } as any)
+    const sshInstance = (client as any).ssh
+    sshInstance.exec.mockRejectedValue(new Error('connection lost'))
+
+    await client.stop(4321)
+
+    expect(sshInstance.interrupt).toHaveBeenCalledOnce()
+    consoleError.mockRestore()
+  })
+
+  it('forwards the spawned child process to the onChild callback', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const children: any[] = []
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    const streaming = client.executeStreaming('echo "test";', undefined, undefined, (spawned: any) =>
+      children.push(spawned)
+    )
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    child.emit('close', 0, null)
+
+    await streaming
+
+    expect(children).toEqual([child])
   })
 })

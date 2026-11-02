@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import path from 'path'
+import { ChildProcess } from 'child_process'
 import { BaseClient } from './client.base'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser } from './stream-output'
@@ -72,7 +73,12 @@ export abstract class RemoteClient extends BaseClient {
     return buildPosixCommand('php', [this.connection.client_path, projectPath || this.connection.path])
   }
 
-  remoteExecStream?(command: string, onData: (chunk: string) => void, hasStreamedOutput?: () => boolean): Promise<void>
+  remoteExecStream?(
+    command: string,
+    onData: (chunk: string) => void,
+    hasStreamedOutput?: () => boolean,
+    onChild?: (child: ChildProcess) => void
+  ): Promise<void>
 
   async execute(code: string, loader?: string): Promise<string> {
     if (!this.connection.php) return 'PHP version not found'
@@ -82,7 +88,12 @@ export abstract class RemoteClient extends BaseClient {
     return this.remoteExec(cmd)
   }
 
-  async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+  async executeStreaming(
+    code: string,
+    loader?: string,
+    onEvent?: (event: any) => void,
+    onChild?: (child: ChildProcess) => void
+  ): Promise<void> {
     if (!this.connection.php || !this.connection.client_path) return
     if (typeof this.remoteExecStream !== 'function') {
       throw new Error('Streaming is not supported by this connection')
@@ -96,7 +107,8 @@ export abstract class RemoteClient extends BaseClient {
       (chunk: string) => {
         parser.push(chunk)
       },
-      () => parser.hasStreamOutput()
+      () => parser.hasStreamOutput(),
+      onChild
     )
     parser.finish()
   }

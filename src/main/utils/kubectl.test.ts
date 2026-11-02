@@ -154,4 +154,36 @@ describe('Kubectl', () => {
       expect.any(Function)
     )
   })
+
+  it('kills a remote PID through the pod exec with a short timeout', async () => {
+    await new Kubectl().kill(4321, { pod: 'app', context: 'local', namespace: 'default' })
+
+    expect(execFile).toHaveBeenCalledWith(
+      'kubectl',
+      ['exec', 'app', '--context=local', '--namespace=default', '--', 'sh', '-lc', 'kill 4321'],
+      expect.objectContaining({ shell: false, timeout: 5_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('forwards the spawned child process to the onChild callback while streaming', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const children: any[] = []
+    const kubectl = new Kubectl()
+
+    const streaming = kubectl.execStream(
+      'php client.phar /app execute-stream code',
+      { pod: 'app', context: 'local', namespace: 'default' },
+      () => {},
+      60_000,
+      () => true,
+      spawned => children.push(spawned)
+    )
+    child.emit('close', 0, null)
+
+    await streaming
+
+    expect(children).toEqual([child])
+  })
 })

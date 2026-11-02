@@ -6,6 +6,7 @@ vi.mock('../utils/kubectl', () => {
     Kubectl: class {
       exec = vi.fn()
       execStream = vi.fn()
+      kill = vi.fn()
       uploadFile = vi.fn()
       getContexts = vi.fn()
       getNamespaces = vi.fn()
@@ -76,9 +77,40 @@ describe('KubectlClient', () => {
       conn,
       expect.any(Function),
       60_000,
-      expect.any(Function)
+      expect.any(Function),
+      undefined
     )
     expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
+  })
+
+  it('stops a remote PHP process by pid inside the pod', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.kill.mockResolvedValue(undefined)
+
+    await client.stop(4321)
+
+    expect(mockKubectlInstance.kill).toHaveBeenCalledWith(4321, conn)
+  })
+
+  it('does not attempt a remote kill when no pid is known', async () => {
+    const client = new KubectlClient({ type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any)
+    mockKubectlInstance = (client as any).kubectl
+
+    await client.stop()
+
+    expect(mockKubectlInstance.kill).not.toHaveBeenCalled()
+  })
+
+  it('survives a failing remote kill', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const client = new KubectlClient({ type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.kill.mockRejectedValue(new Error('pod gone'))
+
+    await expect(client.stop(4321)).resolves.toBeUndefined()
+    consoleError.mockRestore()
   })
 
   it('executes code with the query log flag', async () => {

@@ -7,6 +7,8 @@ const mockConnect = vi.fn()
 const mockSetup = vi.fn()
 const mockDisconnect = vi.fn()
 const mockExecute = vi.fn()
+const mockExecuteStreaming = vi.fn()
+const mockStop = vi.fn()
 const mockInfo = vi.fn()
 const mockAction = vi.fn()
 const mockShow = vi.fn()
@@ -76,6 +78,8 @@ vi.mock('./docker', () => ({
     setup = mockSetup
     disconnect = mockDisconnect
     execute = mockExecute
+    executeStreaming = mockExecuteStreaming
+    stop = mockStop
     info = mockInfo
     action = mockAction
     getConnection() {
@@ -129,6 +133,7 @@ describe('IPC Router (index.ts)', () => {
   it('init registers all IPC handlers', () => {
     expect(mockIpcOn).toHaveBeenCalledWith('client.connect', expect.any(Function))
     expect(mockIpcOn).toHaveBeenCalledWith('client.execute', expect.any(Function))
+    expect(mockIpcOn).toHaveBeenCalledWith('client.execute.stop', expect.any(Function))
     expect(mockIpcOn).toHaveBeenCalledWith('client.action', expect.any(Function))
     expect(mockIpcOn).toHaveBeenCalledWith('client.info', expect.any(Function))
   })
@@ -176,7 +181,7 @@ describe('IPC Router (index.ts)', () => {
   describe('execute handler', () => {
     it('successfully executes command and parses TWEAKPHP_RESULT payload', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;', loader: 'my-loader' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', loader: 'my-loader', tabId: 5 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Some output\nTWEAKPHP_RESULT:{"val": 42}\n')
@@ -185,37 +190,37 @@ describe('IPC Router (index.ts)', () => {
 
       expect(mockConnect).toHaveBeenCalled()
       expect(mockExecute).toHaveBeenCalledWith('echo 1;', 'my-loader')
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { val: 42 })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 5, output: { val: 42 } })
       expect(mockDisconnect).toHaveBeenCalled()
     })
 
     it('replies with raw execution results if TWEAKPHP_RESULT format is missing', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 5 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('Raw output\n')
 
       await ipcHandlers['client.execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'Raw output')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 5, output: 'Raw output' })
     })
 
     it('replies with raw string payload when TWEAKPHP_RESULT is not valid JSON', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 5 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_RESULT:not-json-payload\n')
 
       await ipcHandlers['client.execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', 'not-json-payload')
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 5, output: 'not-json-payload' })
     })
 
     it('parses TWEAKPHP_ERROR JSON payload and replies with structured error result', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 5 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue(
@@ -225,20 +230,23 @@ describe('IPC Router (index.ts)', () => {
       await ipcHandlers['client.execute'](mockEvent, payload)
 
       expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
-        output: [
-          {
-            line: 3,
-            code: '',
-            output: 'ParseError: syntax error, unexpected end of file',
-            html: '<div class="text-red-500 font-semibold">ParseError: syntax error, unexpected end of file</div>',
-          },
-        ],
+        tabId: 5,
+        output: {
+          output: [
+            {
+              line: 3,
+              code: '',
+              output: 'ParseError: syntax error, unexpected end of file',
+              html: '<div class="text-red-500 font-semibold">ParseError: syntax error, unexpected end of file</div>',
+            },
+          ],
+        },
       })
     })
 
     it('parses TWEAKPHP_ERROR plain-text payload and extracts the line number', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 5 }
 
       mockConnect.mockResolvedValue(undefined)
       mockExecute.mockResolvedValue('TWEAKPHP_ERROR:PHP Fatal error: something bad on line 7\n')
@@ -246,26 +254,158 @@ describe('IPC Router (index.ts)', () => {
       await ipcHandlers['client.execute'](mockEvent, payload)
 
       expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', {
-        output: [
-          {
-            line: 7,
-            code: '',
-            output: 'PHP Fatal error: something bad on line 7',
-            html: '<div class="text-red-500 font-semibold">PHP Fatal error: something bad on line 7</div>',
-          },
-        ],
+        tabId: 5,
+        output: {
+          output: [
+            {
+              line: 7,
+              code: '',
+              output: 'PHP Fatal error: something bad on line 7',
+              html: '<div class="text-red-500 font-semibold">PHP Fatal error: something bad on line 7</div>',
+            },
+          ],
+        },
       })
     })
 
     it('replies with error on failure', async () => {
       const mockEvent = { reply: vi.fn() }
-      const payload = { connection: { type: 'local' }, code: 'echo 1;' }
+      const payload = { connection: { type: 'local' }, code: 'echo 1;', tabId: 5 }
 
       mockConnect.mockRejectedValue(new Error('Exec failed'))
 
       await ipcHandlers['client.execute'](mockEvent, payload)
 
-      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 5, error: expect.any(Error) })
+    })
+  })
+
+  describe('execute handler streaming path', () => {
+    it('forwards stream events and replies with streamingDone', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'docker' }, code: 'echo 1;', loader: '', tabId: 7 }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockExecuteStreaming.mockImplementation(async (_code: string, _loader: string, onEvent: Function) => {
+        onEvent({ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' })
+        onEvent({ type: 'output', index: 0, data: '1' })
+      })
+
+      await ipcHandlers['client.execute'](mockEvent, payload)
+
+      expect(mockExecuteStreaming).toHaveBeenCalledWith('echo 1;', '', expect.any(Function), expect.any(Function))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.stream', {
+        tabId: 7,
+        event: { type: 'started' },
+      })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.stream', {
+        tabId: 7,
+        event: { type: 'output', index: 0, data: '1' },
+      })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 7, streamingDone: true })
+      expect(mockDisconnect).toHaveBeenCalled()
+    })
+
+    it('stops a running execution using the pid reported by the client', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'docker' }, code: 'sleep 30;', tabId: 8 }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockStop.mockResolvedValue(undefined)
+      let release: () => void = () => {}
+      const gate = new Promise<void>(resolve => {
+        release = resolve
+      })
+      mockExecuteStreaming.mockImplementation(async (_code: string, _loader: string, onEvent: Function) => {
+        onEvent({ type: 'started', pid: 4321 })
+        await gate
+      })
+
+      const running = ipcHandlers['client.execute'](mockEvent, payload)
+      await vi.waitFor(() => expect(mockExecuteStreaming).toHaveBeenCalled())
+
+      await ipcHandlers['client.execute.stop']({ reply: vi.fn() }, { tabId: 8 })
+      expect(mockStop).toHaveBeenCalledWith(4321)
+
+      release()
+      await running
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.stream', {
+        tabId: 8,
+        event: { type: 'output', index: 0, data: 'Execution stopped by user' },
+      })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 8, streamingDone: true })
+    })
+
+    it('replies with the stopped message when streaming fails because of a stop', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'docker' }, code: 'sleep 30;', tabId: 9 }
+
+      mockConnect.mockResolvedValue(undefined)
+      mockStop.mockResolvedValue(undefined)
+      let rejectStreaming: (error: Error) => void = () => {}
+      mockExecuteStreaming.mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectStreaming = reject
+          })
+      )
+
+      const running = ipcHandlers['client.execute'](mockEvent, payload)
+      await vi.waitFor(() => expect(mockExecuteStreaming).toHaveBeenCalled())
+
+      await ipcHandlers['client.execute.stop']({ reply: vi.fn() }, { tabId: 9 })
+      rejectStreaming(new Error('Docker exited with code 137'))
+
+      await running
+
+      expect(mockEvent.reply).not.toHaveBeenCalledWith('client.execute.reply', expect.any(Error))
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.stream', {
+        tabId: 9,
+        event: { type: 'output', index: 0, data: 'Execution stopped by user' },
+      })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 9, streamingDone: true })
+    })
+
+    it('ignores stop requests without a numeric tabId', async () => {
+      await expect(ipcHandlers['client.execute.stop']({ reply: vi.fn() }, { tabId: 'abc' })).resolves.toBeUndefined()
+      await expect(ipcHandlers['client.execute.stop']({ reply: vi.fn() }, {})).resolves.toBeUndefined()
+    })
+
+    it('does not start streaming when the execution was stopped during connect', async () => {
+      const mockEvent = { reply: vi.fn() }
+      const payload = { connection: { type: 'docker' }, code: 'sleep 30;', tabId: 11 }
+
+      let releaseConnect: () => void = () => {}
+      mockConnect.mockImplementation(
+        () =>
+          new Promise<void>(resolve => {
+            releaseConnect = resolve
+          })
+      )
+      mockStop.mockResolvedValue(undefined)
+
+      const running = ipcHandlers['client.execute'](mockEvent, payload)
+      await vi.waitFor(() => expect(mockConnect).toHaveBeenCalled())
+
+      await ipcHandlers['client.execute.stop']({ reply: vi.fn() }, { tabId: 11 })
+      releaseConnect()
+      await running
+
+      expect(mockExecuteStreaming).not.toHaveBeenCalled()
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.stream', {
+        tabId: 11,
+        event: { type: 'output', index: 0, data: 'Execution stopped by user' },
+      })
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 11, streamingDone: true })
+    })
+
+    it('replies with streamingDone when stopping an execution that is no longer running', async () => {
+      const mockEvent = { reply: vi.fn() }
+
+      await ipcHandlers['client.execute.stop'](mockEvent, { tabId: 555 })
+
+      expect(mockEvent.reply).toHaveBeenCalledWith('client.execute.reply', { tabId: 555, streamingDone: true })
     })
   })
 

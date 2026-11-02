@@ -448,4 +448,47 @@ describe('LocalClient WSL Support', () => {
       await expect(client.info()).rejects.toBe('Shell error')
     })
   })
+
+  describe('LocalClient stop', () => {
+    it('kills a WSL php process by pid inside the distro', async () => {
+      const client = new LocalClient({
+        type: 'local',
+        path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
+        php: 'C:\\php\\php.exe',
+      })
+
+      await client.stop(4321)
+
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        ['-d', 'Ubuntu', 'kill', '4321'],
+        expect.objectContaining({ shell: false, timeout: 5_000 }),
+        expect.any(Function)
+      )
+    })
+
+    it('does nothing for a non-WSL local project: the registry kills the child', async () => {
+      const client = new LocalClient({
+        type: 'local',
+        path: '/home/david/project',
+        php: '/usr/bin/php',
+      })
+
+      await client.stop(4321)
+
+      expect(execFile).not.toHaveBeenCalled()
+    })
+
+    it('does nothing without a pid', async () => {
+      const client = new LocalClient({
+        type: 'local',
+        path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
+        php: 'C:\\php\\php.exe',
+      })
+
+      await client.stop()
+
+      expect(execFile).not.toHaveBeenCalled()
+    })
+  })
 })

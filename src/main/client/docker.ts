@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'child_process'
+import { execFile, spawn, ChildProcess } from 'child_process'
 import { ConnectionConfig } from '../../types/docker.type'
 import { SSH } from '../utils/ssh'
 import { BaseClient } from './client.base'
@@ -8,6 +8,7 @@ import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
+import { STOP_TIMEOUT_MS } from '../utils/timeouts'
 
 const dockerPathCache: Record<string, string> = {}
 const DOCKER_SETUP_TIMEOUT = 30_000
@@ -112,7 +113,12 @@ export default class DockerClient extends BaseClient {
     }
   }
 
-  async executeStreaming(code: string, loader?: string, onEvent?: (event: any) => void): Promise<void> {
+  async executeStreaming(
+    code: string,
+    loader?: string,
+    onEvent?: (event: any) => void,
+    onChild?: (child: ChildProcess) => void
+  ): Promise<void> {
     try {
       await this.ensureConnectionConfig()
 
@@ -150,13 +156,32 @@ export default class DockerClient extends BaseClient {
           chunk => {
             parser.push(chunk)
           },
-          () => parser.hasStreamOutput()
+          () => parser.hasStreamOutput(),
+          onChild
         )
       }
       parser.finish()
     } catch (error: unknown) {
       throw new Error(parseDockerErrorMessage(error))
     }
+  }
+
+  async stop(pid?: number): Promise<void> {
+    const containerName = cleanParam(this.connection.container_name)
+    if (containerName && pid) {
+      const args = this.getContainerExecArgs(containerName, 'kill', String(pid))
+      try {
+        if (this.ssh) {
+          await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), STOP_TIMEOUT_MS)
+        } else {
+          await this.runLocalDocker(args, STOP_TIMEOUT_MS)
+        }
+        return
+      } catch (error) {
+        console.error('Failed to stop the remote PHP process', error)
+      }
+    }
+    this.ssh?.interrupt()
   }
 
   async info(loader?: string): Promise<string> {
@@ -343,13 +368,15 @@ export default class DockerClient extends BaseClient {
     args: string[],
     timeoutMs: number,
     onData: (chunk: string) => void,
-    hasStreamedOutput?: () => boolean
+    hasStreamedOutput?: () => boolean,
+    onChild?: (child: ChildProcess) => void
   ): Promise<void> {
     return await new Promise((resolve, reject) => {
       let stderr = ''
       let settled = false
       let timeout: ReturnType<typeof setTimeout> | undefined
       const child = spawn('docker', args, { shell: false, windowsHide: true })
+      onChild?.(child)
       const fail = (error: Error) => {
         if (settled) return
         settled = true

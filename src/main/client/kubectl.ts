@@ -1,4 +1,5 @@
 import { ConnectionConfig } from '../../types/kubectl.type'
+import { ChildProcess } from 'child_process'
 import { base64Encode } from '../utils/base64-encode'
 import { Kubectl } from '../utils/kubectl'
 import { RemoteClient } from './client.remote'
@@ -25,9 +26,19 @@ export default class KubectlClient extends RemoteClient {
   async remoteExecStream(
     command: string,
     onData: (chunk: string) => void,
-    hasStreamedOutput?: () => boolean
+    hasStreamedOutput?: () => boolean,
+    onChild?: (child: ChildProcess) => void
   ): Promise<void> {
-    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout, hasStreamedOutput)
+    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout, hasStreamedOutput, onChild)
+  }
+
+  async stop(pid?: number): Promise<void> {
+    if (!pid) return
+    try {
+      await this.kubectl.kill(pid, this.connection)
+    } catch (error) {
+      console.error('Failed to stop the remote PHP process', error)
+    }
   }
 
   execute(code: string, loader?: string, projectPath?: string): Promise<string> {

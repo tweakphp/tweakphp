@@ -7,6 +7,7 @@ export class SSH {
   private readonly config: ConnectConfig
   private conn: Client
   private isConnected: boolean
+  private activeStream: any | undefined
 
   constructor(connectionConfig: ConnectionConfig) {
     this.config = {
@@ -33,6 +34,7 @@ export class SSH {
     }
     this.conn = new Client()
     this.isConnected = false
+    this.activeStream = undefined
   }
 
   async connect(): Promise<void> {
@@ -92,6 +94,12 @@ export class SSH {
         if (error) {
           return reject(error)
         }
+        this.activeStream = stream
+        const clearActiveStream = () => {
+          if (this.activeStream === stream) {
+            this.activeStream = undefined
+          }
+        }
         const timer = timeout
           ? setTimeout(() => {
               stream.close()
@@ -100,6 +108,7 @@ export class SSH {
           : undefined
         stream
           .on('close', () => {
+            clearActiveStream()
             if (timer) clearTimeout(timer)
             resolve()
           })
@@ -107,11 +116,20 @@ export class SSH {
             onData(data.toString())
           })
           .on('error', (err: any) => {
+            clearActiveStream()
             if (timer) clearTimeout(timer)
             reject(err)
           })
       })
     })
+  }
+
+  interrupt(): void {
+    const stream = this.activeStream
+    this.activeStream = undefined
+    try {
+      stream?.close?.()
+    } catch {}
   }
 
   async uploadFile(localPath: string, remotePath: string): Promise<void> {
