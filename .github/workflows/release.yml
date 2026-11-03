@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.14.1)'
+        required: true
+        type: string
+      branch:
+        description: 'Source branch (e.g. develop)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.release.outputs.commit }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Validate inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Version must be in x.y.z format' >&2; exit 1; }
+          git check-ref-format --branch "$BRANCH" > /dev/null
+
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/${{ inputs.branch }}
+
+      - name: Prepare draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          COMMIT="$(git rev-parse HEAD)"
+          RELEASE="$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -c --arg tag "$TAG" '[.[][] | select(.tag_name == $tag)] | first // empty')"
+          TAG_REF="$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
+
+          if [ -n "$TAG_REF" ]; then
+            TAG_COMMIT="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
+            [ "$TAG_COMMIT" = "$COMMIT" ] || { echo 'Existing tag points to a different commit' >&2; exit 1; }
+          fi
+
+          if [ -n "$RELEASE" ]; then
+            [ "$(jq -r .draft <<< "$RELEASE")" = true ] || { echo 'Release is already published' >&2; exit 1; }
+            if [ -z "$TAG_REF" ]; then
+              TARGET="$(jq -r .target_commitish <<< "$RELEASE")"
+              TARGET_ENCODED="$(node -p 'encodeURIComponent(process.argv[1])' "$TARGET")"
+              TARGET_COMMIT="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TARGET_ENCODED" --jq .sha)"
+              [ "$TARGET_COMMIT" = "$COMMIT" ] || { echo 'Draft release targets a different commit' >&2; exit 1; }
+              RELEASE_ID="$(jq -r .id <<< "$RELEASE")"
+              gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -f target_commitish="$COMMIT" > /dev/null
+            fi
+          else
+            gh api "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f target_commitish="$COMMIT" -f name="$TAG" -F draft=true > /dev/null
+          fi
+
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Set build version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: npm version "$VERSION" --no-git-tag-version --allow-same-version
+        shell: bash
+
+      - name: Import Apple signing certificate
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/apple.p12"
+          security create-keychain -p temporary "$RUNNER_TEMP/build.keychain"
+          security set-keychain-settings "$RUNNER_TEMP/build.keychain"
+          security unlock-keychain -p temporary "$RUNNER_TEMP/build.keychain"
+          security import "$RUNNER_TEMP/apple.p12" -k "$RUNNER_TEMP/build.keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -A
+          security set-key-partition-list -S apple-tool:,apple: -s -k temporary "$RUNNER_TEMP/build.keychain"
+          security list-keychains -d user -s "$RUNNER_TEMP/build.keychain"
+
+      - name: Install Snapcraft
+        if: runner.os == 'Linux'
+        run: sudo snap install snapcraft --classic
+
+      - name: Build signed and notarized macOS packages
+        if: runner.os == 'macOS'
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npm run build
+          npx electron-builder --mac --universal --publish never -c.forceCodeSigning=true
+
+      - name: Build Linux packages
+        if: runner.os == 'Linux'
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+        run: npm run build-linux -- --publish never
+
+      - name: Build Windows packages
+        if: runner.os == 'Windows'
+        env:
+          VITE_LSP_WEBSOCKET_PORT: 54331
+        run: npm run build-win -- --publish never
+
+      - name: Upload packages to draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r -d '' file; do
+            gh release upload "$TAG" "$file" --clobber
+            count=$((count + 1))
+          done < <(find release -maxdepth 1 -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest*.yml' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.snap' -o -name '*.exe' \) -print0)
+          [ "$count" -gt 0 ] || { echo 'No release packages found' >&2; exit 1; }
+
+      - name: Clean up Apple keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain" || true
+          rm -f "$RUNNER_TEMP/apple.p12"
