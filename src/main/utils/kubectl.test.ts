@@ -155,15 +155,33 @@ describe('Kubectl', () => {
     )
   })
 
-  it('kills a remote PID through the pod exec with a short timeout', async () => {
+  it('verifies the client then kills a remote PID through the pod exec with a short timeout', async () => {
     await new Kubectl().kill(4321, { pod: 'app', context: 'local', namespace: 'default' })
 
     expect(execFile).toHaveBeenCalledWith(
       'kubectl',
-      ['exec', 'app', '--context=local', '--namespace=default', '--', 'sh', '-lc', 'kill 4321'],
+      [
+        'exec',
+        'app',
+        '--context=local',
+        '--namespace=default',
+        '--',
+        'sh',
+        '-lc',
+        expect.stringContaining('kill -TERM 4321'),
+      ],
       expect.objectContaining({ shell: false, timeout: 5_000 }),
       expect.any(Function)
     )
+  })
+
+  it('escalates with SIGKILL when requested', async () => {
+    await new Kubectl().kill(4321, { pod: 'app', context: 'local', namespace: 'default' }, 'KILL', 'client-8.3.phar')
+
+    const args = (execFile as any).mock.calls.at(-1)[1] as string[]
+    const script = args.at(-1) as string
+    expect(script).toContain("grep -q -- 'client-8.3.phar' /proc/4321/cmdline")
+    expect(script).toContain('kill -KILL 4321')
   })
 
   it('forwards the spawned child process to the onChild callback while streaming', async () => {

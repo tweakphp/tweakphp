@@ -3,6 +3,7 @@ import { base64Encode } from '../utils/base64-encode'
 import { SSH } from '../utils/ssh'
 import { RemoteClient } from './client.remote'
 import { buildPosixCommand, quotePosixShellArg } from '../utils/shell'
+import { buildPosixStopScript, clientStopPattern, StopSignal } from '../utils/stop-command'
 import { getSettings } from '../settings'
 import { STOP_TIMEOUT_MS } from '../utils/timeouts'
 
@@ -64,17 +65,23 @@ export class SSHClient extends RemoteClient {
     return this.ssh.execStream(command, onData)
   }
 
-  async stop(pid?: number): Promise<void> {
+  async stop(pid?: number, signal: StopSignal = 'TERM'): Promise<void> {
     if (!pid) {
       this.ssh.interrupt()
       return
     }
     try {
-      await this.ssh.exec(`kill ${pid}`, STOP_TIMEOUT_MS)
+      // identity check + kill run as one command on the remote host
+      const script = buildPosixStopScript(pid, clientStopPattern(this.connection.client_path), signal)
+      await this.ssh.exec(script, STOP_TIMEOUT_MS)
     } catch (error) {
       console.error('Failed to stop the remote PHP process', error)
       this.ssh.interrupt()
     }
+  }
+
+  isRunning(): boolean {
+    return this.ssh.hasActiveStream()
   }
 
   async remoteUploadFile(localPath: string, remotePath: string): Promise<void> {

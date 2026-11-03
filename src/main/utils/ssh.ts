@@ -124,6 +124,10 @@ export class SSH {
     })
   }
 
+  hasActiveStream(): boolean {
+    return this.activeStream !== undefined
+  }
+
   interrupt(): void {
     const stream = this.activeStream
     this.activeStream = undefined

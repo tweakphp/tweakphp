@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   LocalClient,
   getWslDetails,
@@ -450,7 +450,15 @@ describe('LocalClient WSL Support', () => {
   })
 
   describe('LocalClient stop', () => {
-    it('kills a WSL php process by pid inside the distro', async () => {
+    beforeEach(() => {
+      process.env.CLIENT_PATH = '/repo/public/client-8.3.phar'
+    })
+
+    afterEach(() => {
+      delete process.env.CLIENT_PATH
+    })
+
+    it('verifies the client then kills a WSL php process by pid inside the distro', async () => {
       const client = new LocalClient({
         type: 'local',
         path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
@@ -461,10 +469,50 @@ describe('LocalClient WSL Support', () => {
 
       expect(execFile).toHaveBeenCalledWith(
         'wsl',
-        ['-d', 'Ubuntu', 'kill', '4321'],
+        ['-d', 'Ubuntu', '-e', 'sh', '-c', expect.stringContaining("grep -q -- 'client-8.3.phar' /proc/4321/cmdline")],
         expect.objectContaining({ shell: false, timeout: 5_000 }),
         expect.any(Function)
       )
+      const script = (execFile as any).mock.calls.at(-1)[1][5] as string
+      expect(script).toContain('kill -TERM 4321')
+    })
+
+    it('escalates the WSL kill with SIGKILL when requested', async () => {
+      const client = new LocalClient({
+        type: 'local',
+        path: '\\\\wsl.localhost\\Ubuntu\\home\\david\\project',
+        php: 'C:\\php\\php.exe',
+      })
+
+      await client.stop(4321, 'KILL')
+
+      const script = (execFile as any).mock.calls.at(-1)[1][5] as string
+      expect(script).toContain('kill -KILL 4321')
+    })
+
+    it('checks the command line and taskkills the tree on native Windows', async () => {
+      const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+      try {
+        const client = new LocalClient({
+          type: 'local',
+          path: 'C:\\Users\\David\\project',
+          php: 'C:\\php\\php.exe',
+        })
+
+        await client.stop(4321)
+
+        expect(execFile).toHaveBeenCalledWith(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-Command', expect.stringContaining('Win32_Process')],
+          expect.objectContaining({ shell: false, timeout: 5_000 }),
+          expect.any(Function)
+        )
+        const script = (execFile as any).mock.calls.at(-1)[1][3] as string
+        expect(script).toContain("-match 'client-8\\.3\\.phar'")
+        expect(script).toContain('taskkill /PID 4321 /T /F')
+      } finally {
+        platformSpy.mockRestore()
+      }
     })
 
     it('does nothing for a non-WSL local project: the registry kills the child', async () => {

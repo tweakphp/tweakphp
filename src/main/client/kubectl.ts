@@ -4,6 +4,7 @@ import { base64Encode } from '../utils/base64-encode'
 import { Kubectl } from '../utils/kubectl'
 import { RemoteClient } from './client.remote'
 import { buildPosixCommand } from '../utils/shell'
+import { clientStopPattern, StopSignal } from '../utils/stop-command'
 import { getSettings } from '../settings'
 
 const queryLogArg = () => {
@@ -32,10 +33,10 @@ export default class KubectlClient extends RemoteClient {
     await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout, hasStreamedOutput, onChild)
   }
 
-  async stop(pid?: number): Promise<void> {
+  async stop(pid?: number, signal: StopSignal = 'TERM'): Promise<void> {
     if (!pid) return
     try {
-      await this.kubectl.kill(pid, this.connection)
+      await this.kubectl.kill(pid, this.connection, signal, clientStopPattern(this.connection.client_path))
     } catch (error) {
       console.error('Failed to stop the remote PHP process', error)
     }

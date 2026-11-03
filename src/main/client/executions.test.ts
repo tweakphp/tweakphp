@@ -84,7 +84,7 @@ describe('execution registry', () => {
 
     await expect(stopExecution(1)).resolves.toBe(true)
 
-    expect(stop).toHaveBeenCalledWith(4321)
+    expect(stop).toHaveBeenCalledWith(4321, 'TERM')
     expect(child.kill).toHaveBeenCalledWith('SIGTERM')
     expect(isExecutionStopped(1)).toBe(true)
   })
@@ -158,14 +158,14 @@ describe('execution registry', () => {
 
     setExecutionPid(2, 4321)
 
-    expect(stop).toHaveBeenLastCalledWith(4321)
+    expect(stop).toHaveBeenLastCalledWith(4321, 'TERM')
   })
 
   it('returns false for an unknown tab', async () => {
     await expect(stopExecution(999)).resolves.toBe(false)
   })
 
-  it('forces the interrupt fallback when the stream is still running after the grace period', async () => {
+  it('escalates to SIGKILL when the process survives the grace period', async () => {
     vi.useFakeTimers()
     try {
       const stop = vi.fn().mockResolvedValue(undefined)
@@ -175,9 +175,35 @@ describe('execution registry', () => {
 
       await stopExecution(2)
       expect(stop).toHaveBeenCalledOnce()
+      expect(stop).toHaveBeenLastCalledWith(undefined, 'TERM')
 
-      await vi.advanceTimersByTimeAsync(2_000)
+      await vi.advanceTimersByTimeAsync(5_000)
       expect(stop).toHaveBeenCalledTimes(2)
+      expect(stop).toHaveBeenLastCalledWith(undefined, 'KILL')
+    } finally {
+      unregisterExecution(2)
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports a not-terminable process and drops the transport when SIGKILL is not enough', async () => {
+    vi.useFakeTimers()
+    try {
+      const stop = vi.fn().mockResolvedValue(undefined)
+      const client = createClient()
+      ;(client as any).stop = stop
+      registerExecution(2, client as any)
+      const onNotTerminable = vi.fn()
+
+      await stopExecution(2, { onNotTerminable })
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(onNotTerminable).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(onNotTerminable).toHaveBeenCalledOnce()
+      // the transport is dropped (ssh interrupt / no-pid stop) so the UI unblocks
+      expect(stop).toHaveBeenCalledTimes(3)
       expect(stop).toHaveBeenLastCalledWith()
     } finally {
       unregisterExecution(2)
@@ -185,21 +211,66 @@ describe('execution registry', () => {
     }
   })
 
-  it('does not force the interrupt fallback once the execution finished', async () => {
+  it('stops escalating once the process died during the grace period', async () => {
     vi.useFakeTimers()
     try {
       const stop = vi.fn().mockResolvedValue(undefined)
       const client = createClient()
       ;(client as any).stop = stop
+      const child: any = createChild()
       registerExecution(2, client as any)
+      setExecutionChild(2, child as any)
 
       await stopExecution(2)
-      unregisterExecution(2)
+      child.exitCode = 0 // the transport handle exits while waiting
 
-      await vi.advanceTimersByTimeAsync(2_000)
+      await vi.advanceTimersByTimeAsync(10_000)
+
       expect(stop).toHaveBeenCalledOnce()
     } finally {
+      unregisterExecution(2)
       vi.useRealTimers()
     }
+  })
+
+  it('does not send any remote kill when the transport handle already exited (pid reuse guard)', async () => {
+    const stop = vi.fn().mockResolvedValue(undefined)
+    const client = createClient()
+    ;(client as any).stop = stop
+    const child = { ...createChild(), exitCode: 0 }
+    registerExecution(2, client as any)
+    setExecutionPid(2, 4321)
+    setExecutionChild(2, child as any)
+
+    await stopExecution(2)
+
+    expect(stop).not.toHaveBeenCalled()
+    expect(child.kill).not.toHaveBeenCalled()
+  })
+
+  it('honours the client isRunning probe when no child handle exists', async () => {
+    const stop = vi.fn().mockResolvedValue(undefined)
+    const client = createClient()
+    ;(client as any).stop = stop
+    ;(client as any).isRunning = vi.fn(() => false)
+    registerExecution(2, client as any)
+    setExecutionPid(2, 4321)
+
+    await stopExecution(2)
+
+    expect(stop).not.toHaveBeenCalled()
+  })
+
+  it('keeps killing when the client reports running without a child handle', async () => {
+    const stop = vi.fn().mockResolvedValue(undefined)
+    const client = createClient()
+    ;(client as any).stop = stop
+    ;(client as any).isRunning = vi.fn(() => true)
+    registerExecution(2, client as any)
+    setExecutionPid(2, 4321)
+
+    await stopExecution(2)
+
+    expect(stop).toHaveBeenCalledWith(4321, 'TERM')
   })
 })

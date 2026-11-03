@@ -17,6 +17,7 @@ import {
 } from './executions'
 
 const STOPPED_MESSAGE = 'Execution stopped by user'
+const NOT_TERMINABLE_MESSAGE = 'Execution could not be terminated (process is in an uninterruptible state)'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -58,7 +59,15 @@ const stop = async (event: Electron.IpcMainEvent, payload: any) => {
   if (!payload || typeof payload.tabId !== 'number') {
     return
   }
-  const stopped = await stopExecution(payload.tabId)
+  const stopped = await stopExecution(payload.tabId, {
+    onNotTerminable: () => {
+      event.reply('client.execute.stream', {
+        tabId: payload.tabId,
+        event: { type: 'output', index: 0, data: NOT_TERMINABLE_MESSAGE },
+      })
+      event.reply('client.execute.reply', { tabId: payload.tabId, streamingDone: true })
+    },
+  })
   if (!stopped && !getExecution(payload.tabId)) {
     // nothing running for this tab: let the renderer reset its executing state
     event.reply('client.execute.reply', { tabId: payload.tabId, streamingDone: true })

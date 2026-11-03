@@ -140,15 +140,45 @@ describe('SSHClient', () => {
     await expect((client as any).preSetupChecks()).resolves.toBeUndefined()
   })
 
-  it('stop kills the remote PHP process by pid', async () => {
-    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+  it('stop verifies the client then kills the remote PHP process by pid', async () => {
+    const client = new SSHClient({
+      type: 'ssh',
+      path: '/var/www/laravel',
+      host: 'localhost',
+      client_path: '/home/u/.tweakphp/client-8.3.phar',
+    } as any)
     mockSSHInstance = (client as any).ssh
     mockSSHInstance.exec.mockResolvedValue('')
 
     await client.stop(4321)
 
-    expect(mockSSHInstance.exec).toHaveBeenCalledWith('kill 4321', 5_000)
+    const script = mockSSHInstance.exec.mock.calls[0][0] as string
+    expect(script).toContain("grep -q -- 'client-8.3.phar' /proc/4321/cmdline")
+    expect(script).toContain('kill -TERM 4321')
+    expect(mockSSHInstance.exec).toHaveBeenCalledWith(script, 5_000)
     expect(mockSSHInstance.interrupt).not.toHaveBeenCalled()
+  })
+
+  it('stop escalates with SIGKILL when requested', async () => {
+    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+    mockSSHInstance = (client as any).ssh
+    mockSSHInstance.exec.mockResolvedValue('')
+
+    await client.stop(4321, 'KILL')
+
+    const script = mockSSHInstance.exec.mock.calls[0][0] as string
+    expect(script).toContain('kill -KILL 4321')
+  })
+
+  it('isRunning mirrors the ssh active stream', () => {
+    const client = new SSHClient({ type: 'ssh', path: '/var/www/laravel', host: 'localhost' } as any)
+    mockSSHInstance = (client as any).ssh
+
+    mockSSHInstance.hasActiveStream = vi.fn(() => false)
+    expect(client.isRunning()).toBe(false)
+
+    mockSSHInstance.hasActiveStream = vi.fn(() => true)
+    expect(client.isRunning()).toBe(true)
   })
 
   it('stop interrupts the active stream when no pid is known', async () => {

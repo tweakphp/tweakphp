@@ -4,6 +4,7 @@ import { app } from 'electron'
 import { ChildProcess, execFile } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import { STOP_TIMEOUT_MS } from '../utils/timeouts'
+import { buildPosixStopScript, buildWindowsStopScript, clientStopPattern, StopSignal } from '../utils/stop-command'
 import { BaseClient } from './client.base'
 import {
   executeWindows,
@@ -31,11 +32,35 @@ export class LocalClient extends BaseClient {
     super(connection)
   }
 
-  async stop(pid?: number): Promise<void> {
-    if (!pid || !isWindowsOrWsl(this.connection.path)) {
+  async stop(pid?: number, signal: StopSignal = 'TERM'): Promise<void> {
+    if (!pid) return
+    const targetPath = this.connection.path
+    const wsl = getWslDetails(targetPath)
+
+    if (process.platform === 'win32' && !wsl.isWsl) {
+      // native Windows: php runs below a cmd.exe shell handle, so verify the
+      // reported pid via CIM and force-kill its whole tree
+      const pattern = clientStopPattern(getLocalPharClient(this.connection))
+      const script = buildWindowsStopScript(pid, pattern)
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', script],
+        { encoding: 'utf8', shell: false, timeout: STOP_TIMEOUT_MS, windowsHide: true },
+        (error, _stdout, _stderr) => {
+          if (error) {
+            console.error('Failed to stop the Windows php process', error)
+          }
+        }
+      )
       return
     }
-    const wsl = getWslDetails(this.connection.path)
+
+    if (!isWindowsOrWsl(targetPath)) {
+      // unix local: the reported pid IS the spawned child, the execution
+      // registry handles TERM/KILL escalation on the handle directly
+      return
+    }
+
     if (!wsl.isWsl || !wsl.distro) {
       return
     }
@@ -43,9 +68,12 @@ export class LocalClient extends BaseClient {
     if (!distro) {
       return
     }
+    // identity check + kill run as one command inside the distro namespace
+    const pattern = clientStopPattern(getLocalPharClient(this.connection))
+    const script = buildPosixStopScript(pid, pattern, signal)
     execFile(
       'wsl',
-      ['-d', distro, 'kill', String(pid)],
+      ['-d', distro, '-e', 'sh', '-c', script],
       { encoding: 'utf8', shell: false, timeout: STOP_TIMEOUT_MS },
       (error, _stdout, _stderr) => {
         if (error) {

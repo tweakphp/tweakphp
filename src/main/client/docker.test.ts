@@ -387,7 +387,7 @@ describe('DockerClient', () => {
     await expect(client.setup()).rejects.toThrow('PHP version must be 7.4 or higher')
   })
 
-  it('stops a remote PHP process by pid inside the container', async () => {
+  it('stops a remote PHP process by pid inside the container after verifying the client', async () => {
     mockExecFile(() => '')
     const client = new DockerClient({
       type: 'docker',
@@ -402,10 +402,36 @@ describe('DockerClient', () => {
 
     expect(execFile).toHaveBeenCalledWith(
       'docker',
-      ['exec', '-u', 'sail', 'my-container', 'kill', '4321'],
+      [
+        'exec',
+        '-u',
+        'sail',
+        'my-container',
+        'sh',
+        '-c',
+        expect.stringContaining("grep -q -- 'client.phar' /proc/4321/cmdline"),
+      ],
       expect.objectContaining({ shell: false, timeout: 5_000 }),
       expect.any(Function)
     )
+    const script = (execFile as any).mock.calls.at(-1)[1][6] as string
+    expect(script).toContain('kill -TERM 4321')
+  })
+
+  it('escalates the container stop with SIGKILL when requested', async () => {
+    mockExecFile(() => '')
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    await client.stop(4321, 'KILL')
+
+    const script = (execFile as any).mock.calls.at(-1)[1][4] as string
+    expect(script).toContain('kill -KILL 4321')
   })
 
   it('stops a remote PHP process through SSH when configured', async () => {
@@ -422,7 +448,8 @@ describe('DockerClient', () => {
 
     await client.stop(4321)
 
-    expect(sshInstance.exec).toHaveBeenCalledWith(expect.stringContaining("'kill' '4321'"), 5_000)
+    expect(sshInstance.exec).toHaveBeenCalledWith(expect.stringContaining('/proc/4321/cmdline'), 5_000)
+    expect(sshInstance.exec).toHaveBeenCalledWith(expect.stringContaining('kill -TERM 4321'), 5_000)
     expect(sshInstance.interrupt).not.toHaveBeenCalled()
   })
 

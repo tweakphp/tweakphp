@@ -91,7 +91,24 @@ describe('KubectlClient', () => {
 
     await client.stop(4321)
 
-    expect(mockKubectlInstance.kill).toHaveBeenCalledWith(4321, conn)
+    expect(mockKubectlInstance.kill).toHaveBeenCalledWith(4321, conn, 'TERM', 'client')
+  })
+
+  it('passes the phar basename and the signal to the pod kill', async () => {
+    const conn = {
+      type: 'kubectl',
+      path: '/app',
+      namespace: 'default',
+      pod: 'my-pod',
+      client_path: '/srv/client-8.2.phar',
+    } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.kill.mockResolvedValue(undefined)
+
+    await client.stop(4321, 'KILL')
+
+    expect(mockKubectlInstance.kill).toHaveBeenCalledWith(4321, conn, 'KILL', 'client-8.2.phar')
   })
 
   it('does not attempt a remote kill when no pid is known', async () => {

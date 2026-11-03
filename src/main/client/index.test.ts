@@ -325,7 +325,7 @@ describe('IPC Router (index.ts)', () => {
       await vi.waitFor(() => expect(mockExecuteStreaming).toHaveBeenCalled())
 
       await ipcHandlers['client.execute.stop']({ reply: vi.fn() }, { tabId: 8 })
-      expect(mockStop).toHaveBeenCalledWith(4321)
+      expect(mockStop).toHaveBeenCalledWith(4321, 'TERM')
 
       release()
       await running

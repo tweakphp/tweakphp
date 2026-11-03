@@ -7,6 +7,7 @@ import path from 'path'
 import { base64Encode } from '../utils/base64-encode'
 import { createStreamOutputParser } from './stream-output'
 import { buildPosixCommand } from '../utils/shell'
+import { buildPosixStopScript, clientStopPattern, StopSignal } from '../utils/stop-command'
 import { getSettings } from '../settings'
 import { STOP_TIMEOUT_MS } from '../utils/timeouts'
 
@@ -166,10 +167,12 @@ export default class DockerClient extends BaseClient {
     }
   }
 
-  async stop(pid?: number): Promise<void> {
+  async stop(pid?: number, signal: StopSignal = 'TERM'): Promise<void> {
     const containerName = cleanParam(this.connection.container_name)
     if (containerName && pid) {
-      const args = this.getContainerExecArgs(containerName, 'kill', String(pid))
+      // identity check + kill run as one command inside the container namespace
+      const script = buildPosixStopScript(pid, clientStopPattern(this.connection.client_path), signal)
+      const args = this.getContainerExecArgs(containerName, 'sh', '-c', script)
       try {
         if (this.ssh) {
           await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), STOP_TIMEOUT_MS)

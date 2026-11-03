@@ -1,6 +1,7 @@
 import { execFile, spawn, ChildProcess } from 'child_process'
 import path from 'path'
 import { STOP_TIMEOUT_MS } from './timeouts'
+import { buildPosixStopScript, StopSignal } from './stop-command'
 
 const KUBECTL_SETUP_TIMEOUT = 30_000
 const KUBECTL_EXECUTION_TIMEOUT = 60_000
@@ -91,10 +92,12 @@ export class Kubectl {
   async kill(
     pid: number,
     params: { pod: string; context: string; namespace: string },
+    signal: StopSignal = 'TERM',
+    clientPattern = 'client',
     timeout = STOP_TIMEOUT_MS
   ): Promise<void> {
     try {
-      await this.run(this.getExecArgs(`kill ${pid}`, params), timeout)
+      await this.run(this.getExecArgs(buildPosixStopScript(pid, clientPattern, signal), params), timeout)
     } catch (error: any) {
       throw new Error(error)
     }

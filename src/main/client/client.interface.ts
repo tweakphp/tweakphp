@@ -1,4 +1,5 @@
 import type { ChildProcess } from 'child_process'
+import type { StopSignal } from '../utils/stop-command'
 
 export interface Client {
   connect: () => Promise<void>
@@ -11,7 +12,9 @@ export interface Client {
     onEvent?: (event: any) => void,
     onChild?: (child: ChildProcess) => void
   ) => Promise<void>
-  stop?: (pid?: number) => Promise<void>
+  stop?: (pid?: number, signal?: StopSignal) => Promise<void>
+  /** Gate 1 for transports without a local child handle (ssh streams): false once the stream is gone */
+  isRunning?: () => boolean
   info: (loader?: string) => Promise<string>
   disconnect: () => Promise<void>
   getConnection: () => any
