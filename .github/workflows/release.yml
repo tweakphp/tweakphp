@@ -7,10 +7,6 @@ on:
         description: 'Release version (e.g. 1.14.1)'
         required: true
         type: string
-      branch:
-        description: 'Source branch (e.g. develop)'
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -29,15 +25,13 @@ jobs:
       - name: Validate inputs
         env:
           VERSION: ${{ inputs.version }}
-          BRANCH: ${{ inputs.branch }}
         run: |
           [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'Version must be in x.y.z format' >&2; exit 1; }
-          git check-ref-format --branch "$BRANCH" > /dev/null
 
       - name: Checkout source branch
         uses: actions/checkout@v4
         with:
-          ref: refs/heads/${{ inputs.branch }}
+          ref: ${{ github.sha }}
 
       - name: Prepare draft release
         id: release
