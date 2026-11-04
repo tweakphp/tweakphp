@@ -72,6 +72,26 @@ describe('VaporClient', () => {
     expect(result).toBe('Error: tinker error')
   })
 
+  it('preserves PHP tags inside strings and completes the statement', async () => {
+    const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
+
+    vi.mocked(exec).mockImplementation((_cmd, _opts, cb) => {
+      // @ts-ignore
+      cb(null, { stdout: 'out\n', stderr: '' })
+      return {} as any
+    })
+
+    await client.execute('$k = "?>"; echo 1')
+
+    const command = vi.mocked(exec).mock.calls[0][0] as string
+    const base64Match = command.match(/base64_decode\("([^"]+)"\)/)
+    expect(base64Match).not.toBeNull()
+    const decodedCode = Buffer.from(base64Match![1], 'base64').toString('utf8')
+    // Tags inside strings are preserved; no semicolon is added here: the
+    // completion is a frontend (editor) concern only.
+    expect(decodedCode).toBe('$k = "?>"; echo 1')
+  })
+
   it('execute returns catch message on process exception', async () => {
     const client = new VaporClient({ type: 'vapor', client_path: '/my-project' } as any)
 

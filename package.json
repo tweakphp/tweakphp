@@ -134,6 +134,7 @@
     "intelephense": "^1.12.6",
     "js-yaml": "^4.1.1",
     "monacopilot": "^1.2.7",
+    "php-parser": "^3.7.0",
     "reka-ui": "^2.4.1",
     "vuedraggable": "^4.1.0"
   },
