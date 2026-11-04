@@ -14,6 +14,7 @@
     DEFAULT_PROMPT_GENERATE_CODE_FROM_COMMENT,
   } from '../../../types/ai/prompts.ts'
   import PrimaryButton from '@/components/PrimaryButton.vue'
+  import ArrowPathIcon from '@/components/icons/ArrowPathIcon.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
   import FormField from '@/components/forms/FormField.vue'
 
@@ -44,10 +45,54 @@
 
   const { models, loading, error, fetchModels } = useOpenRouter()
 
+  const copilotStatus = ref<{ signedIn: boolean }>({ signedIn: false })
+  const copilotSigningIn = ref(false)
+  const copilotUserCode = ref<string | null>(null)
+  const copilotVerificationUri = ref<string | null>(null)
+  const copilotError = ref<string | null>(null)
+
+  const isCopilotProvider = computed(() => settingsStore.settings.aiProvider === 'copilot')
+
+  const refreshCopilotStatus = async () => {
+    if (window.copilotApi) {
+      copilotStatus.value = await window.copilotApi.status()
+    }
+  }
+
+  const copilotSignIn = async () => {
+    if (!window.copilotApi) return
+    copilotSigningIn.value = true
+    copilotError.value = null
+    copilotUserCode.value = null
+    const result = await window.copilotApi.signIn()
+    copilotSigningIn.value = false
+    if (result.success) {
+      copilotUserCode.value = null
+      await refreshCopilotStatus()
+    } else {
+      copilotError.value = result.error
+    }
+  }
+
+  const copilotSignOut = async () => {
+    if (!window.copilotApi) return
+    await window.copilotApi.signOut()
+    await refreshCopilotStatus()
+  }
+
   onMounted(() => {
     if (settingsStore.settings.aiProvider === 'openrouter') {
       fetchModels()
     }
+
+    if (settingsStore.settings.aiProvider === 'copilot') {
+      refreshCopilotStatus()
+    }
+
+    window.copilotApi?.onSignInCode(data => {
+      copilotUserCode.value = data.userCode
+      copilotVerificationUri.value = data.verificationUri
+    })
 
     if (!settingsStore.settings.aiPromptTemplateGenerateCodeFromComment) {
       settingsStore.settings.aiPromptTemplateGenerateCodeFromComment = DEFAULT_PROMPT_GENERATE_CODE_FROM_COMMENT
@@ -66,6 +111,12 @@
     if (settingsStore.settings.aiProvider === 'openrouter') {
       fetchModels()
     }
+
+    if (settingsStore.settings.aiProvider === 'copilot') {
+      copilotError.value = null
+      refreshCopilotStatus()
+    }
+
     saveSettings()
   }
 
@@ -128,6 +179,7 @@
         placeholder="Select the AI provider"
       >
         <option value="openrouter">OpenRouter</option>
+        <option value="copilot">GitHub Copilot</option>
       </SelectInput>
     </FormField>
     <template v-if="settingsStore.settings.aiProvider === 'openrouter'">
@@ -154,84 +206,119 @@
         autocompletion less immediate and useful.
       </p>
     </template>
-    <Divider class="mt-3" />
-    <FormField
-      class="mt-3"
-      label="API Key"
-      align="start"
-      description="Authentication key issued by the selected provider."
-      divider
-    >
-      <TextInput
-        id="api-key"
-        type="password"
-        class="w-full"
-        v-model="aiApiKey"
-        @change="saveSettings()"
-        placeholder="Insert your API key here"
-      />
-    </FormField>
-
-    <p class="text-xs opacity-70 mt-3">
-      Your API key is stored locally and only used to send requests to the selected provider.
-    </p>
-
-    <Title class="mt-12">Customization prompt</Title>
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-1 items-start">
-      <div class="pt-2">Generate code from comment prompt template</div>
-      <p class="text-xs opacity-70 my-3">
-        This template is used when requesting the model to generate code starting from a comment. You can use it to have
-        the model create functions or classes based on specifications described in comments.
-      </p>
-      <TextareaInput
-        id="ai-prompt-template-generate-code-from-comment"
-        v-model="settingsStore.settings.aiPromptTemplateGenerateCodeFromComment"
-        :rows="8"
-      />
-      <div class="flex items-center gap-3 py-3">
-        <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
-        <PrimaryButton @click="resetAiPromptTemplateGenerateCodeFromComment()">Reset</PrimaryButton>
+    <template v-if="isCopilotProvider">
+      <Divider class="mt-3" />
+      <FormField class="mt-3" label="Status">
+        <div class="text-sm">
+          <span v-if="copilotStatus.signedIn" class="text-green-500">Signed in</span>
+          <span v-else class="opacity-70">Not signed in</span>
+        </div>
+      </FormField>
+      <div v-if="!copilotStatus.signedIn" class="mt-3">
+        <p class="text-xs opacity-70">
+          Sign in with your GitHub account. An active GitHub Copilot subscription is required.
+        </p>
+        <div v-if="copilotSigningIn && copilotUserCode" class="mt-3 border rounded-md p-4 text-center">
+          <p class="text-xs opacity-70">Waiting for authorization. Enter this code on GitHub:</p>
+          <p class="mt-2 text-2xl font-mono font-bold tracking-widest select-all">{{ copilotUserCode }}</p>
+          <p class="mt-2 text-xs opacity-70">
+            The browser opened {{ copilotVerificationUri }}. If it did not, open it manually and enter the code.
+          </p>
+        </div>
+        <div class="flex items-center gap-3 py-3">
+          <PrimaryButton @click="copilotSignIn()" :disabled="copilotSigningIn">
+            <ArrowPathIcon v-if="copilotSigningIn" :spin="true" class="w-4 h-4 animate-spin mr-1" />
+            {{ copilotSigningIn ? 'Waiting for GitHub...' : 'Sign in with GitHub' }}
+          </PrimaryButton>
+        </div>
+        <p v-if="copilotError" class="text-xs text-red-500 mt-1">{{ copilotError }}</p>
       </div>
-    </div>
-
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-1 items-start">
-      <div class="pt-2">Complete comment prompt template</div>
-      <p class="text-xs opacity-70 my-3">
-        This template is used when requesting the model to complete an existing comment. You can use it to have the
-        model suggest more detailed descriptions or additional explanations.
-      </p>
-      <TextareaInput
-        id="ai-prompt-template-complete-comment"
-        v-model="settingsStore.settings.aiPromptTemplateCompleteComment"
-        :rows="8"
-      />
-      <div class="flex items-center gap-3 py-3">
-        <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
-        <PrimaryButton @click="resetAiPromptTemplateCompleteComment()">Reset</PrimaryButton>
+      <div v-else class="flex items-center gap-3 py-3">
+        <PrimaryButton @click="copilotSignOut()">Sign out</PrimaryButton>
       </div>
-    </div>
+    </template>
+    <template v-if="!isCopilotProvider">
+      <Divider class="mt-3" />
+      <FormField
+        class="mt-3"
+        label="API Key"
+        align="start"
+        description="Authentication key issued by the selected provider."
+        divider
+      >
+        <TextInput
+          id="api-key"
+          type="password"
+          class="w-full"
+          v-model="aiApiKey"
+          @change="saveSettings()"
+          placeholder="Insert your API key here"
+        />
+      </FormField>
 
-    <Divider class="mt-3" />
-
-    <div class="mt-3 grid grid-cols-1 items-start">
-      <div class="pt-2">Complete code prompt template</div>
-      <p class="text-xs opacity-70 my-3">
-        This template is used when requesting the model to complete an existing code block. You can use it to have the
-        model suggest completions for functions or classes.
+      <p class="text-xs opacity-70 mt-3">
+        Your API key is stored locally and only used to send requests to the selected provider.
       </p>
-      <TextareaInput
-        id="ai-prompt-template-complete-code"
-        v-model="settingsStore.settings.aiPromptTemplateCompleteCode"
-        :rows="8"
-      />
-      <div class="flex items-center gap-3 py-3">
-        <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
-        <PrimaryButton @click="resetAiPromptTemplateCompleteCode()">Reset</PrimaryButton>
+    </template>
+
+    <template v-if="!isCopilotProvider">
+      <Title class="mt-12">Customization prompt</Title>
+      <Divider class="mt-3" />
+
+      <div class="mt-3 grid grid-cols-1 items-start">
+        <div class="pt-2">Generate code from comment prompt template</div>
+        <p class="text-xs opacity-70 my-3">
+          This template is used when requesting the model to generate code starting from a comment. You can use it to
+          have the model create functions or classes based on specifications described in comments.
+        </p>
+        <TextareaInput
+          id="ai-prompt-template-generate-code-from-comment"
+          v-model="settingsStore.settings.aiPromptTemplateGenerateCodeFromComment"
+          :rows="8"
+        />
+        <div class="flex items-center gap-3 py-3">
+          <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
+          <PrimaryButton @click="resetAiPromptTemplateGenerateCodeFromComment()">Reset</PrimaryButton>
+        </div>
       </div>
-    </div>
+
+      <Divider class="mt-3" />
+
+      <div class="mt-3 grid grid-cols-1 items-start">
+        <div class="pt-2">Complete comment prompt template</div>
+        <p class="text-xs opacity-70 my-3">
+          This template is used when requesting the model to complete an existing comment. You can use it to have the
+          model suggest more detailed descriptions or additional explanations.
+        </p>
+        <TextareaInput
+          id="ai-prompt-template-complete-comment"
+          v-model="settingsStore.settings.aiPromptTemplateCompleteComment"
+          :rows="8"
+        />
+        <div class="flex items-center gap-3 py-3">
+          <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
+          <PrimaryButton @click="resetAiPromptTemplateCompleteComment()">Reset</PrimaryButton>
+        </div>
+      </div>
+
+      <Divider class="mt-3" />
+
+      <div class="mt-3 grid grid-cols-1 items-start">
+        <div class="pt-2">Complete code prompt template</div>
+        <p class="text-xs opacity-70 my-3">
+          This template is used when requesting the model to complete an existing code block. You can use it to have the
+          model suggest completions for functions or classes.
+        </p>
+        <TextareaInput
+          id="ai-prompt-template-complete-code"
+          v-model="settingsStore.settings.aiPromptTemplateCompleteCode"
+          :rows="8"
+        />
+        <div class="flex items-center gap-3 py-3">
+          <PrimaryButton @click="saveSettings()">Save</PrimaryButton>
+          <PrimaryButton @click="resetAiPromptTemplateCompleteCode()">Reset</PrimaryButton>
+        </div>
+      </div>
+    </template>
   </div>
 </template>

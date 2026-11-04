@@ -21,6 +21,7 @@ import url from 'url'
 import { fixPath } from './utils/fix-path.ts'
 import { isWindows } from './system/platform.ts'
 import { AiCompletion } from './tools/ai-completion.ts'
+import { CopilotAuth } from './tools/copilot-auth.ts'
 import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
 
@@ -163,7 +164,12 @@ ipcMain.on('lsp.restart', async event => {
   }
 })
 
-const aiService = new AiCompletion()
+const copilotAuth = new CopilotAuth({
+  notify: (channel, payload) => {
+    window?.webContents?.send(channel, payload)
+  },
+})
+const aiService = new AiCompletion(copilotAuth)
 
 ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
   try {
@@ -171,4 +177,22 @@ ipcMain.handle('ai:get-completion', async (_event, { context, tab }) => {
   } catch (error: any) {
     return { completion: [], error: error.message }
   }
+})
+
+ipcMain.handle('copilot:sign-in', async () => {
+  try {
+    await copilotAuth.signIn()
+    return { success: true, error: null }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('copilot:sign-out', async () => {
+  copilotAuth.signOut()
+  return { success: true }
+})
+
+ipcMain.handle('copilot:status', async () => {
+  return copilotAuth.getStatus()
 })
