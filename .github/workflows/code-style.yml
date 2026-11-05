@@ -28,3 +28,18 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: shellcheck install.sh
+
+      - name: Smoke test
+        run: bash install.sh --help

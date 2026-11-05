@@ -177,7 +177,10 @@ export class MCPServerImpl implements MCPServer {
       {
         connectionId: z.string().optional().describe('ID of an existing stored connection to switch to'),
         connectionType: z.enum(connectionTypes).optional().describe('Type of new connection to create'),
-        connectionConfig: z.record(z.unknown()).optional().describe('Configuration object for the new connection'),
+        connectionConfig: z
+          .record(z.string(), z.unknown())
+          .optional()
+          .describe('Configuration object for the new connection'),
       },
       async ({ connectionId, connectionType, connectionConfig }) => {
         this.requestCount++
