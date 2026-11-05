@@ -169,7 +169,7 @@
     "concurrently": "^9.2.4",
     "dotenv": "^16.4.7",
     "electron": "^41.1.1",
-    "electron-builder": "^26.8.1",
+    "electron-builder": "26.18.0",
     "electron-log": "^5.2.4",
     "electron-notarize": "^1.2.2",
     "electron-updater": "^6.3.9",
