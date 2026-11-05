@@ -1,3 +1,51 @@
+import type { Result } from '../../types/tab.type'
+
+export type OutputFilter = 'all' | 'explicit'
+
+export const joinResultOutputs = (results: Result[]): string =>
+  results
+    .map(result => result.output.trim())
+    .filter(output => output !== '')
+    .join('\n')
+
+const explicitOutputFunctions = [
+  'var_dump',
+  'print_r',
+  'var_export',
+  'printf',
+  'vprintf',
+  'dump',
+  'dd',
+  'ray',
+  'exit',
+  'die',
+]
+
+const explicitOutputPattern = new RegExp(
+  `\\becho\\b|\\bprint\\b|\\bfwrite\\s*\\(\\s*(?:STDOUT|STDERR)|\\b(?:${explicitOutputFunctions.join('|')})\\s*\\(`,
+  'i'
+)
+
+export const isExplicitResult = (result: Result): boolean => {
+  if (result.implicit === true) return false
+
+  if (result.explicitOutput !== undefined) return result.explicitOutput !== '' || !!result.explicitHtml
+
+  if (result.code.trim() === '') return true
+
+  return explicitOutputPattern.test(result.code)
+}
+
+export const visibleResults = (results: Result[], filter: OutputFilter): Result[] =>
+  filter === 'all'
+    ? results
+    : results.filter(isExplicitResult).map(result => ({
+        ...result,
+        output: result.explicitOutput ?? result.output,
+        html: result.explicitHtml ?? result.html,
+        ...(result.parts ? { parts: result.parts.filter(part => !part.implicit) } : {}),
+      }))
+
 export const stripAnsi = (value: string): string =>
   value
     .replace(/(?:ESC|\\e|\\x1b|\\u001b|\\033)\s*\[[\d;?]*[ -/]*[@-~]/gi, '')

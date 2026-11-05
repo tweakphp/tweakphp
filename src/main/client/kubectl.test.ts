@@ -14,8 +14,14 @@ vi.mock('../utils/kubectl', () => {
   }
 })
 
+const mockSettings = vi.hoisted(() => ({
+  dockerKubectlExecutionTimeoutSeconds: 60,
+  queryLog: false,
+  outputMode: 'output',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+  getSettings: () => mockSettings,
 }))
 
 vi.mock('electron', () => ({
@@ -29,6 +35,8 @@ describe('KubectlClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.outputMode = 'output'
     const client = new KubectlClient({ type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any)
     mockKubectlInstance = (client as any).kubectl
   })
@@ -64,12 +72,52 @@ describe('KubectlClient', () => {
     await client.executeStreaming('echo 1;', undefined, event => events.push(event))
 
     expect(mockKubectlInstance.execStream).toHaveBeenCalledWith(
-      expect.stringContaining('execute-stream'),
+      expect.stringMatching(/execute-stream [^ ]+ --query-log=false$/),
       conn,
       expect.any(Function),
-      60_000
+      60_000,
+      expect.any(Function)
     )
     expect(events).toEqual([{ type: 'statement.started', index: 0, line: 1, code: 'echo 1;' }])
+  })
+
+  it('executes code with the query log flag', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec.mockResolvedValue('output\n')
+
+    await client.execute('echo 1;')
+
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=false$/),
+      conn,
+      60_000
+    )
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    const conn = { type: 'kubectl', path: '/app', namespace: 'default', pod: 'my-pod' } as any
+    const client = new KubectlClient(conn)
+    mockKubectlInstance = (client as any).kubectl
+    mockKubectlInstance.exec.mockResolvedValue('output\n')
+    mockSettings.queryLog = true
+    mockSettings.outputMode = 'stacked'
+
+    await client.execute('echo 1;')
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=true$/),
+      conn,
+      60_000
+    )
+
+    mockSettings.outputMode = 'output'
+    await client.execute('echo 1;')
+    expect(mockKubectlInstance.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/execute [^ ]+ --query-log=false$/),
+      conn,
+      60_000
+    )
   })
 
   it('remoteUploadFile calls kubectl.uploadFile', async () => {

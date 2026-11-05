@@ -13,7 +13,7 @@
 
 <template>
   <div
-    class="flex items-center justify-center p-3 border-b hover:text-primary-500"
+    class="flex items-center justify-center h-10 border-b hover:text-primary-500"
     :class="{
       'text-primary-500': props.active,
     }"

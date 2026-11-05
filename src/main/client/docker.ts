@@ -14,6 +14,11 @@ const DOCKER_SETUP_TIMEOUT = 30_000
 
 const getExecutionTimeout = () => getSettings().dockerKubectlExecutionTimeoutSeconds * 1000
 
+const getQueryLogArg = () => {
+  const { queryLog, outputMode } = getSettings()
+  return `--query-log=${queryLog === true && (outputMode === 'stacked' || outputMode === 'full')}`
+}
+
 const cleanParam = (val?: any): string | undefined => {
   if (typeof val === 'string' && val.trim() !== '' && val !== 'undefined' && val !== 'null') {
     return val.trim()
@@ -95,6 +100,7 @@ export default class DockerClient extends BaseClient {
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
+      args.push(getQueryLogArg())
 
       if (this.ssh) {
         return await this.ssh.exec(buildPosixCommand(await this.getDockerPath(), args), getExecutionTimeout())
@@ -126,6 +132,7 @@ export default class DockerClient extends BaseClient {
       if (loader) {
         args.push(`--loader=${base64Encode(loader)}`)
       }
+      args.push(getQueryLogArg())
 
       const parser = createStreamOutputParser(onEvent)
       if (this.ssh) {
@@ -137,9 +144,14 @@ export default class DockerClient extends BaseClient {
           getExecutionTimeout()
         )
       } else {
-        await this.runLocalDockerStream(args, getExecutionTimeout(), chunk => {
-          parser.push(chunk)
-        })
+        await this.runLocalDockerStream(
+          args,
+          getExecutionTimeout(),
+          chunk => {
+            parser.push(chunk)
+          },
+          () => parser.hasStreamOutput()
+        )
       }
       parser.finish()
     } catch (error: unknown) {
@@ -330,7 +342,8 @@ export default class DockerClient extends BaseClient {
   private async runLocalDockerStream(
     args: string[],
     timeoutMs: number,
-    onData: (chunk: string) => void
+    onData: (chunk: string) => void,
+    hasStreamedOutput?: () => boolean
   ): Promise<void> {
     return await new Promise((resolve, reject) => {
       let stderr = ''
@@ -359,7 +372,7 @@ export default class DockerClient extends BaseClient {
         if (settled) return
         settled = true
         if (timeout) clearTimeout(timeout)
-        if (code === 0) {
+        if (code === 0 || hasStreamedOutput?.()) {
           resolve()
           return
         }

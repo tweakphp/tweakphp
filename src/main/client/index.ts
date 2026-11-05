@@ -6,6 +6,7 @@ import { VaporClient } from './vapor'
 import DockerClient from './docker'
 import KubectlClient from './kubectl'
 import { parseTweakPhpError } from '../../shared/tweakphp-error'
+import { completePhpStatement } from './complete-php-statement'
 
 export const init = async () => {
   ipcMain.on('client.connect', connect)
@@ -47,13 +48,14 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
   try {
     await client.connect()
 
+    const code = completePhpStatement(payload.code)
     if (payload.streaming && typeof client.executeStreaming === 'function') {
       event.reply('client.execute.stream', {
         tabId: payload.tabId,
         event: { type: 'started' },
       })
 
-      await client.executeStreaming(payload.code, payload.loader, (streamEvent: any) => {
+      await client.executeStreaming(code, payload.loader, (streamEvent: any) => {
         event.reply('client.execute.stream', {
           tabId: payload.tabId,
           event: streamEvent,
@@ -64,7 +66,7 @@ const execute = async (event: Electron.IpcMainEvent, payload: any) => {
       return
     }
 
-    let result = await client.execute(payload.code, payload.loader)
+    let result = await client.execute(code, payload.loader)
     result = result.trim()
     let output: any = null
 

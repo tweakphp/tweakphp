@@ -7,6 +7,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { getMCPServer } from './server'
 import { MCPServerConfig } from './types'
 import { getSettings } from '../settings'
+import { setMcpConnectionManager } from '../ipc/storage-ipc'
 
 export { getMCPServer, MCPServerImpl } from './server'
 export type { MCPServer } from './server'
@@ -74,6 +75,10 @@ const broadcastStatusUpdate = () => {
  */
 export const init = async () => {
   const server = getMCPServer()
+
+  // Keep the MCP ConnectionManager in sync with every connection
+  // saved/deleted/activated by the renderer
+  setMcpConnectionManager(server.getConnectionManager())
 
   // Handle get status requests
   ipcMain.handle('mcp.get-status', async () => {
