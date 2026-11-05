@@ -230,7 +230,10 @@ export class MCPServerImpl implements MCPServer {
       {
         connectionId: z.string().optional().describe('ID of an existing stored connection to switch to'),
         connectionType: z.enum(connectionTypes).optional().describe('Type of new connection to create'),
-        connectionConfig: z.record(z.unknown()).optional().describe('Configuration object for the new connection'),
+        connectionConfig: z
+          .record(z.string(), z.unknown())
+          .optional()
+          .describe('Configuration object for the new connection'),
         projectId: z
           .number()
           .optional()
@@ -263,7 +266,7 @@ export class MCPServerImpl implements MCPServer {
       {
         projectId: z.number().describe('Project that owns the new connection'),
         type: z.enum(connectionTypes).describe('Connection type'),
-        config: z.record(z.unknown()).describe('Connection configuration (type-specific fields)'),
+        config: z.record(z.string(), z.unknown()).describe('Connection configuration (type-specific fields)'),
       },
       ({ projectId, type, config }) => this.createConnectionHandler.handle({ projectId, type, config })
     )
@@ -273,7 +276,7 @@ export class MCPServerImpl implements MCPServer {
       'Update an existing connection. Type and project ownership cannot be changed. Projects using the connection see the new configuration automatically. Secrets are accepted but never returned.',
       {
         connectionId: z.string().describe('ID of the connection to update'),
-        changes: z.record(z.unknown()).describe('Fields to merge into the stored configuration'),
+        changes: z.record(z.string(), z.unknown()).describe('Fields to merge into the stored configuration'),
       },
       ({ connectionId, changes }) => this.updateConnectionHandler.handle({ connectionId, changes })
     )
