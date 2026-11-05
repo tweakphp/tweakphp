@@ -128,6 +128,9 @@
     "applicationinsights": "^3.16.0",
     "protobufjs": "^7.5.9",
     "minimatch": "^11.0.4",
+    "@electron/asar": {
+      "minimatch": "^3.1.2"
+    },
     "basic-ftp": "^6.2.6"
   },
   "dependencies": {
