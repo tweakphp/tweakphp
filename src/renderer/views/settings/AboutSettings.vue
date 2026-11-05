@@ -4,9 +4,6 @@
   import FormField from '../../components/forms/FormField.vue'
   import PrimaryButton from '../../components/PrimaryButton.vue'
   import HeartIcon from '../../components/icons/HeartIcon.vue'
-  import { useSettingsStore } from '../../stores/settings'
-
-  const settingsStore = useSettingsStore()
 
   const websiteUrl = 'https://tweakphp.com/'
   const repositoryUrl = 'https://github.com/tweakphp/tweakphp'
@@ -23,10 +20,6 @@
       <Title>About</Title>
     </div>
     <Divider class="mt-3" />
-
-    <FormField class="mt-3" label="Version" divider>
-      <span>{{ settingsStore.settings.version }}</span>
-    </FormField>
 
     <FormField class="mt-3" label="Website" divider>
       <a
