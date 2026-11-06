@@ -40,14 +40,6 @@
       "build/*",
       "public/*"
     ],
-    "extraFiles": [
-      "build/**/*",
-      "public/**/*",
-      {
-        "from": "migrations",
-        "to": "migrations"
-      }
-    ],
     "publish": {
       "provider": "github",
       "owner": "tweakphp",
