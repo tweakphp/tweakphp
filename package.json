@@ -12,6 +12,7 @@
     "postinstall": "electron-builder install-app-deps",
     "dev": "concurrently \"vite\" \"node build.js --dev && electron .\"",
     "update-clients": "node ./scripts/update-clients.js",
+    "update-phpantom": "node ./scripts/update-phpantom.js",
     "build": "vite build && node build.js --prod",
     "build-mac": "npm run build && electron-builder --mac --universal",
     "build-linux": "npm run build && electron-builder --linux",
@@ -34,7 +35,8 @@
     ],
     "files": [
       "**/*",
-      "!e2e-environment/**"
+      "!e2e-environment/**",
+      "!phpantom-bin/**"
     ],
     "extraResources": [
       "build/*",
@@ -73,6 +75,16 @@
         "deb",
         "snap"
       ],
+      "extraResources": [
+        {
+          "from": "phpantom-bin",
+          "to": "phpantom",
+          "filter": [
+            "x86_64-unknown-linux-gnu/**",
+            "aarch64-unknown-linux-gnu/**"
+          ]
+        }
+      ],
       "desktop": {
         "entry": {
           "Name": "TweakPHP",
@@ -102,7 +114,17 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extraResources": [
+        {
+          "from": "phpantom-bin",
+          "to": "phpantom",
+          "filter": [
+            "x86_64-apple-darwin/**",
+            "aarch64-apple-darwin/**"
+          ]
+        }
+      ]
     },
     "dmg": {
       "title": "${productName} ${version}",
@@ -115,8 +137,16 @@
         {
           "target": "nsis",
           "arch": [
-            "ia32",
             "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "phpantom-bin",
+          "to": "phpantom",
+          "filter": [
+            "x86_64-pc-windows-msvc/**"
           ]
         }
       ]

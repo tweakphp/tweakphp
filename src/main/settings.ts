@@ -2,7 +2,7 @@ import path from 'path'
 import * as fs from 'node:fs'
 import * as lsp from './lsp/index'
 import { app, ipcMain } from 'electron'
-import { Settings } from '../types/settings.type'
+import { Settings, LanguageServer } from '../types/settings.type'
 import os from 'os'
 import { isWindows } from './system/platform.ts'
 import { execSync } from 'child_process'
@@ -31,6 +31,10 @@ export const normalizeDockerKubectlExecutionTimeoutSeconds = (value: unknown): n
   )
 }
 
+export const normalizeLanguageServer = (value: unknown): LanguageServer => {
+  return value === 'phpantom' ? 'phpantom' : 'intelephense'
+}
+
 const defaultSettings: Settings = {
   version: app.getVersion(),
   laravelPath: laravelPath,
@@ -40,6 +44,7 @@ const defaultSettings: Settings = {
   editorWordWrap: 'on',
   layout: 'vertical',
   outputMode: 'output',
+  languageServer: 'intelephense',
   vimMode: 'off',
   stackedDump: 'extended',
   windowWidth: 1100,
@@ -122,6 +127,7 @@ export const getSettings = () => {
       editorWordWrap: settingsJson.editorWordWrap || defaultSettings.editorWordWrap,
       layout: settingsJson.layout || defaultSettings.layout,
       outputMode: resolveOutputMode(settingsJson),
+      languageServer: normalizeLanguageServer(settingsJson.languageServer),
       vimMode: settingsJson.vimMode || defaultSettings.vimMode,
       stackedDump: settingsJson.stackedDump || defaultSettings.stackedDump,
       windowWidth: settingsJson.windowWidth || defaultSettings.windowWidth,

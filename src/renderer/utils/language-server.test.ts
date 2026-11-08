@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildIntelephenseInitializationOptions, intelephenseStoragePath, isWslWorkspacePath } from './language-server'
+import {
+  buildIntelephenseInitializationOptions,
+  buildLanguageServerInitializationOptions,
+  buildPhpantomInitializationOptions,
+  intelephenseStoragePath,
+  isWslWorkspacePath,
+  IntelephenseInitializationOptions,
+  PhpantomInitializationOptions,
+} from './language-server'
 
 describe('isWslWorkspacePath', () => {
   it.each([
@@ -39,6 +47,44 @@ describe('intelephenseStoragePath', () => {
   it('strips trailing separators from the temp dir', () => {
     expect(intelephenseStoragePath('/tmp/', '/x')).toBe('/tmp/tweakphp-intelephense-%2Fx')
     expect(intelephenseStoragePath('C:\\Temp\\', '/x')).toBe('C:\\Temp/tweakphp-intelephense-%2Fx')
+  })
+})
+
+describe('buildPhpantomInitializationOptions', () => {
+  it('needs no storagePath (no disk cache) and mirrors the excluded files as gitignore patterns', () => {
+    const options = buildPhpantomInitializationOptions()
+
+    expect('storagePath' in options).toBe(false)
+    expect('licenceKey' in options).toBe(false)
+    expect(options.indexing.exclude).toContain('**/node_modules/**')
+    expect(options.indexing.exclude).toContain('**/vendor/**/{Tests,tests}/**')
+  })
+})
+
+describe('buildLanguageServerInitializationOptions', () => {
+  const baseOptions = { workspacePath: '/work/app', tempDir: '/tmp' }
+
+  it('builds intelephense options by default', () => {
+    const options = buildLanguageServerInitializationOptions({
+      ...baseOptions,
+      languageServer: 'intelephense',
+      intelephenseLicenseKey: '',
+    }) as IntelephenseInitializationOptions
+
+    expect(options.storagePath).toBe('/tmp/tweakphp-intelephense-%2Fwork%2Fapp')
+    expect('indexing' in options).toBe(false)
+    expect(options.licenceKey).toBeUndefined()
+  })
+
+  it('builds phpantom options when phpantom is selected', () => {
+    const options = buildLanguageServerInitializationOptions({
+      ...baseOptions,
+      languageServer: 'phpantom',
+      intelephenseLicenseKey: 'key-123',
+    }) as PhpantomInitializationOptions
+
+    expect('storagePath' in options).toBe(false)
+    expect(options.indexing.exclude.length).toBeGreaterThan(0)
   })
 })
 

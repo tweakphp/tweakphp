@@ -170,6 +170,24 @@
     </FormField>
     <FormField
       class="mt-3"
+      label="Language server"
+      align="start"
+      description="Server powering PHP autocomplete, hover and go-to-definition. Changes restart the language server."
+      divider
+    >
+      <SelectInput
+        id="language-server"
+        v-model="settingsStore.settings.languageServer"
+        @change="saveSettings()"
+        placeholder="Select"
+      >
+        <option value="intelephense">Intelephense</option>
+        <option value="phpantom">PHPantom</option>
+      </SelectInput>
+    </FormField>
+    <FormField
+      v-if="settingsStore.settings.languageServer === 'intelephense'"
+      class="mt-3"
       label="Intelephense License key"
       align="start"
       description="Leave empty to use the free version. Changes restart the PHP language server."

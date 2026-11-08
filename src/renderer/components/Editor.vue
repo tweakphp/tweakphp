@@ -21,7 +21,7 @@
   import ToastAlert from '@/components/ToastAlert.vue'
   import events from '../events'
   import { normalizedSnippetLength } from '../utils/snippet-insertion'
-  import { buildIntelephenseInitializationOptions, isWslWorkspacePath } from '../utils/language-server'
+  import { buildLanguageServerInitializationOptions, isWslWorkspacePath } from '../utils/language-server'
 
   const settingsStore = useSettingsStore()
   const lspStore = useLspStore()
@@ -454,10 +454,11 @@
           name: 'workspace-' + props.editorId,
           uri: monaco.Uri.file(workspacePath),
         },
-        initializationOptions: buildIntelephenseInitializationOptions({
+        initializationOptions: buildLanguageServerInitializationOptions({
+          languageServer: settingsStore.settings.languageServer,
           workspacePath: `${props.path}`,
           tempDir: window.platformInfo.getTempDir(),
-          licenseKey: settingsStore.settings.intelephenseLicenseKey,
+          intelephenseLicenseKey: settingsStore.settings.intelephenseLicenseKey,
         }),
         errorHandler: {
           error: () => ({ action: ErrorAction.Continue }),

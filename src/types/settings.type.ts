@@ -1,5 +1,7 @@
 export type OutputMode = 'output' | 'stacked' | 'full'
 
+export type LanguageServer = 'intelephense' | 'phpantom'
+
 export interface Settings {
   version: string
   laravelPath: string
@@ -9,6 +11,7 @@ export interface Settings {
   editorWordWrap: string
   layout: string
   outputMode: OutputMode
+  languageServer: LanguageServer
   vimMode: string
   stackedDump: string
   windowWidth: number

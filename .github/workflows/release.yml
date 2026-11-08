@@ -96,6 +96,9 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
+      - name: Download PHPantom language server
+        run: npm run update-phpantom
+
       - name: Set build version
         env:
           VERSION: ${{ inputs.version }}

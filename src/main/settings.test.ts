@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { detectPhpPaths, getSettings, setSettings, init, settingsPath } from './settings'
+import { detectPhpPaths, getSettings, setSettings, init, settingsPath, normalizeLanguageServer } from './settings'
 import { execSync } from 'child_process'
 import * as fs from 'node:fs'
 
@@ -62,11 +62,19 @@ describe('Settings Management (settings.ts)', () => {
       const settings = getSettings()
       expect(settings.version).toBe('0.13.1')
       expect(settings.theme).toBe('dracula')
+      expect(settings.languageServer).toBe('intelephense')
       expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
       expect(settings.streaming).toBe(true)
       expect(settings.queryLog).toBe(false)
       expect(settings.dockerKubectlExecutionTimeoutSeconds).toBe(60)
       expect(fs.writeFileSync).toHaveBeenCalled()
+    })
+
+    it('reads a stored languageServer setting', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from(JSON.stringify({ languageServer: 'phpantom' })))
+
+      expect(getSettings().languageServer).toBe('phpantom')
     })
 
     it('returns merged settings when settings.json exists', () => {
@@ -146,6 +154,20 @@ describe('Settings Management (settings.ts)', () => {
       )
 
       expect(getSettings().dockerKubectlExecutionTimeoutSeconds).toBe(3600)
+    })
+  })
+
+  describe('normalizeLanguageServer', () => {
+    it('accepts known servers', () => {
+      expect(normalizeLanguageServer('intelephense')).toBe('intelephense')
+      expect(normalizeLanguageServer('phpantom')).toBe('phpantom')
+    })
+
+    it('falls back to intelephense for unknown or missing values', () => {
+      expect(normalizeLanguageServer(undefined)).toBe('intelephense')
+      expect(normalizeLanguageServer('')).toBe('intelephense')
+      expect(normalizeLanguageServer('phpactor')).toBe('intelephense')
+      expect(normalizeLanguageServer(42)).toBe('intelephense')
     })
   })
 
