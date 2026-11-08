@@ -7,6 +7,12 @@ export interface Settings {
   theme: string
   editorFontSize: number
   editorWordWrap: string
+  editorLineNumbers: string
+  editorIndentGuides: string
+  outputFontSize: number
+  outputWordWrap: string
+  outputLineNumbers: string
+  outputIndentGuides: string
   layout: string
   outputMode: OutputMode
   vimMode: string

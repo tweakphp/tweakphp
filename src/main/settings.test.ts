@@ -80,6 +80,8 @@ describe('Settings Management (settings.ts)', () => {
       expect(settings.theme).toBe('monokai')
       expect(settings.editorFontSize).toBe(18)
       expect(settings.editorWordWrap).toBe('on')
+      expect(settings.editorLineNumbers).toBe('on')
+      expect(settings.editorIndentGuides).toBe('on')
       expect(settings.streaming).toBe(true)
       expect(settings.queryLog).toBe(false)
       expect(settings.dockerKubectlExecutionTimeoutSeconds).toBe(60)
@@ -101,6 +103,55 @@ describe('Settings Management (settings.ts)', () => {
       const settings = getSettings()
 
       expect(settings.queryLog).toBe(true)
+    })
+
+    it('preserves disabled line numbers and indent guides', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(JSON.stringify({ editorLineNumbers: 'off', editorIndentGuides: 'off' }))
+      )
+
+      const settings = getSettings()
+
+      expect(settings.editorLineNumbers).toBe('off')
+      expect(settings.editorIndentGuides).toBe('off')
+    })
+
+    it('defaults output display settings to the editor values when unset', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(JSON.stringify({ editorFontSize: 18, editorWordWrap: 'off', editorLineNumbers: 'off' }))
+      )
+
+      const settings = getSettings()
+
+      expect(settings.outputFontSize).toBe(18)
+      expect(settings.outputWordWrap).toBe('off')
+      expect(settings.outputLineNumbers).toBe('off')
+      expect(settings.outputIndentGuides).toBe('on')
+    })
+
+    it('keeps output display settings independent of the editor once set', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        Buffer.from(
+          JSON.stringify({
+            editorFontSize: 18,
+            editorLineNumbers: 'on',
+            outputFontSize: 12,
+            outputLineNumbers: 'off',
+            outputIndentGuides: 'off',
+          })
+        )
+      )
+
+      const settings = getSettings()
+
+      expect(settings.editorFontSize).toBe(18)
+      expect(settings.editorLineNumbers).toBe('on')
+      expect(settings.outputFontSize).toBe(12)
+      expect(settings.outputLineNumbers).toBe('off')
+      expect(settings.outputIndentGuides).toBe('off')
     })
 
     it('ignores stored laravelPath and re-persists settings when stored version or laravelPath differ', () => {
