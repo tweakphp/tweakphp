@@ -19,7 +19,6 @@ import { initStorageIpc } from './ipc/storage-ipc.ts'
 import url from 'url'
 
 import { fixPath } from './utils/fix-path.ts'
-import { isWindows } from './system/platform.ts'
 import { AiCompletion } from './tools/ai-completion.ts'
 import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
@@ -66,7 +65,7 @@ const createMainWindow = async () => {
       window.once('show', async () => {
         setTimeout(async () => {
           await laravel.init(window)
-          !isWindows() && (await lsp.init())
+          await lsp.init()
           await updater.checkForUpdates()
         }, 1500)
       })

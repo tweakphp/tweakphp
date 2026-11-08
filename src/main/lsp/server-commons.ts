@@ -37,7 +37,10 @@ export function createServerProcess(serverName: string, command: string, args: s
   if (serverProcess !== null) {
     serverProcess.kill()
   }
-  serverProcess = cp.spawn(`"${command}"`, args || [], options || {})
+  // No shell: runCommand is an absolute path (possibly containing spaces) and
+  // the args are explicit, so spawning directly keeps quoting correct on every
+  // platform, including Windows.
+  serverProcess = cp.spawn(command, args || [], options || {})
   serverProcess.on('error', error => console.error(`Launching ${serverName} Server failed: ${error}`))
   if (serverProcess.stderr !== null) {
     serverProcess.stderr.on('data', data => console.error(`${serverName} Server: ${data}`))

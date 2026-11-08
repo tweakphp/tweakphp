@@ -63,7 +63,7 @@ export const init = async () => {
   ipcMain.on('settings.store', async (_event: any, data: Settings) => {
     data.php = handlePhpExecutable(_event, data.php)
     setSettings(data)
-    !isWindows() && (await lsp.init())
+    await lsp.init()
   })
 
   ipcMain.on('settings.detect-php', async (event: any) => {

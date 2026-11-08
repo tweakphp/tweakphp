@@ -21,6 +21,7 @@
   import ToastAlert from '@/components/ToastAlert.vue'
   import events from '../events'
   import { normalizedSnippetLength } from '../utils/snippet-insertion'
+  import { buildIntelephenseInitializationOptions, isWslWorkspacePath } from '../utils/language-server'
 
   const settingsStore = useSettingsStore()
   const lspStore = useLspStore()
@@ -292,7 +293,7 @@
       emit('cursor-change', editor.getPosition())
       emit('ready')
 
-      if (window.platformInfo.getPlatform() !== 'win32' && !props.readonly && props.path && props.language === 'php') {
+      if (!props.readonly && props.path && props.language === 'php' && !isWslWorkspacePath(props.path)) {
         connectionInterval = setInterval(async () => {
           if (connectionPending || disposed) return
           connectionPending = true
@@ -314,7 +315,7 @@
     disposed = true
     if (connectionInterval) clearInterval(connectionInterval)
     for (const socket of sockets) socket.close()
-    if (props.language === 'php' && !props.readonly && props.path && window.platformInfo.getPlatform() !== 'win32') {
+    if (props.language === 'php' && !props.readonly && props.path && !isWslWorkspacePath(props.path)) {
       lspStore.setDisconnected()
     }
 
@@ -453,26 +454,11 @@
           name: 'workspace-' + props.editorId,
           uri: monaco.Uri.file(workspacePath),
         },
-        initializationOptions: {
-          storagePath:
-            (window.platformInfo.getPlatform() !== 'win32'
-              ? '/tmp/tweakphp-intelephense-'
-              : 'C:/Temp/tweakphp-intelephense-') + encodeURIComponent(workspacePath || ''),
-          licenceKey: settingsStore.settings.intelephenseLicenseKey || undefined,
-          environment: workspacePath,
-          clearCache: true,
-          files: {
-            maxSize: 100_000_000,
-            exclude: [
-              '**/.git/**',
-              '**/CVS/**',
-              '**/.DS_Store/**',
-              '**/node_modules/**',
-              '**/vendor/**/{Tests,tests}/**',
-              '**/vendor/**/vendor/**',
-            ],
-          },
-        },
+        initializationOptions: buildIntelephenseInitializationOptions({
+          workspacePath: `${props.path}`,
+          tempDir: window.platformInfo.getTempDir(),
+          licenseKey: settingsStore.settings.intelephenseLicenseKey,
+        }),
         errorHandler: {
           error: () => ({ action: ErrorAction.Continue }),
           closed: () => ({ action: CloseAction.DoNotRestart }),

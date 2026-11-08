@@ -29,7 +29,6 @@ export const init = async () => {
             ? { INTELEPHENSE_LICENSE_KEY: settings.getSettings().intelephenseLicenseKey }
             : {}),
         },
-        shell: true,
       },
       wsServerOptions: {
         noServer: true,
