@@ -45,8 +45,15 @@ interface DetailEvent extends Event {
 type StreamEvent =
   | { type: 'started' }
   | { type: 'statement.started'; index: number; line: number; code: string }
-  | { type: 'output'; index?: number; data: string; html?: string }
-  | { type: 'statement.completed'; index?: number; queries?: unknown[]; query_errors?: unknown[]; html?: string }
+  | { type: 'output'; index?: number; data: string; html?: string; implicit?: boolean }
+  | {
+      type: 'statement.completed'
+      index?: number
+      queries?: unknown[]
+      query_errors?: unknown[]
+      html?: string
+      implicit?: boolean
+    }
   | { type: 'error'; error?: unknown }
 
 const isRecord = (value: unknown): value is RecordValue => typeof value === 'object' && value !== null
@@ -89,6 +96,7 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
         index: typeof value.index === 'number' ? value.index : undefined,
         data: value.data,
         html: typeof value.html === 'string' ? value.html : undefined,
+        implicit: typeof value.implicit === 'boolean' ? value.implicit : undefined,
       }
     case 'statement.completed':
       return {
@@ -97,6 +105,7 @@ const parseStreamEvent = (value: unknown): StreamEvent | null => {
         queries: Array.isArray(value.queries) ? value.queries : undefined,
         query_errors: Array.isArray(value.query_errors) ? value.query_errors : undefined,
         html: typeof value.html === 'string' ? value.html : undefined,
+        implicit: typeof value.implicit === 'boolean' ? value.implicit : undefined,
       }
     case 'error':
       return { type: 'error', error: value.error }
@@ -130,6 +139,8 @@ export function useCodeExecution(options: {
     }
   }
 
+  let receivedStreamOutput = false
+
   const getLoader = (name: string) => options.loadersStore.get(name)?.code ?? ''
 
   const updateResultEditor = () => {
@@ -161,15 +172,16 @@ export function useCodeExecution(options: {
       options.tab.value.queries = []
     } else {
       const output = stringifyReply(detail ?? '')
-      options.tab.value.result = [
-        {
-          code: '',
-          line: 0,
-          output: connection?.type === 'vapor' ? normalizeVaporOutput(output) : output,
-          html: '',
-        },
-      ]
-      options.tab.value.queries = []
+      const errorResult = {
+        code: '',
+        line: 0,
+        output: connection?.type === 'vapor' ? normalizeVaporOutput(output) : output,
+        html: '',
+      }
+      options.tab.value.result = receivedStreamOutput ? [...options.tab.value.result, errorResult] : [errorResult]
+      if (!receivedStreamOutput) {
+        options.tab.value.queries = []
+      }
     }
 
     updateResultEditor()
@@ -204,6 +216,7 @@ export function useCodeExecution(options: {
         })
       }
     } else if (streamEvent.type === 'output') {
+      receivedStreamOutput = true
       const index = streamEvent.index ?? 0
       if (!options.tab.value.result[index]) {
         options.tab.value.result[index] = {
@@ -216,9 +229,23 @@ export function useCodeExecution(options: {
         }
       }
 
-      options.tab.value.result[index].output += stripAnsi(streamEvent.data)
+      const result = options.tab.value.result[index]
+      result.explicitOutput ??= result.output
+      result.explicitHtml ??= result.html
+      const output = stripAnsi(streamEvent.data)
+      result.output += output
+      if (streamEvent.implicit !== true) result.explicitOutput += output
+      result.parts ??= []
+      const implicit = streamEvent.implicit === true
+      const previousPart = result.parts[result.parts.length - 1]
+      if (previousPart && previousPart.implicit === implicit && !previousPart.html && !streamEvent.html) {
+        previousPart.output += output
+      } else {
+        result.parts.push({ output, html: streamEvent.html ?? '', implicit })
+      }
       if (streamEvent.html !== undefined) {
-        options.tab.value.result[index].html += streamEvent.html
+        result.html += streamEvent.html
+        if (streamEvent.implicit !== true) result.explicitHtml += streamEvent.html
       }
     } else if (streamEvent.type === 'statement.completed') {
       const index = streamEvent.index ?? 0
@@ -227,10 +254,15 @@ export function useCodeExecution(options: {
       if (result) {
         if (streamEvent.queries) result.queries = streamEvent.queries
         if (streamEvent.query_errors) result.query_errors = streamEvent.query_errors
-        if (streamEvent.html !== undefined && !result.html) result.html = streamEvent.html
+        if (streamEvent.html !== undefined && !result.html) {
+          result.html = streamEvent.html
+          if (streamEvent.implicit !== true) result.explicitHtml = streamEvent.html
+        }
+        if (streamEvent.implicit !== undefined) result.implicit = streamEvent.implicit
         result.htmlReady = true
       }
     } else if (streamEvent.type === 'error') {
+      receivedStreamOutput = true
       options.tab.value.result.push(parseTweakPhpError(streamEvent.error ?? 'Error'))
     }
 
@@ -245,6 +277,7 @@ export function useCodeExecution(options: {
     const selected = options.codeEditor?.value?.getSelectedText() ?? ''
     const code = selected !== '' ? selected : options.tab.value.code
 
+    receivedStreamOutput = false
     options.executeStore.setExecuting(true)
     options.tab.value.queries = []
 

@@ -98,6 +98,46 @@ describe('Kubectl', () => {
     expect(chunks).toEqual(['TWEAKPHP_STREAM:', '{"type":"output"}\n'])
   })
 
+  it('resolves a non-zero exit after protocol output was streamed, like dd() dying with code 1', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const chunks: string[] = []
+    const kubectl = new Kubectl()
+
+    const streaming = kubectl.execStream(
+      'php client.phar /app execute-stream code',
+      { pod: 'app', context: 'local', namespace: 'default' },
+      chunk => chunks.push(chunk),
+      60_000,
+      () => true
+    )
+    child.stdout.emit('data', Buffer.from('TWEAKPHP_STREAM:{"type":"output","index":0,"data":"Test"}\n'))
+    child.emit('close', 1, null)
+
+    await expect(streaming).resolves.toBeUndefined()
+    expect(chunks).toEqual(['TWEAKPHP_STREAM:{"type":"output","index":0,"data":"Test"}\n'])
+  })
+
+  it('still rejects a failed streaming command that delivered no protocol output', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const kubectl = new Kubectl()
+
+    const streaming = kubectl.execStream(
+      'php client.phar /app execute-stream code',
+      { pod: 'app', context: 'local', namespace: 'default' },
+      () => {},
+      60_000,
+      () => false
+    )
+    child.stderr.emit('data', Buffer.from('Error from server (NotFound): pods "app" not found\n'))
+    child.emit('close', 1, null)
+
+    await expect(streaming).rejects.toThrow('Error from server (NotFound): pods "app" not found')
+    consoleError.mockRestore()
+  })
+
   it('copies a Windows PHAR from its directory so kubectl does not parse its drive as a pod', async () => {
     await expect(
       new Kubectl().uploadFile('C:\\Program Files\\TweakPHP\\client.phar', '/root/.tweakphp/client.phar', {

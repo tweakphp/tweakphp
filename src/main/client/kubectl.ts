@@ -5,6 +5,11 @@ import { RemoteClient } from './client.remote'
 import { buildPosixCommand } from '../utils/shell'
 import { getSettings } from '../settings'
 
+const queryLogArg = () => {
+  const { queryLog, outputMode } = getSettings()
+  return `--query-log=${queryLog === true && (outputMode === 'stacked' || outputMode === 'full')}`
+}
+
 export default class KubectlClient extends RemoteClient {
   private kubectl: Kubectl
 
@@ -17,13 +22,20 @@ export default class KubectlClient extends RemoteClient {
     return this.kubectl.exec(command, this.connection)
   }
 
-  async remoteExecStream(command: string, onData: (chunk: string) => void): Promise<void> {
-    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout)
+  async remoteExecStream(
+    command: string,
+    onData: (chunk: string) => void,
+    hasStreamedOutput?: () => boolean
+  ): Promise<void> {
+    await this.kubectl.execStream(command, this.connection, onData, this.executionTimeout, hasStreamedOutput)
   }
 
   execute(code: string, loader?: string, projectPath?: string): Promise<string> {
     return new Promise(async resolve => {
-      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
+      const optionalArgs = [loader ? `--loader=${base64Encode(loader || '')}` : '', queryLogArg()]
+        .filter(Boolean)
+        .join(' ')
+      const command = `${this.command(projectPath)} execute ${base64Encode(code)} ${optionalArgs}`
       const result = await this.kubectl.exec(command, this.connection, this.executionTimeout)
       resolve(result)
     })

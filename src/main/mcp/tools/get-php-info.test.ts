@@ -8,6 +8,23 @@ vi.mock('electron', () => ({
   },
 }))
 
+// db_manager loads better-sqlite3 at import time: mock it so unit tests
+// never load the native module (compiled for Electron, not for Node)
+vi.mock('better-sqlite3', () => ({
+  default: class MockDatabase {
+    prepare = vi.fn().mockReturnValue({ get: vi.fn(), all: vi.fn().mockReturnValue([]), run: vi.fn() })
+    transaction = vi.fn().mockImplementation((fn: any) => fn)
+    pragma = vi.fn()
+  },
+}))
+
+vi.mock('./project-connection', () => ({
+  resolveProjectConnection: vi.fn().mockReturnValue({
+    tab: { id: 1, name: 'app', path: '/app', execution: 'local' },
+    connection: { id: 'local-1', type: 'local', php: 'php' },
+  }),
+}))
+
 import { GetPhpInfoHandler } from './get-php-info'
 
 describe('GetPhpInfoHandler Unit Tests', () => {
@@ -41,7 +58,6 @@ FOO => bar
     }
 
     mockConnectionManager = {
-      getActiveConnection: vi.fn().mockReturnValue({ id: 'local-1', type: 'local', php: 'php' }),
       getClient: vi.fn().mockReturnValue(mockClient),
       getConnectionName: vi.fn().mockReturnValue('Local Connection'),
     }
@@ -49,13 +65,12 @@ FOO => bar
     handler = new GetPhpInfoHandler(mockConnectionManager)
   })
 
-  it('throws CONNECTION_ERROR if no active connection is set', async () => {
-    mockConnectionManager.getActiveConnection.mockReturnValue(null)
-    await expect(handler.handle({})).rejects.toThrow(/No active connection available/)
+  it('throws INVALID_PARAMETERS when projectId is not provided', async () => {
+    await expect(handler.handle({})).rejects.toThrow(/Specify a projectId/)
   })
 
   it('returns parsed PHP info with all sections when section is all', async () => {
-    const result = await handler.handle({ section: 'all' })
+    const result = await handler.handle({ projectId: 1, section: 'all' })
 
     expect(result.phpVersion).toBe('8.3.1')
     expect(result.sections.general.version).toBe('8.3.1')
@@ -68,7 +83,7 @@ FOO => bar
   })
 
   it('filters sections when a specific section is requested', async () => {
-    const result = await handler.handle({ section: 'general' })
+    const result = await handler.handle({ projectId: 1, section: 'general' })
 
     expect(result.phpVersion).toBe('8.3.1')
     expect(result.sections.general).toBeDefined()
@@ -77,12 +92,14 @@ FOO => bar
   })
 
   it('throws CONNECTION_ERROR if section name is unknown', async () => {
-    await expect(handler.handle({ section: 'invalid' as any })).rejects.toThrow(/Failed to retrieve PHP info/)
+    await expect(handler.handle({ projectId: 1, section: 'invalid' as any })).rejects.toThrow(
+      /Failed to retrieve PHP info/
+    )
   })
 
   it('parses JSON output returned by phar client info command', async () => {
     mockClient.info.mockResolvedValue(JSON.stringify({ name: 'Laravel', version: '11.0.0', php_version: '8.5.0' }))
-    const result = await handler.handle({ section: 'all' })
+    const result = await handler.handle({ projectId: 1, section: 'all' })
 
     expect(result.phpVersion).toBe('8.5.0')
     expect(result.sections.general.frameworkName).toBe('Laravel')

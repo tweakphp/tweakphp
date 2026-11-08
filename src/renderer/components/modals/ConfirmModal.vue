@@ -22,6 +22,10 @@
   const emit = defineEmits<{
     (e: 'confirm'): void
     (e: 'cancel'): void
+    // Reka-initiated closes only (X, Esc, outside click). The programmatic
+    // closeModal does not route through here: handlers that need to reset
+    // their state on every close path should do it in their own actions.
+    (e: 'closed'): void
   }>()
 
   const modal = ref<InstanceType<typeof Modal> | null>(null)
@@ -44,19 +48,27 @@
     emit('confirm')
   }
 
+  const onClosed = () => {
+    emit('closed')
+  }
+
   defineExpose({ openModal, closeModal })
 </script>
 
 <template>
-  <Modal :title="props.title" ref="modal" :size="props.size">
+  <Modal :title="props.title" ref="modal" :size="props.size" @closed="onClosed">
     <div class="text-sm">
       <slot />
     </div>
     <template #actions>
-      <div class="flex justify-end gap-2">
-        <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
-        <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
-      </div>
+      <!-- Custom actions (extra buttons, different labels/styling); falls
+           back to the standard Cancel/Confirm row -->
+      <slot name="actions">
+        <div class="flex justify-end gap-2">
+          <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
+          <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
+        </div>
+      </slot>
     </template>
   </Modal>
 </template>

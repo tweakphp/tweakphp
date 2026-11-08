@@ -15,11 +15,19 @@
   import { useConnectionView } from '../../composables/useConnectionView'
   import RowActions from '../interactions/RowActions.vue'
   import EmptyState from '../EmptyState.vue'
+  import { computed } from 'vue'
+  import { useTabsStore } from '../../stores/tabs'
 
   const kubectlStore = useKubectlStore()
+  const tabsStore = useTabsStore()
   const loadingPods = ref(false)
   const pods = ref([])
   const emit = defineEmits(['connected', 'removed'])
+
+  // Connections are atomic to a project: only list the current project's own
+  const projectConnections = computed(() =>
+    kubectlStore.connections.filter(connection => connection.tab_id === tabsStore.current?.id)
+  )
 
   /* @ts-ignore */
   const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
@@ -89,11 +97,11 @@
           </div>
         </div>
         <Divider />
-        <template v-for="connection in kubectlStore.connections">
+        <template v-for="connection in projectConnections">
           <div class="grid grid-cols-5 gap-2 items-center">
-            <div class="flex items-center">
-              <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
-              {{ connection.name }}
+            <div class="flex items-center min-w-0">
+              <div class="size-4 rounded-full mr-1 shrink-0" :class="[`bg-${connection.color}-500`]"></div>
+              <AutoScrollText>{{ connection.name }}</AutoScrollText>
             </div>
             <div class="min-w-0">
               <AutoScrollText>{{ connection.context }}</AutoScrollText>
@@ -133,10 +141,7 @@
           <Divider />
         </template>
       </div>
-      <EmptyState
-        v-if="Object.values(kubectlStore.connections).length === 0"
-        message="No connections yet, click the + button to add one."
-      />
+      <EmptyState v-if="projectConnections.length === 0" message="No connections yet, click the + button to add one." />
     </div>
     <KubectlConnectModal ref="connectModal" :id="editId" />
   </div>

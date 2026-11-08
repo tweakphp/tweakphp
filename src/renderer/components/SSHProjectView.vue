@@ -49,8 +49,11 @@
       type: 'code',
       name: connection.name,
       execution: 'ssh',
-      ssh: { id: connection.id },
+      connectionId: String(connection.id),
     })
+    // Connections are atomic to a project: the new project owns this connection
+    connection.tab_id = tab.id
+    sshStore.updateConnection(connection.id, connection)
     router.push({ name: 'code', params: { id: tab.id } })
     emit('opened')
   }

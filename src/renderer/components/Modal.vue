@@ -15,6 +15,7 @@
   import { XMarkIcon } from '@heroicons/vue/24/outline'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { ModalSize } from '../../types/modal.type'
+  import { useModalActivity } from '../composables/useModalActivity'
 
   const settingsStore = useSettingsStore()
   const slots = useSlots()
@@ -71,6 +72,7 @@
   }>()
 
   const isModalOpen = ref(false)
+  useModalActivity(isModalOpen, () => props.modal)
 
   const openModal = () => {
     isModalOpen.value = true
@@ -154,7 +156,7 @@
         />
       </Transition>
 
-      <div class="fixed inset-0 z-50 overflow-y-auto no-scrollbar pointer-events-none">
+      <div class="fixed inset-0 z-50 no-scrollbar pointer-events-none">
         <div class="flex min-h-full items-center justify-center p-4 text-center">
           <Transition
             appear

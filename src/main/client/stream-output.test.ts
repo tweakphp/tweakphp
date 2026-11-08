@@ -16,4 +16,34 @@ describe('createStreamOutputParser', () => {
       { type: 'error', error: { message: 'second' } },
     ])
   })
+
+  it('reports streamed output only after protocol events were delivered', () => {
+    const parser = createStreamOutputParser(() => {})
+
+    expect(parser.hasStreamOutput()).toBe(false)
+
+    parser.push('plain output without protocol markers\n')
+
+    expect(parser.hasStreamOutput()).toBe(false)
+
+    parser.push('TWEAKPHP_STREAM:{"type":"output","index":0,"data":"first"}\n')
+
+    expect(parser.hasStreamOutput()).toBe(true)
+  })
+
+  it('reports streamed output while a protocol line is still buffered', () => {
+    const parser = createStreamOutputParser(() => {})
+
+    parser.push('TWEAKPHP_STREAM:{"type":"outp')
+
+    expect(parser.hasStreamOutput()).toBe(true)
+  })
+
+  it('does not report streamed output for malformed protocol lines', () => {
+    const parser = createStreamOutputParser(() => {})
+
+    parser.push('TWEAKPHP_STREAM:not-json\n')
+
+    expect(parser.hasStreamOutput()).toBe(false)
+  })
 })

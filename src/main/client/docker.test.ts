@@ -14,8 +14,14 @@ vi.mock('../utils/ssh', () => ({
   },
 }))
 
+const mockSettings = vi.hoisted(() => ({
+  dockerKubectlExecutionTimeoutSeconds: 60,
+  queryLog: false,
+  outputMode: 'output',
+}))
+
 vi.mock('../settings', () => ({
-  getSettings: () => ({ dockerKubectlExecutionTimeoutSeconds: 60 }),
+  getSettings: () => mockSettings,
 }))
 
 vi.mock('child_process', () => ({
@@ -47,6 +53,8 @@ const createChildProcess = () => {
 describe('DockerClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSettings.queryLog = false
+    mockSettings.outputMode = 'output'
     ;(app as any).isPackaged = false
     Object.defineProperty(process, 'resourcesPath', {
       configurable: true,
@@ -152,7 +160,39 @@ describe('DockerClient', () => {
         '/var/www',
         'execute',
         expect.any(String),
+        '--query-log=false',
       ],
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+  })
+
+  it('enables the query log only when enabled and the output is stacked', async () => {
+    mockExecFile(() => 'output\n')
+    mockSettings.queryLog = true
+    mockSettings.outputMode = 'stacked'
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      user: 'sail',
+    } as any)
+
+    await client.execute('echo "test";')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      expect.arrayContaining(['--query-log=true']),
+      expect.objectContaining({ shell: false, timeout: 60_000 }),
+      expect.any(Function)
+    )
+
+    mockSettings.outputMode = 'output'
+    await client.execute('echo "test";')
+    expect(execFile).toHaveBeenCalledWith(
+      'docker',
+      expect.arrayContaining(['--query-log=false']),
       expect.objectContaining({ shell: false, timeout: 60_000 }),
       expect.any(Function)
     )
@@ -211,10 +251,82 @@ describe('DockerClient', () => {
         '/var/www',
         'execute-stream',
         expect.any(String),
+        '--query-log=false',
       ],
       { shell: false, windowsHide: true }
     )
     expect(events).toEqual([{ type: 'output', index: 0, data: 'test' }])
+  })
+
+  it('resolves a non-zero exit after streaming events, like dd() dying with code 1', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const events: any[] = []
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+      user: 'sail',
+    } as any)
+
+    const streaming = client.executeStreaming('dd("Test");', undefined, event => events.push(event))
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    child.stdout.emit('data', Buffer.from('TWEAKPHP_STREAM:{"type":"output","index":0,"data":"Test"}\n'))
+    child.emit('close', 1, null)
+
+    await expect(streaming).resolves.toBeUndefined()
+    expect(events).toEqual([{ type: 'output', index: 0, data: 'Test' }])
+  })
+
+  it('resolves a non-zero exit while a protocol line is still buffered', async () => {
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const events: any[] = []
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    const streaming = client.executeStreaming('dd("Test");', undefined, event => events.push(event))
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    child.stdout.emit('data', Buffer.from('TWEAKPHP_STREAM:{"type":"output","index":0,"data":"Test"}'))
+    child.emit('close', 1, null)
+
+    await expect(streaming).resolves.toBeUndefined()
+    expect(events).toEqual([{ type: 'output', index: 0, data: 'Test' }])
+  })
+
+  it('still rejects a failed streaming command that delivered no events', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const child = createChildProcess()
+    vi.mocked(spawn).mockReturnValue(child)
+    const client = new DockerClient({
+      type: 'docker',
+      container_name: 'my-container',
+      php_path: '/usr/bin/php',
+      client_path: '/tmp/client.phar',
+      working_directory: '/var/www',
+    } as any)
+
+    const streaming = client.executeStreaming('echo "test";')
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    child.stderr.emit('data', Buffer.from('Error response from daemon: No such container: my-container\n'))
+    child.emit('close', 127, null)
+
+    await expect(streaming).rejects.toThrow('Error response from daemon: No such container: my-container')
+    expect(consoleError).toHaveBeenCalledWith(
+      'Docker stream command failed',
+      expect.objectContaining({
+        args: expect.arrayContaining(['my-container']),
+        message: expect.stringContaining('Error response from daemon: No such container'),
+      })
+    )
+    consoleError.mockRestore()
   })
 
   it('executes Docker commands through SSH when configured', async () => {

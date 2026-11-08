@@ -5,7 +5,7 @@ import { WorkspaceFolder } from '../../types/workspace-folder.type'
 
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }))
 
-vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn() } })
+vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn(), on: vi.fn(), once: vi.fn(), removeListener: vi.fn() } })
 
 const makeFolder = (id: number, name: string): WorkspaceFolder => ({
   id,

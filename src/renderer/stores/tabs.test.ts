@@ -3,8 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { Tab } from '../../types/tab.type'
 import { useTabsStore, isRemoteOnly } from './tabs'
 import { useVaporStore } from './vapor'
-import { useSSHStore } from './ssh'
-import { useKubectlStore } from './kubectl'
+import { useConnectionsStore } from './connections'
 import { ConnectionConfig } from '../../types/ssh.type'
 import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
 import { ConnectionConfig as DockerConnectionConfig } from '../../types/docker.type'
@@ -23,7 +22,7 @@ vi.mock('../themes', () => ({
   themeColors: {},
 }))
 
-vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn() } })
+vi.stubGlobal('window', { ipcRenderer: { invoke, send: vi.fn(), on: vi.fn(), once: vi.fn(), removeListener: vi.fn() } })
 
 const makeTab = (overrides: Partial<Tab> & { id: number }): Tab => ({
   name: `tab-${overrides.id}`,
@@ -59,6 +58,145 @@ describe('tabs store', () => {
     setActivePinia(createPinia())
     tabsStore = useTabsStore()
     await tabsStore.ready
+  })
+
+  // ---- reloadFromDb (MCP push sync) ----
+
+  it('reloadFromDb keeps the current tab editor code by default', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, code: '<?php\n// local edits\n' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1, code: '<?php\n// from db\n' })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb()
+
+    expect(tabsStore.current?.code).toBe('<?php\n// local edits\n')
+  })
+
+  it('reloadFromDb takes the db code when the MCP wrote code for the current tab', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, code: '<?php\n// local edits\n' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1, code: '<?php\n// written by MCP\n' })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb({ codeUpdatedForTabId: 1 })
+
+    expect(tabsStore.current?.code).toBe('<?php\n// written by MCP\n')
+  })
+
+  it('reloadFromDb switches the current project when requested', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1 }), makeTab({ id: 2 })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1 }), makeTab({ id: 2 })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb({ currentProjectId: 2 })
+
+    expect(tabsStore.current?.id).toBe(2)
+  })
+
+  it('reloadFromDb bumps the reloadVersion so views re-sync their local tab reference', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1 })])
+    const before = tabsStore.reloadVersion
+
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([makeTab({ id: 1 })])
+      }
+      return Promise.resolve(undefined)
+    })
+
+    await tabsStore.reloadFromDb()
+
+    expect(tabsStore.reloadVersion).toBe(before + 1)
+  })
+
+  it('duplicateTab copies all the connections owned by the project (atomic ownership)', async () => {
+    seedTabs(tabsStore, [makeTab({ id: 1, execution: 'ssh', connection_id: '101' })])
+    tabsStore.setCurrent(tabsStore.tabs[0])
+
+    const connectionsStore = useConnectionsStore()
+    invoke.mockImplementation((channel: string) => {
+      if (channel === 'storage:connections:list') {
+        return Promise.resolve([
+          {
+            id: '101',
+            type: 'ssh',
+            name: 'prod',
+            host: '1.2.3.4',
+            username: 'deploy',
+            auth_type: 'password',
+            path: '/var/www',
+            tab_id: 1,
+          },
+          {
+            id: '201',
+            type: 'docker',
+            name: 'app',
+            container_name: 'app',
+            working_directory: '/var/www/html',
+            tab_id: 1,
+          },
+          {
+            id: '301',
+            type: 'ssh',
+            name: 'foreign',
+            host: '9.9.9.9',
+            tab_id: 2,
+          },
+        ])
+      }
+      if (channel === 'storage:tabs:list') {
+        return Promise.resolve([])
+      }
+      return Promise.resolve(undefined)
+    })
+    await connectionsStore.reload()
+
+    const clone = await tabsStore.duplicateTab(1)
+
+    expect(clone).not.toBeNull()
+    // every owned connection is copied for the clone, never shared
+    expect(invoke).toHaveBeenCalledWith(
+      'storage:connections:save',
+      expect.objectContaining({ type: 'ssh', host: '1.2.3.4', tab_id: clone!.id })
+    )
+    expect(invoke).toHaveBeenCalledWith(
+      'storage:connections:save',
+      expect.objectContaining({ type: 'docker', container_name: 'app', tab_id: clone!.id })
+    )
+
+    const savedPayloads = (invoke.mock.calls as any[][])
+      .filter(([channel]) => channel === 'storage:connections:save')
+      .map(([, payload]) => payload)
+    // only the two owned connections: the foreign one is not copied
+    expect(savedPayloads).toHaveLength(2)
+
+    // the tab must exist in the DB before its connections (FK on connections.tab_id)
+    const callIndexOf = (channel: string) => (invoke.mock.calls as any[][]).findIndex(([c]) => c === channel)
+    const firstSaveAll = invoke.mock.invocationCallOrder[callIndexOf('storage:tabs:save-all')]
+    const firstConnectionSave = invoke.mock.invocationCallOrder[callIndexOf('storage:connections:save')]
+    expect(firstSaveAll).toBeLessThan(firstConnectionSave)
+
+    // the clone's active connection maps to its own ssh copy
+    const sshCopy = savedPayloads.find(payload => payload.type === 'ssh')
+    expect(clone!.connection_id).toBe(String(sshCopy.id))
+    expect(clone!.connection_id).not.toBe('101')
   })
 
   // ---- applyGroupOrder ----
@@ -253,7 +391,8 @@ describe('tabs store', () => {
     expect(tabsStore.tabs.map(t => t.id)).toEqual([1])
     expect(tabsStore.current?.id).toBe(1)
     expect(routerReplace).toHaveBeenCalledWith({ name: 'code', params: { id: 1 } })
-    expect(vaporStore.getConnectionConfig(4)).toBeUndefined()
+    // archiving keeps the vapor config so the project can be restored intact
+    expect(vaporStore.getConnectionConfig(4)?.environment).toBe('production')
   })
 
   it('removeFolderTabs goes home when the removed folder held the last tabs', async () => {
@@ -287,7 +426,7 @@ describe('tabs store', () => {
 
   // ---- removeTab ----
 
-  it('removeTab cleans up the vapor config', async () => {
+  it('removeTab archives the tab and keeps its vapor config for a restore', async () => {
     const vaporStore = useVaporStore()
     seedTabs(tabsStore, [makeTab({ id: 5, execution: 'vapor' }), makeTab({ id: 6 })])
     tabsStore.current = tabsStore.tabs[0]
@@ -296,7 +435,7 @@ describe('tabs store', () => {
     await tabsStore.removeTab(5)
 
     expect(tabsStore.tabs.map(t => t.id)).toEqual([6])
-    expect(vaporStore.getConnectionConfig(5)).toBeUndefined()
+    expect(vaporStore.getConnectionConfig(5)?.environment).toBe('production')
   })
 
   it('removeTab is a no-op for an unknown tab', async () => {
@@ -314,13 +453,13 @@ describe('tabs store', () => {
       type: 'code',
       name: 'production',
       execution: 'ssh',
-      ssh: { id: 42 },
+      connectionId: '42',
     })
 
     expect(tab.path).toBeUndefined()
     expect(tab.name).toBe('production')
     expect(tab.execution).toBe('ssh')
-    expect(tab.ssh).toEqual({ id: 42 })
+    expect(tab.connection_id).toBe('42')
     expect(isRemoteOnly(tab)).toBe(true)
     expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
   })
@@ -339,8 +478,8 @@ describe('tabs store', () => {
   })
 
   it('getConnectionConfig returns the ssh connection for a remote-only tab', () => {
-    const sshStore = useSSHStore()
-    sshStore.connections.push({
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
       type: 'ssh',
       id: 42,
       name: 'production',
@@ -360,7 +499,7 @@ describe('tabs store', () => {
       type: 'code',
       name: 'production',
       execution: 'ssh',
-      ssh: { id: 42 },
+      connectionId: '42',
     })
 
     const connection = tabsStore.getConnectionConfig(tab)
@@ -374,12 +513,12 @@ describe('tabs store', () => {
       type: 'code',
       name: 'staging-cluster',
       execution: 'kubectl',
-      kubectl: { id: 7 },
+      connectionId: '7',
     })
 
     expect(tab.path).toBeUndefined()
     expect(tab.execution).toBe('kubectl')
-    expect(tab.kubectl).toEqual({ id: 7 })
+    expect(tab.connection_id).toBe('7')
     expect(isRemoteOnly(tab)).toBe(true)
 
     const connection = tabsStore.getConnectionConfig(tab)
@@ -387,8 +526,8 @@ describe('tabs store', () => {
   })
 
   it('getConnectionConfig returns the kubectl connection for a remote-only tab', () => {
-    const kubectlStore = useKubectlStore()
-    kubectlStore.connections.push({
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
       type: 'kubectl',
       id: 7,
       name: 'staging-cluster',
@@ -404,7 +543,7 @@ describe('tabs store', () => {
       type: 'code',
       name: 'staging-cluster',
       execution: 'kubectl',
-      kubectl: { id: 7 },
+      connectionId: '7',
     })
 
     const connection = tabsStore.getConnectionConfig(tab)
@@ -414,8 +553,10 @@ describe('tabs store', () => {
   })
 
   it('addTab creates a remote-only tab with a docker config', () => {
-    const docker = {
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
       type: 'docker',
+      id: 9,
       container_id: 'abc123',
       container_name: 'my-app',
       working_directory: '/var/www/html',
@@ -424,20 +565,20 @@ describe('tabs store', () => {
       client_path: '',
       ssh_id: 0,
       user: '',
-    } as DockerConnectionConfig
+    } as DockerConnectionConfig)
     const tab = tabsStore.addTab({
       type: 'code',
       name: 'my-app',
       execution: 'docker',
-      docker,
+      connectionId: '9',
     })
 
     expect(tab.path).toBeUndefined()
     expect(tab.execution).toBe('docker')
-    expect(tab.docker?.container_name).toBe('my-app')
     expect(isRemoteOnly(tab)).toBe(true)
 
     const connection = tabsStore.getConnectionConfig(tab)
     expect(connection?.type).toBe('docker')
+    expect((connection as DockerConnectionConfig).container_name).toBe('my-app')
   })
 })

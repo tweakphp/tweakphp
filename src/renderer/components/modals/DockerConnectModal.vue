@@ -5,14 +5,6 @@
   import DockerConnection from '../connections/DockerConnection.vue'
   import PrimaryButton from '../PrimaryButton.vue'
   import ArrowPathIcon from '../icons/ArrowPathIcon.vue'
-  import { useTabsStore } from '../../stores/tabs'
-  import { ConnectionConfig } from '../../../types/docker.type'
-
-  const tabsStore = useTabsStore()
-
-  const emit = defineEmits<{
-    (e: 'connected', connection: ConnectionConfig): void
-  }>()
 
   const modal = ref<InstanceType<typeof Modal> | null>(null)
   const form = ref<InstanceType<typeof DockerConnection> | null>(null)
@@ -25,24 +17,12 @@
     modal.value?.closeModal()
   }
 
-  // Toolbar usage: the docker config is stored on the current project tab
-  const onConnected = (connection: ConnectionConfig) => {
-    const tab = tabsStore.getCurrent()
-    if (tab) {
-      tab.docker = connection
-      tab.execution = 'docker'
-      tabsStore.updateTab(tab)
-    }
-    emit('connected', connection)
-    closeModal()
-  }
-
   defineExpose({ openModal, closeModal })
 </script>
 
 <template>
-  <Modal ref="modal" title="Connect to Docker" :size="ModalSize.XL">
-    <DockerConnection ref="form" @connected="onConnected" />
+  <Modal ref="modal" title="Connect to Docker" :size="ModalSize.TWO_XL">
+    <DockerConnection ref="form" @connected="closeModal()" />
     <template #actions>
       <div class="flex justify-end gap-2">
         <PrimaryButton @click="form?.connect()" :disabled="form?.connecting">

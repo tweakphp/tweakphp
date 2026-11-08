@@ -5,12 +5,11 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
 import { ConnectionConfig } from '../../types/vapor.type'
+import { normalizeForEval } from './complete-php-statement'
 
 const execAsync = promisify(exec)
 
 export class VaporClient extends BaseClient {
-  protected blackListToken = ['<?php', '?>']
-
   constructor(public connection: ConnectionConfig) {
     super(connection)
   }
@@ -25,7 +24,9 @@ export class VaporClient extends BaseClient {
       return 'The loader option is not supported in connection type vapor.'
     }
 
-    const codeCleaned = this.removeBlacklistedTokens(code)
+    // Eval rejects a leading open tag: normalize it. The semicolon completion
+    // is a frontend (editor) concern and is intentionally not applied here.
+    const codeCleaned = normalizeForEval(code)
     const encoded = Buffer.from(codeCleaned).toString('base64')
     const command = `vapor tinker ${env} -n --code 'eval(base64_decode("${encoded}"));'`
 
@@ -69,17 +70,5 @@ export class VaporClient extends BaseClient {
     } catch (error) {
       return []
     }
-  }
-
-  /**
-   * Remove blacklisted tokens from the code.
-   */
-  private removeBlacklistedTokens(code: string): string {
-    this.blackListToken.forEach(token => {
-      if (code.includes(token)) {
-        code = code.replace(token, '')
-      }
-    })
-    return code
   }
 }

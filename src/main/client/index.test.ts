@@ -7,6 +7,7 @@ const mockConnect = vi.fn()
 const mockSetup = vi.fn()
 const mockDisconnect = vi.fn()
 const mockExecute = vi.fn()
+const mockExecuteStreaming = vi.fn()
 const mockInfo = vi.fn()
 const mockAction = vi.fn()
 const mockShow = vi.fn()
@@ -21,6 +22,7 @@ vi.mock('./local', () => ({
     setup = mockSetup
     disconnect = mockDisconnect
     execute = mockExecute
+    executeStreaming = mockExecuteStreaming
     info = mockInfo
     action = mockAction
     getConnection() {
@@ -174,6 +176,29 @@ describe('IPC Router (index.ts)', () => {
   })
 
   describe('execute handler', () => {
+    it('adds a missing semicolon before executing without changing the payload', async () => {
+      const payload = { connection: { type: 'local' }, code: 'echo 1 // comment' }
+      mockConnect.mockResolvedValue(undefined)
+      mockExecute.mockResolvedValue('output')
+
+      await ipcHandlers['client.execute']({ reply: vi.fn() }, payload)
+
+      expect(mockExecute).toHaveBeenCalledWith('echo 1; // comment', undefined)
+      expect(payload.code).toBe('echo 1 // comment')
+    })
+
+    it('adds a missing semicolon for streaming execution', async () => {
+      mockConnect.mockResolvedValue(undefined)
+      mockExecuteStreaming.mockResolvedValue(undefined)
+
+      await ipcHandlers['client.execute'](
+        { reply: vi.fn() },
+        { connection: { type: 'local' }, code: 'echo 1', streaming: true }
+      )
+
+      expect(mockExecuteStreaming).toHaveBeenCalledWith('echo 1;', undefined, expect.any(Function))
+    })
+
     it('successfully executes command and parses TWEAKPHP_RESULT payload', async () => {
       const mockEvent = { reply: vi.fn() }
       const payload = { connection: { type: 'local' }, code: 'echo 1;', loader: 'my-loader' }

@@ -91,7 +91,8 @@ export class Kubectl {
     command: string,
     params: { pod: string; context: string; namespace: string },
     onData: (chunk: string) => void,
-    timeoutMs = KUBECTL_EXECUTION_TIMEOUT
+    timeoutMs = KUBECTL_EXECUTION_TIMEOUT,
+    hasStreamedOutput?: () => boolean
   ): Promise<void> {
     const args = this.getExecArgs(command, params)
     return await new Promise((resolve, reject) => {
@@ -121,7 +122,7 @@ export class Kubectl {
         if (settled) return
         settled = true
         if (timeout) clearTimeout(timeout)
-        if (code === 0) {
+        if (code === 0 || hasStreamedOutput?.()) {
           resolve()
           return
         }

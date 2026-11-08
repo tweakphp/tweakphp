@@ -16,4 +16,5 @@ export const useSSHStore = createConnectionStore<ConnectionConfig>('ssh', 'ssh-c
   path: connection.path ?? '',
   php: connection.php ?? '',
   client_path: connection.phar_client ? connection.phar_client : connection.client_path,
+  tab_id: connection.tab_id ?? null,
 }))

@@ -18,10 +18,10 @@
   const changeNameProject = ref()
   import { Tab } from '../../../types/tab.type'
   import { WorkspaceFolder } from '../../../types/workspace-folder.type'
-  import TrashIcon from '@/components/icons/TrashIcon.vue'
   import PencilIcon from '@/components/icons/PencilIcon.vue'
   import events from '../../events'
   import {
+    ArchiveBoxIcon,
     ArrowTopRightOnSquareIcon,
     CheckIcon,
     DocumentDuplicateIcon,
@@ -79,8 +79,8 @@
     window.ipcRenderer.send('source.openPath', props.tab.path)
   }
 
-  function removeTab() {
-    events.dispatchEvent(new CustomEvent('tab.close.request', { detail: props.tab.id }))
+  function archiveTab() {
+    events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: props.tab.id }))
   }
 
   function togglePin() {
@@ -123,7 +123,7 @@
 
   const hoverChangeName = ref(false)
   const hoverGoToFolder = ref(false)
-  const hoverRemoveTab = ref(false)
+  const hoverArchiveTab = ref(false)
   const hoverPin = ref(false)
   const hoverNoFolder = ref(false)
   const hoverDuplicate = ref(false)
@@ -437,19 +437,19 @@
         </ContextMenuItem>
         <ContextMenuSeparator class="h-[1px] border-t border-gray-200/20" />
         <ContextMenuItem
-          value="Remove project"
-          @click="removeTab"
-          @mouseover="hoverRemoveTab = true"
-          @mouseleave="hoverRemoveTab = false"
+          value="Archive project"
+          @click="archiveTab"
+          @mouseover="hoverArchiveTab = true"
+          @mouseleave="hoverArchiveTab = false"
           :class="['group flex w-full items-center rounded-md py-1 px-2 text-xs min-w-[100px] truncate cursor-pointer']"
           :style="{
             color: settingsStore.colors.foreground,
-            backgroundColor: hoverRemoveTab ? settingsStore.colors.background : settingsStore.colors.backgroundLight,
+            backgroundColor: hoverArchiveTab ? settingsStore.colors.background : settingsStore.colors.backgroundLight,
           }"
         >
           <div class="flex items-center justify-start gap-1">
-            <TrashIcon class="w-3 h-3 shrink-0" />
-            <span>Remove</span>
+            <ArchiveBoxIcon class="w-3 h-3 shrink-0" />
+            <span>Archive</span>
           </div>
         </ContextMenuItem>
       </ContextMenuContent>

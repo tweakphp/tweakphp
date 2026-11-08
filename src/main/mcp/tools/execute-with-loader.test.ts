@@ -8,6 +8,16 @@ vi.mock('electron', () => ({
   },
 }))
 
+// db_manager loads better-sqlite3 at import time: mock it so unit tests
+// never load the native module (compiled for Electron, not for Node)
+vi.mock('better-sqlite3', () => ({
+  default: class MockDatabase {
+    prepare = vi.fn().mockReturnValue({ get: vi.fn(), all: vi.fn().mockReturnValue([]), run: vi.fn() })
+    transaction = vi.fn().mockImplementation((fn: any) => fn)
+    pragma = vi.fn()
+  },
+}))
+
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
@@ -34,8 +44,7 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
     }
 
     mockConnectionManager = {
-      getActiveConnection: vi.fn().mockReturnValue({ id: 'local-1', type: 'local', php: 'php', path: '/laravel-app' }),
-      getConnection: vi.fn(),
+      getConnection: vi.fn().mockReturnValue({ id: 'local-1', type: 'local', php: 'php', path: '/laravel-app' }),
       getClient: vi.fn().mockReturnValue(mockClient),
       getConnectionName: vi.fn().mockReturnValue('Local Connection'),
     }
@@ -48,9 +57,17 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
   })
 
   it('throws error if code or loader parameters are invalid', async () => {
-    await expect(handler.handle({ code: '', loader: 'laravel' })).rejects.toThrow(/Parameter "code" is required/)
-    await expect(handler.handle({ code: '<?php echo 1;', loader: 'invalid' as any })).rejects.toThrow(
-      /Parameter "loader" must be either/
+    await expect(handler.handle({ code: '', loader: 'laravel', connectionId: 'local-1' })).rejects.toThrow(
+      /Parameter "code" is required/
+    )
+    await expect(
+      handler.handle({ code: '<?php echo 1;', loader: 'invalid' as any, connectionId: 'local-1' })
+    ).rejects.toThrow(/Parameter "loader" must be either/)
+  })
+
+  it('throws INVALID_PARAMETERS when neither connectionId nor projectId is provided', async () => {
+    await expect(handler.handle({ code: '<?php echo 1;', loader: 'laravel' })).rejects.toThrow(
+      /Specify a connectionId or a projectId/
     )
   })
 
@@ -62,6 +79,7 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
       code: '<?php echo User::count();',
       loader: 'laravel',
       projectPath: '/laravel-app',
+      connectionId: 'local-1',
     })
 
     expect(result.output).toEqual({ users: 10 })
@@ -77,12 +95,13 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
         code: '<?php echo 1;',
         loader: 'laravel',
         projectPath: '/non-existent-app',
+        connectionId: 'local-1',
       })
     ).rejects.toThrow(/Failed to initialize laravel framework/)
   })
 
   it('bypasses local fs validation for remote connections (docker/ssh/kubectl)', async () => {
-    mockConnectionManager.getActiveConnection.mockReturnValue({
+    mockConnectionManager.getConnection.mockReturnValue({
       id: 'docker-1',
       type: 'docker',
       path: '/var/www/html',
@@ -92,6 +111,7 @@ describe('ExecuteWithLoaderHandler Unit Tests', () => {
     const result = await handler.handle({
       code: '<?php echo "Remote";',
       loader: 'symfony',
+      connectionId: 'docker-1',
     })
 
     expect(result.output).toBe('Remote Execution Output')

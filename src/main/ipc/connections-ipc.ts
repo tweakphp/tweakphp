@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { ConnectionsRepository } from '../db/repositories/connections-repository'
 import { ConnectionManager } from '../mcp/connection-manager'
+import { broadcastAppChange } from './broadcast'
 
 const connectionsRepo = new ConnectionsRepository()
 
@@ -12,10 +13,8 @@ export function setMcpConnectionManager(manager: ConnectionManager): void {
 }
 
 function syncConnectionsToMcpManager(manager: ConnectionManager): void {
-  const connections = connectionsRepo.getAllConnections()
-  for (const conn of connections) {
-    manager.addConnection(conn.id, conn as any)
-  }
+  // Full resync (adds new rows, drops deleted ones — e.g. project cascade deletes)
+  manager.reloadFromRepository()
 }
 
 export function syncConnectionsToMcpManagerIfActive(): void {
@@ -36,23 +35,20 @@ export function registerConnectionsIpc(): void {
       globalMcpConnectionManager.addConnection(saved.id, saved as any)
     }
 
+    // Push sync: re-align all renderer stores (unified + per-type) with the DB
+    broadcastAppChange('app:connections:changed')
+
     return saved
   })
 
   ipcMain.handle('storage:connections:delete', async (_event, id: string) => {
     const success = connectionsRepo.deleteConnection(id)
-    if (success && globalMcpConnectionManager) {
-      globalMcpConnectionManager.removeConnection(id)
+    if (success) {
+      if (globalMcpConnectionManager) {
+        globalMcpConnectionManager.removeConnection(id)
+      }
+      broadcastAppChange('app:connections:changed')
     }
     return { success }
-  })
-
-  ipcMain.handle('storage:connections:set-active', async (_event, id: string) => {
-    connectionsRepo.setActiveConnection(id)
-    const active = connectionsRepo.getActiveConnection()
-    if (active && globalMcpConnectionManager) {
-      globalMcpConnectionManager.setActiveConnection(active as any)
-    }
-    return { success: true, active }
   })
 }

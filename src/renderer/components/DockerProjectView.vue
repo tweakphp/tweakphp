@@ -4,10 +4,12 @@
   import ArrowPathIcon from './icons/ArrowPathIcon.vue'
   import DockerConnection from './connections/DockerConnection.vue'
   import { useTabsStore } from '../stores/tabs'
+  import { useDockerStore } from '../stores/docker'
   import router from '../router'
   import { ConnectionConfig } from '../../types/docker.type'
 
   const tabsStore = useTabsStore()
+  const dockerStore = useDockerStore()
   const form = ref<InstanceType<typeof DockerConnection> | null>(null)
 
   const emit = defineEmits(['opened'])
@@ -17,8 +19,13 @@
       type: 'code',
       name: connection.container_name,
       execution: 'docker',
-      docker: connection,
     })
+    // Connections are atomic to a project: persist the docker config for
+    // this project and link it via connection_id
+    connection.tab_id = tab.id
+    dockerStore.upsertConnection(connection)
+    tab.connection_id = String(connection.id)
+    tabsStore.updateTab(tab)
     router.push({ name: 'code', params: { id: tab.id } })
     emit('opened')
   }

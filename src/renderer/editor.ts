@@ -2,7 +2,18 @@ import * as monaco from 'monaco-editor'
 
 export { installThemes } from './themes'
 
+// Language/theme registration must happen only once per app lifecycle:
+// re-registering the PHP Monarch tokenizer invalidates the tokenization of
+// every PHP model in the app (Monaco's TokenizationRegistry fires a change
+// event), which repaints all editors uncolored for a frame — visible as a
+// flicker whenever an Editor component (e.g. the snippet preview) remounts.
+let phpLanguageInstalled = false
+
 export const installPHPLanguage = () => {
+  if (phpLanguageInstalled) {
+    return
+  }
+  phpLanguageInstalled = true
   monaco.languages.register({
     id: 'php',
     extensions: ['.php', '.php4', '.php5', '.phtml', '.ctp'],
@@ -378,7 +389,13 @@ export const installPHPLanguage = () => {
   })
 }
 
+let outputLanguageInstalled = false
+
 export const installOutputLanguage = () => {
+  if (outputLanguageInstalled) {
+    return
+  }
+  outputLanguageInstalled = true
   monaco.languages.register({ id: 'output' })
   monaco.languages.setMonarchTokensProvider('output', {
     tokenizer: {

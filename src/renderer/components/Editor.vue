@@ -1,5 +1,13 @@
+<script lang="ts">
+  import type * as Monaco from 'monaco-editor'
+
+  // Models created here can be shared by multiple editor instances with the
+  // same URI. Dispose them only after the last instance releases them.
+  const managedModels = new Map<Monaco.editor.ITextModel, number>()
+</script>
+
 <script setup lang="ts">
-  import { onBeforeUnmount, onMounted, ref } from 'vue'
+  import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import * as monaco from 'monaco-editor'
   import { MonacoLanguageClient } from 'monaco-languageclient'
   import { toSocket, WebSocketMessageReader, WebSocketMessageWriter } from 'vscode-ws-jsonrpc'
@@ -11,6 +19,8 @@
   import { useTabsStore } from '../stores/tabs'
   import { registerCompletion } from 'monacopilot'
   import ToastAlert from '@/components/ToastAlert.vue'
+  import events from '../events'
+  import { normalizedSnippetLength } from '../utils/snippet-insertion'
 
   const settingsStore = useSettingsStore()
   const lspStore = useLspStore()
@@ -60,6 +70,7 @@
   const vimMode = ref<ReturnType<typeof initVimMode> | null>(null)
 
   const isUpdatingFromHistory = ref(false)
+
   function saveHistoryNow(tabId: number, code: string, cursor: monaco.IPosition) {
     if (!window.historyApi) {
       console.warn('History API is not available')
@@ -69,8 +80,41 @@
   }
 
   let languageClient: MonacoLanguageClient | null = null
+  let clientStarting = false
   let editor: monaco.editor.IStandaloneCodeEditor | null = null
-  const emit = defineEmits(['update:value'])
+  let editorModel: monaco.editor.ITextModel | null = null
+  let connectionInterval: ReturnType<typeof setInterval> | null = null
+  let connectionPending = false
+  let disposed = false
+  const sockets = new Set<WebSocket>()
+  const emit = defineEmits(['update:value', 'cursor-change', 'ready'])
+
+  // External value changes (e.g. code written by the MCP tools via the tabs
+  // store reload): keep the Monaco editor in sync with props.value.
+  // The identity check prevents feedback loops with our own update:value
+  // emissions (user typing round-trips through the parent with equal value),
+  // and the flag keeps the programmatic setValue from re-emitting.
+  watch(
+    () => props.value,
+    value => {
+      if (!editor || value === undefined || value === null) return
+      if (editor.getValue() === value) return
+
+      const position = editor.getPosition()
+      isUpdatingFromHistory.value = true
+      editor.setValue(value)
+      if (position) {
+        editor.setPosition(position)
+      }
+      isUpdatingFromHistory.value = false
+    }
+  )
+
+  watch(
+    () => props.readonly,
+    readonly => editor?.updateOptions({ readOnly: readonly }),
+    { flush: 'sync' }
+  )
 
   if (props.language === 'php') {
     installPHPLanguage()
@@ -85,6 +129,7 @@
 
     if (editorContainer.value) {
       editor = monaco.editor.create(editorContainer.value, {
+        model: null,
         readOnly: props.readonly,
         fontSize: settingsStore.settings.editorFontSize,
         minimap: {
@@ -99,7 +144,32 @@
         glyphMargin: false,
         scrollBeyondLastLine: false,
         lightbulb: { enabled: 'off' as monaco.editor.ShowLightbulbIconMode },
+        // Default word separators minus `$`, so double-clicking a PHP
+        // variable selects it including the dollar sign
+        wordSeparators: '`~!@#%^&*()-=+[{]}\\|;:\'",.<>/?',
       })
+
+      if (!props.readonly) {
+        editor.addAction({
+          id: 'save-snippet',
+          label: 'Save Snippet',
+          keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS],
+          contextMenuGroupId: '9_snippets',
+          contextMenuOrder: 1,
+          run: ed => {
+            const selection = ed.getSelection()
+            const model = ed.getModel()
+            if (!model) {
+              return
+            }
+            const code = selection && !selection.isEmpty() ? model.getValueInRange(selection) : ed.getValue()
+            if (!code.trim()) {
+              return
+            }
+            events.dispatchEvent(new CustomEvent('snippet.save.request', { detail: { code } }))
+          },
+        })
+      }
 
       if (props.enableHistory) {
         editor.addAction({
@@ -176,7 +246,8 @@
         })
       }
 
-      if (settingsStore.settings.vimMode === 'on') {
+      // Vim mode is pointless on a read-only preview (archive)
+      if (settingsStore.settings.vimMode === 'on' && !props.readonly) {
         vimMode.value = initVimMode(editor)
       }
 
@@ -184,12 +255,15 @@
       // virtual folder so the model URI is still unique per editor
       const file = `${props.path ?? 'remote'}/${props.editorId}.${props.language}`
 
-      let editorModel = monaco.editor.getModel(monaco.Uri.file(file))
+      editorModel = monaco.editor.getModel(monaco.Uri.file(file))
       if (!editorModel) {
         editorModel = monaco.editor.createModel(props.value, props.language, monaco.Uri.file(file))
+        managedModels.set(editorModel, 0)
       }
+      if (managedModels.has(editorModel)) managedModels.set(editorModel, managedModels.get(editorModel)! + 1)
 
       editor.setModel(editorModel)
+      editor.onDidChangeCursorPosition(event => emit('cursor-change', event.position))
 
       if (props.withAiCompletion && settingsStore.settings.aiStatus) {
         registerCompletion(monaco, editor, {
@@ -217,14 +291,21 @@
       if (props.autoFocus) {
         focusEditor()
       }
+      emit('cursor-change', editor.getPosition())
+      emit('ready')
 
       if (window.platformInfo.getPlatform() !== 'win32' && !props.readonly && props.path && props.language === 'php') {
-        const interval = setInterval(async () => {
+        connectionInterval = setInterval(async () => {
+          if (connectionPending || disposed) return
+          connectionPending = true
           try {
             await createWebSocketClient(`ws://127.0.0.1:${window.platformInfo.getLspPort()}`)
-            clearInterval(interval)
+            if (connectionInterval) clearInterval(connectionInterval)
+            connectionInterval = null
           } catch (error) {
-            console.error('WebSocket connection failed, retrying...', error)
+            if (!disposed) console.error('WebSocket connection failed, retrying...', error)
+          } finally {
+            connectionPending = false
           }
         }, 1000)
       }
@@ -232,7 +313,10 @@
   })
 
   onBeforeUnmount(async () => {
-    if (props.language === 'php' && !props.readonly) {
+    disposed = true
+    if (connectionInterval) clearInterval(connectionInterval)
+    for (const socket of sockets) socket.close()
+    if (props.language === 'php' && !props.readonly && props.path && window.platformInfo.getPlatform() !== 'win32') {
       lspStore.setDisconnected()
     }
 
@@ -247,10 +331,17 @@
 
       editor.dispose()
     }
-    if (languageClient && languageClient.isRunning()) {
-      if (languageClient) {
-        await languageClient.stop()
+    if (editorModel && managedModels.has(editorModel)) {
+      const remaining = managedModels.get(editorModel)! - 1
+      if (remaining === 0) {
+        managedModels.delete(editorModel)
+        editorModel.dispose()
+      } else {
+        managedModels.set(editorModel, remaining)
       }
+    }
+    if (languageClient && !clientStarting) {
+      if (languageClient.isRunning()) await languageClient.stop()
       await languageClient.dispose()
     }
   })
@@ -261,10 +352,10 @@
     }
   }
 
-  const focusEditor = () => {
+  const focusEditor = (moveToEnd = true) => {
     if (editor) {
       const model = editor.getModel()
-      if (model) {
+      if (model && moveToEnd) {
         const lineCount = model.getLineCount()
         const lastLine = model.getLineContent(lineCount)
         const lastColumn = lastLine.length + 1 // Column is 1-based index
@@ -273,9 +364,8 @@
           lineNumber: lineCount,
           column: lastColumn,
         })
-
-        editor.focus()
       }
+      editor.focus()
     }
   }
 
@@ -292,8 +382,14 @@
     return new Promise<void>((resolve, reject) => {
       lspStore.setConnecting()
       const webSocket = new WebSocket(url)
+      sockets.add(webSocket)
 
       webSocket.onopen = async () => {
+        if (disposed) {
+          webSocket.close()
+          reject(new Error('Editor disposed'))
+          return
+        }
         const socket = toSocket(webSocket)
         const messageTransports = {
           reader: new WebSocketMessageReader(socket),
@@ -308,10 +404,19 @@
         })
 
         try {
+          clientStarting = true
           await languageClient.start()
-          lspStore.setConnected()
+          clientStarting = false
+          if (disposed) {
+            await languageClient.stop()
+            await languageClient.dispose()
+          } else {
+            lspStore.setConnected()
+          }
         } catch (e) {
-          lspStore.setDisconnected()
+          clientStarting = false
+          if (disposed) await languageClient.dispose()
+          if (!disposed) lspStore.setDisconnected()
           // reject(error)
         }
 
@@ -323,12 +428,13 @@
       // }
 
       webSocket.onerror = error => {
-        lspStore.setDisconnected()
+        if (!disposed) lspStore.setDisconnected()
         reject(error)
       }
 
       webSocket.onclose = () => {
-        lspStore.setDisconnected()
+        sockets.delete(webSocket)
+        if (!disposed) lspStore.setDisconnected()
       }
     })
   }
@@ -388,16 +494,51 @@
     return model.getValueInRange(selection)
   }
 
+  const getPosition = (): monaco.IPosition | null => {
+    return editor ? editor.getPosition() : null
+  }
+
+  const insertTextAtPosition = (text: string, position: monaco.IPosition | null) => {
+    if (!editor) return
+    const model = editor.getModel()
+    if (!model) return
+
+    let pos = position
+    if (!pos || pos.lineNumber > model.getLineCount()) {
+      const lineCount = model.getLineCount()
+      pos = { lineNumber: lineCount, column: model.getLineContent(lineCount).length + 1 }
+    } else {
+      const lineLength = model.getLineContent(pos.lineNumber).length
+      pos = { lineNumber: pos.lineNumber, column: Math.min(pos.column, lineLength + 1) }
+    }
+
+    const offset = model.getOffsetAt(pos)
+    editor.pushUndoStop()
+    editor.executeEdits('snippet', [
+      {
+        range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+        text,
+        forceMoveMarkers: true,
+      },
+    ])
+    editor.setPosition(model.getPositionAt(offset + normalizedSnippetLength(text, model.getEOL())))
+    editor.pushUndoStop()
+    editor.focus()
+  }
+
   defineExpose({
     updateValue,
     focusEditor,
     reconnectLsp,
     getSelectedText,
+    getPosition,
+    isReady: () => Boolean(editor?.getModel()),
+    insertTextAtPosition,
   })
 </script>
 
 <template>
-  <div ref="editorContainer" class="w-full h-full">
+  <div ref="editorContainer" class="relative w-full h-full">
     <ToastAlert
       :key="new Date().getTime()"
       v-if="errorAiCompletion"

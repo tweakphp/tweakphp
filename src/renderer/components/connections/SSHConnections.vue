@@ -10,9 +10,17 @@
   import { useConnectionView } from '../../composables/useConnectionView'
   import RowActions from '../interactions/RowActions.vue'
   import EmptyState from '../EmptyState.vue'
+  import { computed } from 'vue'
+  import { useTabsStore } from '../../stores/tabs'
 
   const sshStore = useSSHStore()
+  const tabsStore = useTabsStore()
   const emit = defineEmits(['connected', 'removed'])
+
+  // Connections are atomic to a project: only list the current project's own
+  const projectConnections = computed(() =>
+    sshStore.connections.filter(connection => connection.tab_id === tabsStore.current?.id)
+  )
 
   /* @ts-ignore */
   const { connectModal, connecting, editId, add, edit, remove } = useConnectionView({
@@ -49,7 +57,7 @@
           </div>
         </div>
         <Divider />
-        <template v-for="connection in sshStore.connections">
+        <template v-for="connection in projectConnections">
           <div class="grid grid-cols-5 gap-2 items-center">
             <div class="flex items-center">
               <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
@@ -72,10 +80,7 @@
           <Divider />
         </template>
       </div>
-      <EmptyState
-        v-if="Object.values(sshStore.connections).length === 0"
-        message="No connections yet, click the + button to add one."
-      />
+      <EmptyState v-if="projectConnections.length === 0" message="No connections yet, click the + button to add one." />
     </div>
     <SSHConnectModal ref="connectModal" :id="editId" />
   </div>

@@ -68,6 +68,7 @@ export type ConnectionConfig =
   LocalConnectionConfig | SSHConnectionConfig | DockerConnectionConfig | KubectlConnectionConfig | VaporConnectionConfig
 
 export const LocalConnectionSchema = z.object({
+  tab_id: z.number().nullable().optional(),
   id: z.string(),
   type: z.literal('local'),
   name: z.string(),
@@ -76,6 +77,7 @@ export const LocalConnectionSchema = z.object({
 })
 
 export const SSHConnectionSchema = z.object({
+  tab_id: z.number().nullable().optional(),
   id: z.string(),
   type: z.literal('ssh'),
   name: z.string(),
@@ -93,6 +95,7 @@ export const SSHConnectionSchema = z.object({
 })
 
 export const DockerConnectionSchema = z.object({
+  tab_id: z.number().nullable().optional(),
   id: z.string(),
   type: z.literal('docker'),
   name: z.string(),
@@ -106,6 +109,7 @@ export const DockerConnectionSchema = z.object({
 })
 
 export const KubectlConnectionSchema = z.object({
+  tab_id: z.number().nullable().optional(),
   id: z.string(),
   type: z.literal('kubectl'),
   name: z.string(),
@@ -119,6 +123,7 @@ export const KubectlConnectionSchema = z.object({
 })
 
 export const VaporConnectionSchema = z.object({
+  tab_id: z.number().nullable().optional(),
   id: z.string(),
   type: z.literal('vapor'),
   name: z.string(),
