@@ -15,6 +15,7 @@
   import StackedOutput from '../components/StackedOutput.vue'
   import { useLoadersStore } from '../stores/loaders'
   import { useCodeExecution } from '../composables/useCodeExecution'
+  import { isRemoteOnly } from '../stores/tabs'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -115,7 +116,10 @@
   }
 
   const getInfo = () => {
-    vaporRequestEnvironmentTab()
+    // Vapor environments are discovered from the local project path
+    if (tab.value.path) {
+      vaporRequestEnvironmentTab()
+    }
     let connection = tabsStore.getConnectionConfig(tab.value)
     const { loader } = tab.value
     const loaderCode = getLoader(loader ?? '')
@@ -147,11 +151,6 @@
   onMounted(async () => {
     window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
-    if (settingsStore.settings.php === '') {
-      await router.push({ name: 'settings' })
-      alert('PHP path is not set!')
-      return
-    }
     let params: any = route.params
     if (params.id) {
       let t = tabsStore.findTab(params.id)
@@ -168,6 +167,13 @@
       }
     }
     if (!tab.value.id) {
+      return
+    }
+
+    // remote-only projects run PHP on the server, a local PHP binary is not needed
+    if (settingsStore.settings.php === '' && !isRemoteOnly(tab.value)) {
+      await router.push({ name: 'settings' })
+      alert('PHP path is not set!')
       return
     }
 

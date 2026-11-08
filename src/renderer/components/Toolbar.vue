@@ -21,6 +21,7 @@
   import DockerConnectModal from './modals/DockerConnectModal.vue'
   import SSHConnectionsModal from './modals/SSHConnectionsModal.vue'
   import KubectlConnectionsModal from './modals/KubectlConnectionsModal.vue'
+  import { isRemoteOnly } from '../stores/tabs'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -94,6 +95,11 @@
     if (!tabStore.current) return
     const ref = tabStore.current[type]
     if (ref && ref.id === id) {
+      // remote-only projects have no local counterpart to fall back to:
+      // keep the tab open and bound, the user can link another connection
+      if (isRemoteOnly(tabStore.current)) {
+        return
+      }
       tabStore.current.execution = 'local'
       tabStore.current[type] = undefined
       tabStore.updateTab(tabStore.current)
@@ -134,8 +140,9 @@
 
 <template>
   <div class="flex items-center gap-1" v-if="tab">
-    <!-- local -->
+    <!-- local: not available for remote-only projects (no local code) -->
     <SecondaryButton
+      v-if="!isRemoteOnly(tabStore.getCurrent())"
       without-border
       class="!px-2 h-6"
       @click="connect('local')"

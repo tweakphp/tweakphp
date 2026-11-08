@@ -180,7 +180,9 @@
         vimMode.value = initVimMode(editor)
       }
 
-      const file = `${props.path}/${props.editorId}.${props.language}`
+      // remote-only projects have no local path: fall back to a stable
+      // virtual folder so the model URI is still unique per editor
+      const file = `${props.path ?? 'remote'}/${props.editorId}.${props.language}`
 
       let editorModel = monaco.editor.getModel(monaco.Uri.file(file))
       if (!editorModel) {

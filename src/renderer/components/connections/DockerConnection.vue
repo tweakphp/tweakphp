@@ -17,6 +17,15 @@
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
   const emit = defineEmits(['connected'])
+  const props = defineProps({
+    // Prefill the form from the current tab's docker config (toolbar usage).
+    // The new-project modal disables it: the form must not inherit the
+    // docker config of an unrelated local project.
+    prefillFromCurrentTab: {
+      type: Boolean,
+      default: true,
+    },
+  })
 
   const loading = ref<boolean>(false)
   const containers = ref<{ id: string; name: string; image: string }[]>([])
@@ -71,15 +80,11 @@
       return
     }
     errorResponse.value = ''
-    let tab = tabsStore.getCurrent()
-    if (tab) {
-      form.value = reply.connection
-      form.value.ssh = undefined
-      tab.docker = form.value
-      tab.execution = form.value.type
-      tabsStore.updateTab(tab)
-    }
-    emit('connected')
+    form.value = reply.connection
+    form.value.ssh = undefined
+    // the parent decides what to do with the config: attach it to the
+    // current tab (toolbar) or create a remote-only project (new project)
+    emit('connected', JSON.parse(JSON.stringify(form.value)))
   }
 
   const selectDockerContainer = () => {
@@ -168,7 +173,7 @@
     fetchContainers()
 
     const docker = tabsStore.getCurrent()?.docker
-    if (docker) {
+    if (props.prefillFromCurrentTab && docker) {
       form.value = docker
     }
 
