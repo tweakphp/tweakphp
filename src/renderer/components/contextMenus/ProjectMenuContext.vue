@@ -2,6 +2,7 @@
   import { useSettingsStore } from '../../stores/settings'
   import { useTabsStore } from '../../stores/tabs'
   import { useFoldersStore } from '../../stores/folders'
+  import { useHistoryStore } from '../../stores/history'
   import {
     ContextMenuContent,
     ContextMenuItem,
@@ -26,6 +27,7 @@
     CheckIcon,
     DocumentDuplicateIcon,
     FolderIcon,
+    FolderOpenIcon,
     FolderPlusIcon,
     StarIcon,
     SwatchIcon,
@@ -33,10 +35,12 @@
   } from '@heroicons/vue/24/outline'
   import NewFolderModal from '@/components/modals/NewFolderModal.vue'
   import PromptModal from '@/components/modals/PromptModal.vue'
+  import ChangePathModal from '@/components/modals/ChangePathModal.vue'
 
   const settingsStore = useSettingsStore()
   const tabsStore = useTabsStore()
   const foldersStore = useFoldersStore()
+  const historyStore = useHistoryStore()
 
   const COLORS = [
     'slate',
@@ -73,6 +77,17 @@
 
   function openModalChangeName() {
     changeNameProject.value.openModal()
+  }
+
+  const changePathProject = ref()
+
+  function openModalChangePath() {
+    changePathProject.value?.openModal()
+  }
+
+  function changePath(path: string) {
+    tabsStore.updateTabPath(props.tab.id, path)
+    historyStore.addHistory({ path })
   }
 
   function goToFolder() {
@@ -122,6 +137,7 @@
   }
 
   const hoverChangeName = ref(false)
+  const hoverChangePath = ref(false)
   const hoverGoToFolder = ref(false)
   const hoverArchiveTab = ref(false)
   const hoverPin = ref(false)
@@ -160,6 +176,22 @@
           <div class="flex items-center justify-start gap-1">
             <PencilIcon class="w-3 h-3 shrink-0" />
             <span>Change name</span>
+          </div>
+        </ContextMenuItem>
+        <ContextMenuItem
+          value="Change Path"
+          @click="openModalChangePath"
+          @mouseover="hoverChangePath = true"
+          @mouseleave="hoverChangePath = false"
+          :class="['group flex w-full items-center rounded-md py-1 px-2 text-xs min-w-[100px] truncate cursor-pointer']"
+          :style="{
+            color: settingsStore.colors.foreground,
+            backgroundColor: hoverChangePath ? settingsStore.colors.background : settingsStore.colors.backgroundLight,
+          }"
+        >
+          <div class="flex items-center justify-start gap-1">
+            <FolderOpenIcon class="w-3 h-3 shrink-0" />
+            <span>Change path</span>
           </div>
         </ContextMenuItem>
         <ContextMenuItem
@@ -456,6 +488,7 @@
     </ContextMenuPortal>
   </ContextMenuRoot>
   <RenameTabModal ref="changeNameProject" :tab="tab" />
+  <ChangePathModal ref="changePathProject" :tab="tab" @confirm="changePath" />
   <NewFolderModal ref="newFolderModal" @created="onFolderCreated" />
   <PromptModal
     ref="customTagModal"

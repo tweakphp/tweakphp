@@ -232,7 +232,7 @@
     }
   )
 
-  watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type], async () => {
+  watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type, () => tab.value.path], async () => {
     await nextTick()
     getInfo()
   })
