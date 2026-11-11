@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { Tab } from '../../types/tab.type'
-import { useTabsStore } from './tabs'
+import { useTabsStore, isRemoteOnly } from './tabs'
 import { useVaporStore } from './vapor'
 import { useConnectionsStore } from './connections'
+import { ConnectionConfig } from '../../types/ssh.type'
+import { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
+import { ConnectionConfig as DockerConnectionConfig } from '../../types/docker.type'
 
 const { invoke, routerReplace } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -474,5 +477,141 @@ describe('tabs store', () => {
     await tabsStore.removeTab(999)
 
     expect(tabsStore.tabs.map(t => t.id)).toEqual([1])
+  })
+
+  // ---- remote-only projects ----
+
+  it('addTab creates a remote-only tab bound to an ssh connection', () => {
+    const tab = tabsStore.addTab({
+      type: 'code',
+      name: 'production',
+      execution: 'ssh',
+      connectionId: '42',
+    })
+
+    expect(tab.path).toBeUndefined()
+    expect(tab.name).toBe('production')
+    expect(tab.execution).toBe('ssh')
+    expect(tab.connection_id).toBe('42')
+    expect(isRemoteOnly(tab)).toBe(true)
+    expect(invoke).toHaveBeenCalledWith('storage:tabs:save-all', expect.any(Array))
+  })
+
+  it('addTab keeps the local behaviour (name from path, local execution)', () => {
+    const tab = tabsStore.addTab({ type: 'code', path: '/tmp/my-project' })
+
+    expect(tab.name).toBe('my-project')
+    expect(tab.execution).toBe('local')
+    expect(isRemoteOnly(tab)).toBe(false)
+  })
+
+  it('isRemoteOnly is false without a tab', () => {
+    expect(isRemoteOnly(null)).toBe(false)
+    expect(isRemoteOnly(undefined)).toBe(false)
+  })
+
+  it('getConnectionConfig returns the ssh connection for a remote-only tab', () => {
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
+      type: 'ssh',
+      id: 42,
+      name: 'production',
+      color: 'rose',
+      host: '1.2.3.4',
+      port: 22,
+      username: 'root',
+      auth_type: 'key',
+      password: undefined,
+      privateKey: undefined,
+      passphrase: undefined,
+      path: '/var/www',
+      php: undefined,
+      client_path: undefined,
+    } as ConnectionConfig)
+    const tab = tabsStore.addTab({
+      type: 'code',
+      name: 'production',
+      execution: 'ssh',
+      connectionId: '42',
+    })
+
+    const connection = tabsStore.getConnectionConfig(tab)
+
+    expect(connection?.type).toBe('ssh')
+    expect((connection as ConnectionConfig).id).toBe(42)
+  })
+
+  it('addTab creates a remote-only tab bound to a kubectl connection', () => {
+    const tab = tabsStore.addTab({
+      type: 'code',
+      name: 'staging-cluster',
+      execution: 'kubectl',
+      connectionId: '7',
+    })
+
+    expect(tab.path).toBeUndefined()
+    expect(tab.execution).toBe('kubectl')
+    expect(tab.connection_id).toBe('7')
+    expect(isRemoteOnly(tab)).toBe(true)
+
+    const connection = tabsStore.getConnectionConfig(tab)
+    expect(connection).toBeUndefined() // no saved kubectl connection with id 7 yet
+  })
+
+  it('getConnectionConfig returns the kubectl connection for a remote-only tab', () => {
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
+      type: 'kubectl',
+      id: 7,
+      name: 'staging-cluster',
+      color: 'sky',
+      context: 'staging',
+      namespace: 'app',
+      pod: 'app-0',
+      path: '/var/www',
+      php: undefined,
+      client_path: undefined,
+    } as unknown as KubectlConnectionConfig)
+    const tab = tabsStore.addTab({
+      type: 'code',
+      name: 'staging-cluster',
+      execution: 'kubectl',
+      connectionId: '7',
+    })
+
+    const connection = tabsStore.getConnectionConfig(tab)
+
+    expect(connection?.type).toBe('kubectl')
+    expect((connection as KubectlConnectionConfig).pod).toBe('app-0')
+  })
+
+  it('addTab creates a remote-only tab with a docker config', () => {
+    const connectionsStore = useConnectionsStore()
+    connectionsStore.connections.push({
+      type: 'docker',
+      id: 9,
+      container_id: 'abc123',
+      container_name: 'my-app',
+      working_directory: '/var/www/html',
+      php_version: '8.3',
+      php_path: '/usr/bin/php',
+      client_path: '',
+      ssh_id: 0,
+      user: '',
+    } as DockerConnectionConfig)
+    const tab = tabsStore.addTab({
+      type: 'code',
+      name: 'my-app',
+      execution: 'docker',
+      connectionId: '9',
+    })
+
+    expect(tab.path).toBeUndefined()
+    expect(tab.execution).toBe('docker')
+    expect(isRemoteOnly(tab)).toBe(true)
+
+    const connection = tabsStore.getConnectionConfig(tab)
+    expect(connection?.type).toBe('docker')
+    expect((connection as DockerConnectionConfig).container_name).toBe('my-app')
   })
 })

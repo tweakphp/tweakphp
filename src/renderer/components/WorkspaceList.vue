@@ -1,9 +1,19 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { ChevronDownIcon, FolderIcon, FolderOpenIcon, PlusIcon, StarIcon } from '@heroicons/vue/24/outline'
+  import {
+    PlusIcon,
+    ChevronDownIcon,
+    FolderIcon,
+    FolderOpenIcon,
+    ServerIcon,
+    StarIcon,
+  } from '@heroicons/vue/24/outline'
   import draggable from 'vuedraggable'
   import { whenever } from '@vueuse/core'
-  import { useTabsStore } from '../stores/tabs'
+  import { useTabsStore, isRemoteOnly } from '../stores/tabs'
+  import { useConnectionsStore } from '../stores/connections'
+  import DockerIcon from './icons/DockerIcon.vue'
+  import KubectlIcon from './icons/KubectlIcon.vue'
   import { useFoldersStore } from '../stores/folders'
   import { useSectionsStore } from '../stores/sections'
   import { useSettingsStore } from '../stores/settings'
@@ -27,6 +37,14 @@
   const foldersStore = useFoldersStore()
   const sectionsStore = useSectionsStore()
   const settingsStore = useSettingsStore()
+  const connectionsStore = useConnectionsStore()
+
+  // Colored icon shown on remote-only project tiles, using the color of the
+  // connection the project is bound to (ssh/kubectl; docker has no color)
+  const remoteColorClass = (tab: Tab): string => {
+    const connection = tab.connection_id ? connectionsStore.getConnection(tab.connection_id) : undefined
+    return connection?.color ? `text-${connection.color}-500` : ''
+  }
 
   // put: '<group>' rejects drops coming from other groups. With `put: true`
   // SortableJS accepts any group, so a dragged folder could land in a
@@ -331,6 +349,15 @@
                     @mousedown.middle="requestArchiveTab(tab.id)"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <template v-if="isRemoteOnly(tab)">
+                        <DockerIcon v-if="tab.execution === 'docker'" class="w-3.5 h-3.5 mr-2 shrink-0" />
+                        <KubectlIcon
+                          v-else-if="tab.execution === 'kubectl'"
+                          class="w-3.5 h-3.5 mr-2 shrink-0"
+                          :class="remoteColorClass(tab)"
+                        />
+                        <ServerIcon v-else class="w-3.5 h-3.5 mr-2 shrink-0" :class="remoteColorClass(tab)" />
+                      </template>
                       <span
                         v-if="tab.color || tab.tag"
                         v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
@@ -489,6 +516,19 @@
                               @mousedown.middle="requestArchiveTab(tab.id)"
                             >
                               <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                                <template v-if="isRemoteOnly(tab)">
+                                  <DockerIcon v-if="tab.execution === 'docker'" class="w-3.5 h-3.5 mr-2 shrink-0" />
+                                  <KubectlIcon
+                                    v-else-if="tab.execution === 'kubectl'"
+                                    class="w-3.5 h-3.5 mr-2 shrink-0"
+                                    :class="remoteColorClass(tab)"
+                                  />
+                                  <ServerIcon
+                                    v-else
+                                    class="w-3.5 h-3.5 mr-2 shrink-0"
+                                    :class="remoteColorClass(tab)"
+                                  ></ServerIcon>
+                                </template>
                                 <span
                                   v-if="tab.color || tab.tag"
                                   v-tippy="{ content: tab.tag ?? null, placement: 'top' }"
@@ -586,6 +626,15 @@
                     :dragging="isDraggingAny"
                   >
                     <span class="flex items-center text-sm truncate block min-w-0 flex-1">
+                      <template v-if="isRemoteOnly(tab)">
+                        <DockerIcon v-if="tab.execution === 'docker'" class="w-3.5 h-3.5 mr-2 shrink-0" />
+                        <KubectlIcon
+                          v-else-if="tab.execution === 'kubectl'"
+                          class="w-3.5 h-3.5 mr-2 shrink-0"
+                          :class="remoteColorClass(tab)"
+                        />
+                        <ServerIcon v-else class="w-3.5 h-3.5 mr-2 shrink-0" :class="remoteColorClass(tab)" />
+                      </template>
                       <span
                         v-if="tab.color || tab.tag"
                         v-tippy="{ content: tab.tag ?? null, placement: 'top' }"

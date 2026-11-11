@@ -1,12 +1,12 @@
 <script setup lang="ts">
   import { RouterLink, RouterView } from 'vue-router'
   import { useColorSchemeStore } from './stores/color-scheme'
-  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
+  import { ArchiveBoxIcon, CogIcon, InformationCircleIcon, ServerIcon } from '@heroicons/vue/24/outline'
   import SidebarItem from './components/SidebarItem.vue'
   import TitleBar from './components/TitleBar.vue'
   import WorkspaceList from './components/WorkspaceList.vue'
   import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-  import { useTabsStore } from './stores/tabs'
+  import { useTabsStore, isRemoteOnly } from './stores/tabs'
   import { useHistoryStore } from './stores/history'
   import router from './router/index'
   import events from './events'
@@ -53,6 +53,11 @@
   const handleLspReconnect = () => {
     window.ipcRenderer.send('lsp.restart')
   }
+
+  // Remote-only projects have no local code, so the LSP (which indexes the
+  // local workspace) cannot run for them: show a neutral indicator instead
+  // of the misleading "disconnected" one.
+  const isRemoteProject = computed(() => isRemoteOnly(tabStore.current))
 
   const tabInfo = computed(() => {
     const info = tabStore.current?.info
@@ -315,7 +320,19 @@
                 </RouterLink>
               </div>
               <div v-if="!isUtilityPage" class="flex items-center justify-center gap-2">
-                <div class="flex items-center cursor-pointer" v-tippy="lspStatusTooltip" @click="handleLspReconnect">
+                <div
+                  v-if="isRemoteProject"
+                  class="flex items-center opacity-50"
+                  v-tippy="'LSP is not available for remote-only projects'"
+                >
+                  <ServerIcon class="size-4" />
+                </div>
+                <div
+                  v-else
+                  class="flex items-center cursor-pointer"
+                  v-tippy="lspStatusTooltip"
+                  @click="handleLspReconnect"
+                >
                   <div
                     class="rounded-full size-4"
                     :class="{

@@ -31,6 +31,7 @@
   import KubectlConnectionsModal from './modals/KubectlConnectionsModal.vue'
   import SnippetsModal from './modals/SnippetsModal.vue'
   import { useDockerStore } from '../stores/docker.ts'
+  import { isRemoteOnly } from '../stores/tabs'
 
   const tabStore = useTabsStore()
   const settingsStore = useSettingsStore()
@@ -134,6 +135,11 @@
   const remoteRemoved = (id: number) => {
     if (!tabStore.current) return
     if (String(tabStore.current.connection_id) === String(id)) {
+      // remote-only projects have no local counterpart to fall back to:
+      // keep the tab open and bound, the user can link another connection
+      if (isRemoteOnly(tabStore.current)) {
+        return
+      }
       tabStore.current.execution = 'local'
       tabStore.current.connection_id = null
       tabStore.updateTab(tabStore.current)
@@ -230,8 +236,9 @@
       <span class="text-xs">Snippets</span>
     </SecondaryButton>
 
-    <!-- local -->
+    <!-- local: not available for remote-only projects (no local code) -->
     <SecondaryButton
+      v-if="!isRemoteOnly(tabStore.getCurrent())"
       without-border
       class="!px-2 h-6"
       @click="connect('local')"

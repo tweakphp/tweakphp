@@ -19,6 +19,15 @@
   const sshStore = useSSHStore()
   const dockerStore = useDockerStore()
   const emit = defineEmits(['connected'])
+  const props = defineProps({
+    // Prefill the form from the current tab's docker config (toolbar usage).
+    // The new-project modal disables it: the form must not inherit the
+    // docker config of an unrelated local project.
+    prefillFromCurrentTab: {
+      type: Boolean,
+      default: true,
+    },
+  })
 
   const loading = ref<boolean>(false)
   const containers = ref<{ id: string; name: string; image: string }[]>([])
@@ -74,24 +83,29 @@
       return
     }
     errorResponse.value = ''
-    let tab = tabsStore.getCurrent()
+    const connected = reply.connection as ConnectionConfig
+    connected.ssh = undefined
+    connected.id = matchingDockerConnectionId(connected) ?? Date.now()
+    connected.name = connected.container_name
+
+    // Toolbar usage: the docker connection is bound to the current project.
+    // The new-project modal disables binding: it creates a remote-only
+    // project from the emitted config instead.
+    const tab = props.prefillFromCurrentTab ? tabsStore.getCurrent() : undefined
     if (tab) {
-      const connected = reply.connection as ConnectionConfig
-      connected.ssh = undefined
-      connected.id = matchingDockerConnectionId(connected) ?? Date.now()
-      connected.name = connected.container_name
       // Connections are atomic to a project: the docker connection belongs to this project
       connected.tab_id = tab.id
-      form.value = connected
-
-      // Persist the docker connection in the connections table (like ssh/kubectl)
       dockerStore.upsertConnection(connected)
 
       tab.execution = 'docker'
       tab.connection_id = String(connected.id)
       tabsStore.updateTab(tab)
     }
-    emit('connected')
+
+    form.value = connected
+    // the parent decides what to do with the config: it is already bound to
+    // the current tab above, or used to create a remote-only project
+    emit('connected', JSON.parse(JSON.stringify(connected)))
   }
 
   // Reuse the stored connection id when reconnecting to the same
@@ -193,14 +207,18 @@
   onMounted(() => {
     fetchContainers()
 
-    // Prefill from the project's stored docker connection (connection_id)
-    const currentTab = tabsStore.getCurrent()
-    const stored =
-      currentTab?.connection_id != null
-        ? dockerStore.connections.find(c => String(c.id) === currentTab.connection_id)
-        : undefined
-    if (stored) {
-      form.value = { ...stored }
+    // Prefill from the project's stored docker connection (connection_id).
+    // The new-project modal disables it: the form must not inherit the
+    // docker config of an unrelated local project.
+    if (props.prefillFromCurrentTab) {
+      const currentTab = tabsStore.getCurrent()
+      const stored =
+        currentTab?.connection_id != null
+          ? dockerStore.connections.find(c => String(c.id) === currentTab.connection_id)
+          : undefined
+      if (stored) {
+        form.value = { ...stored }
+      }
     }
 
     selectDockerContainer()
