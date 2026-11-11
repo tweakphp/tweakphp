@@ -131,6 +131,21 @@ jobs:
           npm run build
           npx electron-builder --mac --universal --publish never -c.forceCodeSigning=true
 
+      - name: Verify packaged app.asar is not empty
+        if: runner.os == 'macOS'
+        run: |
+          ASAR="release/mac-universal/TweakPHP.app/Contents/Resources/app.asar"
+          if [ ! -f "$ASAR" ]; then
+            echo "::error::app.asar not found at ${ASAR}"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$ASAR" 2>/dev/null || stat -f%z "$ASAR")
+          echo "app.asar size: ${SIZE} bytes"
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "::error::app.asar is only ${SIZE} bytes (empty archive). The app would quit immediately at launch."
+            exit 1
+          fi
+
       - name: Build Linux packages
         if: runner.os == 'Linux'
         env:
