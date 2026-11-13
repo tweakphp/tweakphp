@@ -38,6 +38,12 @@ const defaultSettings: Settings = {
   theme: 'dracula',
   editorFontSize: 15,
   editorWordWrap: 'on',
+  editorLineNumbers: 'on',
+  editorIndentGuides: 'on',
+  outputFontSize: 15,
+  outputWordWrap: 'on',
+  outputLineNumbers: 'on',
+  outputIndentGuides: 'on',
   layout: 'vertical',
   outputMode: 'output',
   vimMode: 'off',
@@ -113,13 +119,23 @@ export const getSettings = () => {
 
   if (settingsRaw) {
     let settingsJson = JSON.parse(settingsRaw)
+    const editorFontSize = settingsJson.editorFontSize || defaultSettings.editorFontSize
+    const editorWordWrap = settingsJson.editorWordWrap || defaultSettings.editorWordWrap
+    const editorLineNumbers = settingsJson.editorLineNumbers || defaultSettings.editorLineNumbers
+    const editorIndentGuides = settingsJson.editorIndentGuides || defaultSettings.editorIndentGuides
     settings = {
       version: defaultSettings.version,
       laravelPath: defaultSettings.laravelPath,
       php: settingsJson.php || defaultSettings.php,
       theme: settingsJson.theme || defaultSettings.theme,
-      editorFontSize: settingsJson.editorFontSize || defaultSettings.editorFontSize,
-      editorWordWrap: settingsJson.editorWordWrap || defaultSettings.editorWordWrap,
+      editorFontSize,
+      editorWordWrap,
+      editorLineNumbers,
+      editorIndentGuides,
+      outputFontSize: settingsJson.outputFontSize || editorFontSize,
+      outputWordWrap: settingsJson.outputWordWrap || editorWordWrap,
+      outputLineNumbers: settingsJson.outputLineNumbers || editorLineNumbers,
+      outputIndentGuides: settingsJson.outputIndentGuides || editorIndentGuides,
       layout: settingsJson.layout || defaultSettings.layout,
       outputMode: resolveOutputMode(settingsJson),
       vimMode: settingsJson.vimMode || defaultSettings.vimMode,
