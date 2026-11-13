@@ -287,6 +287,22 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
+  const updateTabPath = (tabId: number, newPath: string) => {
+    const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
+    if (!tabToUpdate || newPath.trim() === '') {
+      return
+    }
+    const trimmedPath = newPath.trim()
+    // keep the name in sync only while it still mirrors the old path's folder,
+    // so a custom name is never overwritten
+    const oldFolderName = (tabToUpdate.path ?? '').split(/[/\\]/).pop() ?? ''
+    if (tabToUpdate.name === oldFolderName) {
+      tabToUpdate.name = trimmedPath.split(/[/\\]/).pop() ?? trimmedPath
+    }
+    tabToUpdate.path = trimmedPath
+    updateTab(tabToUpdate)
+  }
+
   const updateTabColor = (tabId: number, color: string | null) => {
     const tabToUpdate = tabs.value.find(tab => tab.id === tabId)
     if (!tabToUpdate) {
@@ -425,6 +441,7 @@ export const useTabsStore = defineStore('tabs', () => {
     setCurrent,
     getCurrent,
     updateTabName,
+    updateTabPath,
     updateTabColor,
     updateTabTag,
     moveTab,
