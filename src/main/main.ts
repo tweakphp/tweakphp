@@ -56,7 +56,9 @@ const createMainWindow = async () => {
     },
     alwaysOnTop: false,
     center: true,
-    icon: path.join(app.getAppPath(), 'build/icon.png'),
+    icon: app.isPackaged
+      ? path.join(process.resourcesPath, 'build/icon.png')
+      : path.join(__dirname, '../build/icon.png'),
   })
 
   window.setMenuBarVisibility(false)
