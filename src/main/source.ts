@@ -4,6 +4,7 @@ import { IpcMainEvent } from 'electron'
 export const init = async () => {
   ipcMain.on('source.open', open)
   ipcMain.on('source.openPath', openPath)
+  ipcMain.handle('source.pickDirectory', pickDirectory)
 }
 
 export const open = async (event: IpcMainEvent) => {
@@ -13,6 +14,15 @@ export const open = async (event: IpcMainEvent) => {
       event.reply('source.open.reply', result.filePaths[0])
     }
   })
+}
+
+// Returns the directory selected by the user, or null when the dialog is cancelled
+export const pickDirectory = async (): Promise<string | null> => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+  return result.filePaths[0]
 }
 
 export const openPath = async (_event: IpcMainEvent, path: string) => {

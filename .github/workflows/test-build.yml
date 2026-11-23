@@ -39,6 +39,21 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           SKIP_NOTARIZE: true
 
+      - name: Verify packaged app.asar is not empty
+        if: matrix.os == 'macos-latest'
+        run: |
+          ASAR=$(find release -path '*/TweakPHP.app/Contents/Resources/app.asar' 2>/dev/null | head -1)
+          if [ -z "$ASAR" ]; then
+            echo "::error::no app.asar found under release/"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$ASAR" 2>/dev/null || stat -f%z "$ASAR")
+          echo "${ASAR}: ${SIZE} bytes"
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "::error::app.asar is only ${SIZE} bytes (empty archive). The app would quit immediately at launch."
+            exit 1
+          fi
+
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
         run: npm run build-linux
