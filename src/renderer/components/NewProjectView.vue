@@ -60,7 +60,7 @@
 <template>
   <div class="mt-3 w-full mx-auto">
     <div class="flex items-center justify-between">
-      <TextInput id="filter" placeholder="Filter projects" v-model="filter" />
+      <TextInput id="filter" placeholder="Filter projects" v-model="filter" data-autofocus />
       <SecondaryButton @click="openProject">Open folder</SecondaryButton>
     </div>
     <Divider class="mt-3" />

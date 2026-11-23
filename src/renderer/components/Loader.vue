@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import TextInput from '../components/TextInput.vue'
-  import { onMounted, Ref, ref } from 'vue'
+  import { nextTick, onBeforeUnmount, onMounted, Ref, ref } from 'vue'
   import { useLoadersStore } from '../stores/loaders'
   import { Loader } from '../../types/loader.type'
   import Editor from './Editor.vue'
@@ -49,6 +49,8 @@ class MyCustomLoader extends BaseLoader
   const saved = ref(false)
   const editor = ref()
   const editorIsReady = ref(false)
+  let readyTimer: ReturnType<typeof setTimeout> | null = null
+  let allowEditorAutofocus = Boolean(props.edit)
 
   onMounted(() => {
     if (props.edit) {
@@ -57,10 +59,17 @@ class MyCustomLoader extends BaseLoader
         form.value = { ...loader }
       }
     }
-    setTimeout(() => {
+    readyTimer = setTimeout(() => {
       editorIsReady.value = true
       editor.value.updateValue(form.value.code)
+      if (allowEditorAutofocus) {
+        void nextTick(() => editor.value?.focusEditor())
+      }
     }, 100)
+  })
+
+  onBeforeUnmount(() => {
+    if (readyTimer) clearTimeout(readyTimer)
   })
 
   const save = () => {
@@ -84,7 +93,15 @@ class MyCustomLoader extends BaseLoader
 <template>
   <div class="mt-3 w-full mx-auto">
     <form class="mx-auto space-y-3">
-      <TextInput id="name" v-model="form.name" placeholder="MyCustomLoader" class="w-full" />
+      <TextInput
+        id="name"
+        v-model="form.name"
+        placeholder="MyCustomLoader"
+        :data-autofocus="props.edit ? undefined : true"
+        @pointerdown="allowEditorAutofocus = false"
+        @keydown="allowEditorAutofocus = false"
+        class="w-full"
+      />
       <Editor
         ref="editor"
         v-show="editorIsReady"

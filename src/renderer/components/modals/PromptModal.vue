@@ -69,6 +69,7 @@
         class="w-full"
         :id="props.id"
         v-model="value"
+        data-autofocus
         @keyup.enter="confirm"
         :placeholder="props.placeholder"
       />

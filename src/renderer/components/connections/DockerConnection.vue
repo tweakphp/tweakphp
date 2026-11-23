@@ -250,6 +250,7 @@
               <SelectInput
                 placeholder="Select container"
                 id="docker-containers"
+                data-autofocus
                 v-model="form.container_name"
                 @change="selectDockerContainer"
               >

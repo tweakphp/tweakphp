@@ -65,7 +65,7 @@
            back to the standard Cancel/Confirm row -->
       <slot name="actions">
         <div class="flex justify-end gap-2">
-          <SecondaryButton @click="cancel">{{ props.cancelText }}</SecondaryButton>
+          <SecondaryButton data-autofocus @click="cancel">{{ props.cancelText }}</SecondaryButton>
           <PrimaryButton @click="confirm">{{ props.confirmText }}</PrimaryButton>
         </div>
       </slot>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import path, { join } from 'path'
 import log from 'electron-log/main'
 
@@ -24,18 +24,39 @@ import { AiCompletion } from './tools/ai-completion.ts'
 import { Tab } from '../types/tab.type.ts'
 import { initLogger } from './utils/logger.ts'
 
+Object.assign(console, log.functions)
+
+initLogger(log, settings.settingsDir, 7)
+
 runMigrations()
 initStorageIpc()
 
 fixPath()
 
-Object.assign(console, log.functions)
-
-initLogger(log, settings.settingsDir, 7)
-
 dotenv.config()
 
 export let window: BrowserWindow
+
+const RESIZE_SAVE_DEBOUNCE_MS = 300
+let resizeSaveTimer: NodeJS.Timeout | null = null
+
+const saveWindowSize = () => {
+  if (!window || window.isDestroyed()) return
+  const [width, height] = window.getSize()
+  settings.setSettings({
+    ...settings.getSettings(),
+    windowWidth: width,
+    windowHeight: height,
+  })
+}
+
+const flushPendingWindowSizeSave = () => {
+  if (resizeSaveTimer) {
+    clearTimeout(resizeSaveTimer)
+    resizeSaveTimer = null
+    saveWindowSize()
+  }
+}
 
 const createMainWindow = async () => {
   window = new BrowserWindow({
@@ -80,6 +101,7 @@ const createMainWindow = async () => {
   })
 
   window.on('close', (): void => {
+    flushPendingWindowSizeSave()
     window.webContents.send('ssh.disconnect')
   })
 
@@ -88,12 +110,13 @@ const createMainWindow = async () => {
   })
 
   window.on('resize', (): void => {
-    const [width, height] = window.getSize()
-    settings.setSettings({
-      ...settings.getSettings(),
-      windowWidth: width,
-      windowHeight: height,
-    })
+    if (resizeSaveTimer) {
+      clearTimeout(resizeSaveTimer)
+    }
+    resizeSaveTimer = setTimeout(() => {
+      resizeSaveTimer = null
+      saveWindowSize()
+    }, RESIZE_SAVE_DEBOUNCE_MS)
   })
 
   const isDev: boolean = process.env.NODE_ENV === 'development'
@@ -130,8 +153,15 @@ const initializeModules = async () => {
 }
 
 app.whenReady().then(async () => {
-  await createMainWindow()
-  await initializeModules()
+  try {
+    await createMainWindow()
+    await initializeModules()
+  } catch (error) {
+    console.error('Failed to start TweakPHP:', error)
+    const message = error instanceof Error ? error.message : String(error)
+    dialog.showErrorBox('TweakPHP failed to start', message)
+    app.exit(1)
+  }
 })
 
 app.on('window-all-closed', () => {

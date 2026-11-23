@@ -23,6 +23,8 @@ vi.mock('fs', () => ({
   mkdirSync: vi.fn(),
   appendFileSync: vi.fn(),
   writeFileSync: vi.fn(),
+  renameSync: vi.fn(),
+  unlinkSync: vi.fn(),
 }))
 
 import { ExecuteWithLoaderHandler } from './execute-with-loader'
