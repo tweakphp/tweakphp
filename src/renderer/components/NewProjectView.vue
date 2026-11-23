@@ -9,6 +9,7 @@
   import { History } from '../../types/history.type'
   import TextInput from './TextInput.vue'
   import SecondaryButton from './SecondaryButton.vue'
+  import PrimaryButton from './PrimaryButton.vue'
   import EmptyState from './EmptyState.vue'
   import router from '../router'
 
@@ -77,10 +78,9 @@
           class="!p-1 !border-transparent"
           @click="removeHistory(h)"
         >
-          <SecondaryButton without-border>
-            <TrashIcon class="size-4" />
-          </SecondaryButton>
+          <TrashIcon class="size-4" />
         </SecondaryButton>
+        <PrimaryButton class="ml-2" @click="addTab(h)"> Open </PrimaryButton>
       </div>
       <div v-if="history.length === 0">
         <EmptyState message="No projects found" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { useSettingsStore } from '../../stores/settings'
-  import { useTabsStore } from '../../stores/tabs'
+  import { useTabsStore, isRemoteOnly } from '../../stores/tabs'
   import { useFoldersStore } from '../../stores/folders'
   import { useHistoryStore } from '../../stores/history'
   import {
@@ -82,15 +82,24 @@
   const changePathProject = ref()
 
   function openModalChangePath() {
+    if (isRemoteOnly(props.tab)) {
+      return
+    }
     changePathProject.value?.openModal()
   }
 
   function changePath(path: string) {
+    if (isRemoteOnly(props.tab)) {
+      return
+    }
     tabsStore.updateTabPath(props.tab.id, path)
     historyStore.addHistory({ path })
   }
 
   function goToFolder() {
+    if (isRemoteOnly(props.tab)) {
+      return
+    }
     window.ipcRenderer.send('source.openPath', props.tab.path)
   }
 
@@ -179,6 +188,7 @@
           </div>
         </ContextMenuItem>
         <ContextMenuItem
+          v-if="!isRemoteOnly(props.tab)"
           value="Change Path"
           @click="openModalChangePath"
           @mouseover="hoverChangePath = true"
@@ -450,6 +460,7 @@
           </div>
         </ContextMenuItem>
         <ContextMenuItem
+          v-if="!isRemoteOnly(props.tab)"
           value="Go to folder"
           @click="goToFolder"
           @mouseover="hoverGoToFolder = true"
@@ -488,7 +499,7 @@
     </ContextMenuPortal>
   </ContextMenuRoot>
   <RenameTabModal ref="changeNameProject" :tab="tab" />
-  <ChangePathModal ref="changePathProject" :tab="tab" @confirm="changePath" />
+  <ChangePathModal v-if="!isRemoteOnly(props.tab)" ref="changePathProject" :tab="tab" @confirm="changePath" />
   <NewFolderModal ref="newFolderModal" @created="onFolderCreated" />
   <PromptModal
     ref="customTagModal"

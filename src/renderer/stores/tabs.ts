@@ -98,7 +98,15 @@ export const useTabsStore = defineStore('tabs', () => {
     tabs.value.splice(firstIndex, 0, tab)
   }
 
-  const addTab = (data: { id?: number | null; type: string; path: string; folderId?: number | null }) => {
+  const addTab = (data: {
+    id?: number | null
+    type: string
+    path?: string
+    name?: string
+    execution?: string
+    connectionId?: string | null
+    folderId?: number | null
+  }) => {
     if (!data.id) {
       data.id = Date.now()
     }
@@ -106,9 +114,10 @@ export const useTabsStore = defineStore('tabs', () => {
     let tab: Tab = {
       id: data.id,
       type: data.type,
-      name: data.path.split(/[/\\]/).pop() as string,
+      name: data.name ?? (data.path ? (data.path.split(/[/\\]/).pop() as string) : ''),
       path: data.path,
-      execution: 'local',
+      execution: data.execution ?? 'local',
+      connection_id: data.connectionId ?? null,
       code: '<?php\n\n',
       result: [],
       queries: [],
@@ -457,6 +466,13 @@ export const useTabsStore = defineStore('tabs', () => {
     ready,
   }
 })
+
+// A remote-only project has no local path: the code lives on the SSH
+// server only. Everything local (LSP, local execution, folder actions)
+// is unavailable for these tabs.
+export const isRemoteOnly = (tab: Tab | null | undefined): boolean => {
+  return !!tab && !tab.path
+}
 
 const normalize = (tab: any): Tab => {
   const isResultArray = (arr: any): arr is Result[] => {
