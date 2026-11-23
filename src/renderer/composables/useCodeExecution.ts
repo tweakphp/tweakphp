@@ -273,6 +273,22 @@ export function useCodeExecution(options: {
 
   const executeHandler = () => {
     const connection = options.tabsStore.getConnectionConfig(options.tab.value)
+    if (!connection) {
+      options.executeStore.setExecuting(false)
+      options.tab.value.queries = []
+      options.tab.value.result = [
+        {
+          line: 0,
+          code: '',
+          output: 'No connection configured for this project. Please select or reconnect an execution environment.',
+          html: '',
+        },
+      ]
+      updateResultEditor()
+      options.tabsStore.updateTab(options.tab.value)
+      return
+    }
+
     const { loader } = options.tab.value
     const selected = options.codeEditor?.value?.getSelectedText() ?? ''
     const code = selected !== '' ? selected : options.tab.value.code

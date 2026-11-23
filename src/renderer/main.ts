@@ -19,6 +19,7 @@ import { useLoadersStore } from './stores/loaders'
 import { useHistoryStore } from './stores/history'
 import { useColorSchemeStore } from './stores/color-scheme'
 import { useUpdateStore } from './stores/update'
+import { useConnectionsStore } from './stores/connections'
 
 useWorkerFactory({
   ignoreMapping: true,
@@ -45,11 +46,13 @@ const bootstrap = async () => {
   const historyStore = useHistoryStore(pinia)
   const colorSchemeStore = useColorSchemeStore(pinia)
   const updateStore = useUpdateStore(pinia)
+  const connectionsStore = useConnectionsStore(pinia)
 
   app.mount('#app')
 
   await Promise.all([
     tabsStore.ready,
+    connectionsStore.ready,
     sshStore.ready,
     kubectlStore.ready,
     vaporStore.ready,

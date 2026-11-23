@@ -106,4 +106,17 @@ FOO => bar
     expect(result.sections.general.frameworkVersion).toBe('11.0.0')
     expect(result.sections.general.version).toBe('8.5.0')
   })
+
+  it('extracts JSON info output when PHP deprecation warnings precede it', async () => {
+    mockClient.info.mockResolvedValue(
+      'Deprecated: Some notice in file.php on line 10' +
+        JSON.stringify({ name: 'Laravel', version: '11.57.1', php_version: '8.4.1' })
+    )
+    const result = await handler.handle({ projectId: 1, section: 'all' })
+
+    expect(result.phpVersion).toBe('8.4.1')
+    expect(result.sections.general.frameworkName).toBe('Laravel')
+    expect(result.sections.general.frameworkVersion).toBe('11.57.1')
+    expect(result.sections.general.version).toBe('8.4.1')
+  })
 })

@@ -9,6 +9,7 @@
   import { ConnectReply, ActionReply } from '../../../types/client.type.ts'
   import { useSSHStore } from '../../stores/ssh'
   import { useDockerStore } from '../../stores/docker'
+  import { useConnectionsStore } from '../../stores/connections'
   import SecondaryButton from '@/components/SecondaryButton.vue'
   import { PlusIcon } from '@heroicons/vue/24/outline'
   import SSHConnectModal from '../modals/SSHConnectModal.vue'
@@ -18,6 +19,7 @@
   const tabsStore = useTabsStore()
   const sshStore = useSSHStore()
   const dockerStore = useDockerStore()
+  const connectionsStore = useConnectionsStore()
   const emit = defineEmits(['connected'])
 
   const loading = ref<boolean>(false)
@@ -64,7 +66,7 @@
     })
   }
 
-  const connectReply = (e: any) => {
+  const connectReply = async (e: any) => {
     const reply = e.detail as ConnectReply
     if (reply.data?.state !== 'connect-docker') {
       return
@@ -85,7 +87,9 @@
       form.value = connected
 
       // Persist the docker connection in the connections table (like ssh/kubectl)
-      dockerStore.upsertConnection(connected)
+      // before saving the tab so the foreign key and connectionsStore are in sync
+      await dockerStore.upsertConnection(connected)
+      await connectionsStore.reload()
 
       tab.execution = 'docker'
       tab.connection_id = String(connected.id)

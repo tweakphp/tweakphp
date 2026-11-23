@@ -24,19 +24,20 @@ const setup = () => {
   })
   const rawOutput = computed(() => joinResultOutputs(visibleResults(tab.value.result, 'explicit')))
   const updateValue = vi.fn()
+  const setExecuting = vi.fn()
   const execution = useCodeExecution({
     tab,
     rawOutput,
     resultEditor: ref({ updateValue }),
     settingsStore: useSettingsStore(),
-    executeStore: { setExecuting: vi.fn() },
+    executeStore: { setExecuting },
     tabsStore: { getConnectionConfig: () => undefined, updateTab: vi.fn() },
     loadersStore: { get: () => undefined },
   })
   const stream = (event: Record<string, unknown>) =>
     execution.executeStreamListener(new CustomEvent('stream', { detail: { tabId: 1, event } }))
 
-  return { tab, rawOutput, updateValue, stream }
+  return { tab, rawOutput, updateValue, setExecuting, executeHandler: execution.executeHandler, stream }
 }
 
 describe('streaming output', () => {
@@ -98,5 +99,16 @@ describe('streaming output', () => {
 
     expect(rawOutput.value).toBe('')
     expect(visibleResults(tab.value.result, 'all')[0].output).toBe('User {...}')
+  })
+
+  it('does not throw when executing without a configured connection', () => {
+    const { tab, setExecuting, executeHandler } = setup()
+    const send = vi.fn()
+    ;(window as any).ipcRenderer = { send }
+
+    expect(() => executeHandler()).not.toThrow()
+    expect(send).not.toHaveBeenCalled()
+    expect(setExecuting).toHaveBeenCalledWith(false)
+    expect(tab.value.result[0].output).toContain('No connection configured')
   })
 })

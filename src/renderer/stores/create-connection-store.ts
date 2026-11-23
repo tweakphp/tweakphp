@@ -43,14 +43,14 @@ export function createConnectionStore<T extends { id: number }>(
     }
 
     // Insert or update by id in one call (used by the docker connect flow)
-    const upsertConnection = (config: T): void => {
+    const upsertConnection = async (config: T): Promise<void> => {
       const index = connections.value.findIndex(c => c.id === config.id)
       if (index !== -1) {
         connections.value[index] = config
       } else {
         connections.value.push(config)
       }
-      void window.ipcRenderer.invoke('storage:connections:save', toPlain(config))
+      await window.ipcRenderer.invoke('storage:connections:save', toPlain(config))
     }
 
     const remove = (id: number) => {
