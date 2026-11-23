@@ -167,6 +167,35 @@
     activeConnection.value?.type === 'docker' ? activeConnection.value.container_name : undefined
   )
 
+  const isRemoteProject = computed(() => isRemoteOnly(tab.value))
+
+  const remoteConnectionName = computed(() => {
+    if (!tab.value) return ''
+    if (tab.value.execution === 'docker') return activeDockerName.value || tab.value.name
+    if (tab.value.execution === 'ssh') return activeSshName.value || tab.value.name
+    if (tab.value.execution === 'kubectl') return activeKubectlName.value || tab.value.name
+    if (tab.value.execution === 'vapor' && vaporConfig.value?.environment) {
+      return capitalize(vaporConfig.value.environment)
+    }
+    return tab.value.name
+  })
+
+  const remoteConnectionType = computed(() => {
+    if (!tab.value) return ''
+    switch (tab.value.execution) {
+      case 'docker':
+        return 'Docker'
+      case 'ssh':
+        return 'SSH'
+      case 'kubectl':
+        return 'Kubernetes'
+      case 'vapor':
+        return 'Vapor'
+      default:
+        return capitalize(tab.value.execution)
+    }
+  })
+
   const connectDockerSaved = (id: number) => {
     const connection = dockerStore.getConnection(id)
     if (!connection || !tabStore.current) return
@@ -238,7 +267,7 @@
 
     <!-- local: not available for remote-only projects (no local code) -->
     <SecondaryButton
-      v-if="!isRemoteOnly(tabStore.getCurrent())"
+      v-if="!isRemoteProject"
       without-border
       class="!px-2 h-6"
       @click="connect('local')"
@@ -253,7 +282,7 @@
       <span class="text-xs">Local</span>
     </SecondaryButton>
 
-    <template v-if="tabStore.getCurrent()?.path !== settingsStore.settings.laravelPath">
+    <template v-if="!isRemoteProject && tab.path !== settingsStore.settings.laravelPath">
       <!-- docker -->
       <DropDown>
         <template v-slot:trigger>
@@ -423,6 +452,29 @@
         </DropDownItem>
       </div>
     </DropDown>
+
+    <!-- remote-only connection info (read-only) -->
+    <div
+      v-if="isRemoteProject"
+      class="inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs select-none"
+      :style="{ borderColor: settingsStore.colors.border, color: settingsStore.colors.foreground }"
+      v-tippy="{ content: `${remoteConnectionName} (${remoteConnectionType})`, placement: 'bottom' }"
+    >
+      <DockerIcon v-if="tab.execution === 'docker'" class="size-3.5 shrink-0 !text-green-500" />
+      <KubectlIcon
+        v-else-if="tab.execution === 'kubectl'"
+        class="size-3.5 shrink-0"
+        :class="activeConnection?.type === 'kubectl' ? `text-${activeConnection.color}-500` : ''"
+      />
+      <VaporIcon v-else-if="tab.execution === 'vapor'" class="size-3.5 shrink-0 !text-[#25C4F2]" />
+      <ServerIcon
+        v-else
+        class="size-3.5 shrink-0"
+        :class="activeConnection?.type === 'ssh' ? `text-${activeConnection.color}-500` : ''"
+      />
+      <span class="max-w-[150px] truncate">{{ remoteConnectionName }}</span>
+      <span class="opacity-50 text-[11px] shrink-0">· {{ remoteConnectionType }}</span>
+    </div>
 
     <!-- other tools -->
 

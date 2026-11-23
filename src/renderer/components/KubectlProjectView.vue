@@ -8,6 +8,7 @@
   import SecondaryButton from './SecondaryButton.vue'
   import Divider from './Divider.vue'
   import EmptyState from './EmptyState.vue'
+  import KubectlIcon from './icons/KubectlIcon.vue'
   import AutoScrollText from './AutoScrollText.vue'
   import RowActions from './interactions/RowActions.vue'
   import DropDown from './DropDown.vue'
@@ -143,9 +144,20 @@
           </DropDown>
         </RowActions>
       </div>
-      <div v-if="Object.values(kubectlStore.connections).length === 0">
-        <EmptyState message="No connections yet, click the Add connection button to add one." />
-      </div>
+      <EmptyState v-if="Object.values(kubectlStore.connections).length === 0" title="No connections yet" bordered>
+        <template #icon>
+          <KubectlIcon class="size-5" />
+        </template>
+        <span class="opacity-60">Click the </span>
+        <button
+          type="button"
+          class="font-medium text-primary-500 hover:text-primary-400 hover:underline underline-offset-2 cursor-pointer transition"
+          @click="add"
+        >
+          Add connection
+        </button>
+        <span class="opacity-60"> button to add one.</span>
+      </EmptyState>
     </div>
   </div>
   <KubectlConnectModal ref="connectModal" :id="editId" />

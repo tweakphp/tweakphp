@@ -78,9 +78,7 @@
           class="!p-1 !border-transparent"
           @click="removeHistory(h)"
         >
-          <SecondaryButton without-border>
-            <TrashIcon class="size-4" />
-          </SecondaryButton>
+          <TrashIcon class="size-4" />
         </SecondaryButton>
         <PrimaryButton class="ml-2" @click="addTab(h)"> Open </PrimaryButton>
       </div>

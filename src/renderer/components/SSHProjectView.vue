@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { onBeforeUnmount, onMounted } from 'vue'
-  import { ArrowPathIcon } from '@heroicons/vue/24/outline'
+  import { ArrowPathIcon, ServerIcon } from '@heroicons/vue/24/outline'
   import { useSSHStore } from '../stores/ssh'
   import { useTabsStore } from '../stores/tabs'
   import { useConnectionView } from '../composables/useConnectionView'
@@ -102,9 +102,20 @@
           </PrimaryButton>
         </RowActions>
       </div>
-      <div v-if="Object.values(sshStore.connections).length === 0">
-        <EmptyState message="No connections yet, click the Add connection button to add one." />
-      </div>
+      <EmptyState v-if="Object.values(sshStore.connections).length === 0" title="No connections yet" bordered>
+        <template #icon>
+          <ServerIcon class="size-5" />
+        </template>
+        <span class="opacity-60">Click the </span>
+        <button
+          type="button"
+          class="font-medium text-primary-500 hover:text-primary-400 hover:underline underline-offset-2 cursor-pointer transition"
+          @click="add"
+        >
+          Add connection
+        </button>
+        <span class="opacity-60"> button to add one.</span>
+      </EmptyState>
     </div>
   </div>
   <SSHConnectModal ref="connectModal" :id="editId" />
