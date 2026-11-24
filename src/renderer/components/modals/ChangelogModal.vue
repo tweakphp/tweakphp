@@ -27,7 +27,7 @@
     <div class="prose max-w-none" v-html="updateStore.update?.releaseNotes"></div>
     <template #actions>
       <div class="flex justify-end gap-2">
-        <SecondaryButton @click="openInBrowser(updateStore.update)">Open in Browser</SecondaryButton>
+        <SecondaryButton data-autofocus @click="openInBrowser(updateStore.update)">Open in Browser</SecondaryButton>
       </div>
     </template>
   </Modal>

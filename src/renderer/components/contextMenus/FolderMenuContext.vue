@@ -31,8 +31,21 @@
   const hoverRename = ref(false)
   const hoverDelete = ref(false)
   const hoverDeleteWithTabs = ref(false)
+  const openingModal = ref(false)
+
+  const onContextMenuOpenChange = (open: boolean) => {
+    if (open) openingModal.value = false
+  }
+
+  const onContextCloseAutoFocus = (event: Event) => {
+    if (openingModal.value) {
+      event.preventDefault()
+      openingModal.value = false
+    }
+  }
 
   const openRenameModal = () => {
+    openingModal.value = true
     renameFolderModal.value?.openModal()
   }
 
@@ -42,12 +55,13 @@
   }
 
   const confirmDeleteFolderWithTabs = () => {
+    openingModal.value = true
     deleteFolderModal.value?.openModal()
   }
 </script>
 
 <template>
-  <ContextMenuRoot>
+  <ContextMenuRoot @update:open="onContextMenuOpenChange">
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
@@ -61,6 +75,7 @@
           borderColor: settingsStore.colors.border,
         }"
         :side-offset="5"
+        @close-auto-focus="onContextCloseAutoFocus"
       >
         <ContextMenuItem
           value="Rename folder"

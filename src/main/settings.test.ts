@@ -13,6 +13,8 @@ vi.mock('node:fs', () => ({
   readdirSync: vi.fn(),
   writeFileSync: vi.fn(),
   readFileSync: vi.fn(),
+  renameSync: vi.fn(),
+  unlinkSync: vi.fn(),
   lstatSync: vi.fn(),
 }))
 
@@ -112,7 +114,11 @@ describe('Settings Management (settings.ts)', () => {
       const settings = getSettings()
       expect(settings.version).toBe('0.13.1')
       expect(settings.laravelPath).toBe('/mocked/home/.tweakphp_dev/laravel')
-      expect(fs.writeFileSync).toHaveBeenCalledWith(settingsPath, JSON.stringify(settings))
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining(`${settingsPath}.`),
+        JSON.stringify(settings)
+      )
+      expect(fs.renameSync).toHaveBeenCalledWith(expect.stringContaining(`${settingsPath}.`), settingsPath)
     })
 
     it('does not re-persist settings when stored version and laravelPath already match defaults', () => {
@@ -133,10 +139,45 @@ describe('Settings Management (settings.ts)', () => {
       expect(fs.writeFileSync).not.toHaveBeenCalled()
     })
 
-    it('writes settings to disk via setSettings', () => {
+    it('writes settings atomically to disk via setSettings', () => {
       const data: any = { theme: 'github' }
       setSettings(data)
-      expect(fs.writeFileSync).toHaveBeenCalledWith(expect.any(String), JSON.stringify(data))
+      const tmpPath = `${settingsPath}.${process.pid}.tmp`
+      expect(fs.writeFileSync).toHaveBeenCalledWith(tmpPath, JSON.stringify(data))
+      expect(fs.renameSync).toHaveBeenCalledWith(tmpPath, settingsPath)
+    })
+
+    it('cleans up temp file if atomic rename fails in setSettings', () => {
+      const tmpPath = `${settingsPath}.${process.pid}.tmp`
+      vi.mocked(fs.existsSync).mockImplementation((p: any) => p === tmpPath)
+      vi.mocked(fs.renameSync).mockImplementationOnce(() => {
+        throw new Error('EPERM')
+      })
+
+      expect(() => setSettings({ theme: 'github' } as any)).toThrow('EPERM')
+      expect(fs.unlinkSync).toHaveBeenCalledWith(tmpPath)
+    })
+
+    it.each([
+      ['NUL-filled buffer', '\u0000'.repeat(128)],
+      ['truncated JSON', '{"theme":'],
+      ['empty file', '   '],
+      ['JSON null', 'null'],
+      ['JSON array', '[]'],
+      ['JSON primitive', '123'],
+    ])('recovers to default settings when settings.json contains %s', (_label, raw) => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(fs.existsSync).mockReturnValue(true)
+      vi.mocked(fs.readFileSync).mockReturnValue(Buffer.from(raw))
+
+      const settings = getSettings()
+
+      expect(settings.version).toBe('0.13.1')
+      expect(settings.theme).toBe('dracula')
+      expect(fs.renameSync).toHaveBeenCalledWith(settingsPath, `${settingsPath}.corrupt`)
+      expect(fs.writeFileSync).toHaveBeenCalledWith(`${settingsPath}.${process.pid}.tmp`, JSON.stringify(settings))
+      expect(fs.renameSync).toHaveBeenCalledWith(`${settingsPath}.${process.pid}.tmp`, settingsPath)
+      consoleErrorSpy.mockRestore()
     })
 
     it('normalizes Docker and Kubernetes execution timeouts', () => {

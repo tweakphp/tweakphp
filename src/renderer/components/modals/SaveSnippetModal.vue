@@ -94,7 +94,7 @@
         placeholder="Title (optional)"
         aria-label="Snippet title"
         :disabled="saving"
-        autofocus
+        data-autofocus
         class="w-full"
       />
       <pre

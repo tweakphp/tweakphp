@@ -75,7 +75,21 @@
     return pathParts[pathParts.length - 1] || null
   })
 
+  const openingModal = ref(false)
+
+  function onContextMenuOpenChange(open: boolean) {
+    if (open) openingModal.value = false
+  }
+
+  function onContextCloseAutoFocus(event: Event) {
+    if (openingModal.value) {
+      event.preventDefault()
+      openingModal.value = false
+    }
+  }
+
   function openModalChangeName() {
+    openingModal.value = true
     changeNameProject.value.openModal()
   }
 
@@ -95,6 +109,7 @@
   }
 
   function archiveTab() {
+    openingModal.value = true
     events.dispatchEvent(new CustomEvent('tab.archive.request', { detail: props.tab.id }))
   }
 
@@ -117,6 +132,7 @@
   const customTagModal = ref()
 
   function openCustomTagModal() {
+    openingModal.value = true
     customTagModal.value?.openModal()
   }
 
@@ -127,6 +143,7 @@
   const newFolderModal = ref()
 
   function openNewFolderModal() {
+    openingModal.value = true
     newFolderModal.value?.openModal()
   }
 
@@ -147,7 +164,7 @@
 </script>
 
 <template>
-  <ContextMenuRoot>
+  <ContextMenuRoot @update:open="onContextMenuOpenChange">
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
@@ -161,6 +178,7 @@
           borderColor: settingsStore.colors.border,
         }"
         :side-offset="5"
+        @close-auto-focus="onContextCloseAutoFocus"
       >
         <ContextMenuItem
           value="Change Name"

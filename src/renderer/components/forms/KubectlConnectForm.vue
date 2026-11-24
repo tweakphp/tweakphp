@@ -102,7 +102,7 @@
     <form class="mx-auto space-y-3">
       <FormField label="Name">
         <div class="flex gap-3 items-center justify-between">
-          <TextInput class="w-full" id="name" v-model="form.name" placeholder="production-server" />
+          <TextInput class="w-full" id="name" v-model="form.name" data-autofocus placeholder="production-server" />
           <ColorPickerInput v-model="form.color" />
         </div>
       </FormField>
