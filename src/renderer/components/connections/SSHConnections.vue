@@ -51,13 +51,13 @@
           <div>Port</div>
           <div>Path</div>
           <div class="flex justify-end">
-            <PrimaryButton @click="add">
+            <PrimaryButton :data-autofocus="projectConnections.length === 0 || undefined" @click="add">
               <PlusIcon class="w-4 h-4" />
             </PrimaryButton>
           </div>
         </div>
         <Divider />
-        <template v-for="connection in projectConnections">
+        <template v-for="(connection, index) in projectConnections">
           <div class="grid grid-cols-5 gap-2 items-center">
             <div class="flex items-center">
               <div class="size-4 rounded-full mr-1" :class="[`bg-${connection.color}-500`]"></div>
@@ -72,7 +72,13 @@
               <SecondaryButton v-if="connecting === connection.id" class="!p-1 !border-transparent">
                 <ArrowPathIcon class="size-4 text-green-500 animate-spin" />
               </SecondaryButton>
-              <SecondaryButton v-else class="!p-1 !border-transparent" v-tippy="'Connect'" @click="connect(connection)">
+              <SecondaryButton
+                v-else
+                class="!p-1 !border-transparent"
+                :data-autofocus="index === 0 || undefined"
+                v-tippy="'Connect'"
+                @click="connect(connection)"
+              >
                 <WifiIcon class="size-4 hover:text-green-500" />
               </SecondaryButton>
             </RowActions>

@@ -114,9 +114,32 @@
     if (!props.closeOnOutsideClick) event.preventDefault()
   }
 
+  const focusPreferredElement = (container: HTMLElement): boolean => {
+    const preferred = container.querySelector<HTMLElement>(
+      '[data-autofocus]:not(:disabled):not([aria-disabled="true"]), [autofocus]:not(:disabled):not([aria-disabled="true"])'
+    )
+    if (!preferred || typeof preferred.focus !== 'function') return false
+
+    preferred.focus({ preventScroll: true })
+    if (document.activeElement !== preferred) return false
+
+    if (preferred instanceof HTMLInputElement && 'select' in preferred) {
+      preferred.select()
+    }
+    return true
+  }
+
   const onFocusOutside = (event: FocusOutsideEvent) => emit('focus-outside', event)
   const onInteractOutside = (event: PointerDownOutsideEvent | FocusOutsideEvent) => emit('interact-outside', event)
-  const onOpenAutoFocus = (event: Event) => emit('open-auto-focus', event)
+  const onOpenAutoFocus = (event: Event) => {
+    emit('open-auto-focus', event)
+    if (event.defaultPrevented) return
+
+    const container = event.currentTarget as HTMLElement | null
+    if (container && focusPreferredElement(container)) {
+      event.preventDefault()
+    }
+  }
   const onCloseAutoFocus = (event: Event) => emit('close-auto-focus', event)
 
   const hasDescription = computed(() => Boolean(props.description || slots.description))
@@ -195,19 +218,20 @@
                 <slot name="description">{{ props.description }}</slot>
               </DialogDescription>
 
-              <DialogClose v-if="props.showCloseButton" as-child>
-                <SecondaryButton without-border aria-label="Close" class="absolute right-2 top-2">
-                  <XMarkIcon class="size-5" />
-                  <span class="sr-only">Close</span>
-                </SecondaryButton>
-              </DialogClose>
-
               <div class="px-1">
                 <slot></slot>
                 <div class="mt-4">
                   <slot name="actions"></slot>
                 </div>
               </div>
+
+              <!-- Placed after body/actions in DOM so Tab order and default focus start inside the content -->
+              <DialogClose v-if="props.showCloseButton" as-child>
+                <SecondaryButton without-border aria-label="Close" class="absolute right-2 top-2">
+                  <XMarkIcon class="size-5" />
+                  <span class="sr-only">Close</span>
+                </SecondaryButton>
+              </DialogClose>
             </DialogContent>
           </Transition>
         </div>

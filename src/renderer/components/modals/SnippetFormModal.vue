@@ -100,7 +100,7 @@
         placeholder="Title (optional)"
         aria-label="Snippet title"
         :disabled="saving"
-        autofocus
+        :data-autofocus="editingSnippet?.id ? undefined : true"
         class="w-full"
       />
       <Editor
@@ -113,6 +113,7 @@
           height: '400px',
         }"
         language="php"
+        :auto-focus="Boolean(editingSnippet?.id)"
         :readonly="saving"
       />
       <p v-if="saveError" role="alert" class="text-sm text-red-500">{{ saveError }}</p>

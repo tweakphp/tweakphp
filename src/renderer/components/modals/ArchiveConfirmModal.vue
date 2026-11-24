@@ -100,7 +100,7 @@
           Delete permanently
         </SecondaryButton>
         <SecondaryButton @click="cancel">Cancel</SecondaryButton>
-        <PrimaryButton @click="archive">Archive</PrimaryButton>
+        <PrimaryButton data-autofocus @click="archive">Archive</PrimaryButton>
       </div>
     </template>
   </ConfirmModal>

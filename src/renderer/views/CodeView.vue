@@ -18,6 +18,7 @@
   import { joinResultOutputs, visibleResults } from '../utils/output'
   import { useSnippetsStore } from '../stores/snippets'
   import { handleProjectShortcut } from '../utils/project-shortcuts'
+  import { parseClientInfoJson } from '../../shared/client-info'
 
   const settingsStore = useSettingsStore()
   const executeStore = useExecuteStore()
@@ -105,7 +106,15 @@
   }
 
   const infoReplyListener = (e: any) => {
-    tab.value.info = JSON.parse(e.detail)
+    const parsed = parseClientInfoJson(e.detail)
+    if (!parsed) {
+      return
+    }
+    tab.value.info = {
+      name: typeof parsed.name === 'string' ? parsed.name : '',
+      php_version: typeof parsed.php_version === 'string' ? parsed.php_version : '',
+      version: typeof parsed.version === 'string' ? parsed.version : '',
+    }
     tabsStore.updateTab(tab.value)
   }
 

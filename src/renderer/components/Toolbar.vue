@@ -67,6 +67,10 @@
 
     connecting.value = execution
     let connection = tabStore.getConnectionConfig(tabStore.current, execution)
+    if (!connection) {
+      connecting.value = ''
+      return
+    }
     window.ipcRenderer.send('client.connect', {
       connection: JSON.parse(JSON.stringify(connection)),
       data: {
@@ -76,7 +80,7 @@
     })
   }
 
-  const connectReply = (e: any) => {
+  const connectReply = async (e: any) => {
     const reply = e.detail as ConnectReply
     if (reply.data?.state !== 'reconnect') {
       return
@@ -113,7 +117,8 @@
       connected.id = match?.id ?? Date.now()
       connected.name = connected.container_name
       connected.tab_id = tabStore.current.id
-      dockerStore.upsertConnection(connected)
+      await dockerStore.upsertConnection(connected)
+      await connectionsStore.reload()
       tabStore.current.connection_id = String(connected.id)
     }
     if (execution === 'local') {

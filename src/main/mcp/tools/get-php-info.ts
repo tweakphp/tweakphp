@@ -8,6 +8,7 @@ import { MCPErrorCode } from '../types'
 import { ConnectionManager, ConnectionConfig } from '../connection-manager'
 import { getErrorHandler } from '../error-handler'
 import { resolveProjectConnection } from './project-connection'
+import { parseClientInfoJson } from '../../../shared/client-info'
 
 interface PhpInfoResult {
   phpVersion: string
@@ -92,22 +93,15 @@ export class GetPhpInfoHandler {
     }
 
     // Try parsing as JSON first (returned by TweakPHP client phar info command)
-    try {
-      const trimmed = phpInfoRaw.trim()
-      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-        const json = JSON.parse(trimmed)
-        if (json && typeof json === 'object') {
-          const phpVersion = json.php_version || json.version || 'Unknown'
-          sections.general = {
-            frameworkName: json.name ?? 'PHP',
-            frameworkVersion: json.version ?? '',
-            version: phpVersion,
-          }
-          return { phpVersion, sections }
-        }
+    const json = parseClientInfoJson(phpInfoRaw)
+    if (json) {
+      const phpVersion = json.php_version || json.version || 'Unknown'
+      sections.general = {
+        frameworkName: json.name ?? 'PHP',
+        frameworkVersion: json.version ?? '',
+        version: phpVersion,
       }
-    } catch {
-      // Fallback to text phpinfo parsing
+      return { phpVersion, sections }
     }
 
     // Extract PHP version

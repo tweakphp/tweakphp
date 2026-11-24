@@ -102,11 +102,38 @@ const handlePhpExecutable = (_event: any, phpPath: string) => {
   return phpPath
 }
 
+const isPlainObject = (value: unknown): value is Record<string, any> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const backupCorruptedSettings = () => {
+  try {
+    if (fs.existsSync(settingsPath)) {
+      fs.renameSync(settingsPath, `${settingsPath}.corrupt`)
+    }
+  } catch (err) {
+    console.error('Failed to back up corrupted settings.json:', err)
+  }
+}
+
 export const setSettings = (data: Settings) => {
   data.dockerKubectlExecutionTimeoutSeconds = normalizeDockerKubectlExecutionTimeoutSeconds(
     data.dockerKubectlExecutionTimeoutSeconds
   )
-  fs.writeFileSync(settingsPath, JSON.stringify(data))
+  // Write atomically via a temp file in the same directory so interrupted writes do not leave a NUL-filled settings.json.
+  const tmpPath = `${settingsPath}.${process.pid}.tmp`
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data))
+    fs.renameSync(tmpPath, settingsPath)
+  } catch (error) {
+    try {
+      if (fs.existsSync(tmpPath)) {
+        fs.unlinkSync(tmpPath)
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+    throw error
+  }
 }
 
 export const getSettings = () => {
@@ -117,8 +144,28 @@ export const getSettings = () => {
     settingsRaw = fs.readFileSync(settingsPath).toString()
   }
 
-  if (settingsRaw) {
-    let settingsJson = JSON.parse(settingsRaw)
+  let settingsJson: Record<string, any> | null = null
+  let shouldResetCorrupted = false
+
+  if (settingsRaw.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(settingsRaw)
+      if (isPlainObject(parsed)) {
+        settingsJson = parsed
+      } else {
+        console.error('Invalid settings.json content: expected a JSON object, resetting to defaults.')
+        shouldResetCorrupted = true
+      }
+    } catch (error) {
+      console.error('Failed to parse settings.json, resetting to defaults:', error)
+      shouldResetCorrupted = true
+    }
+  } else if (fs.existsSync(settingsPath)) {
+    console.error('settings.json is empty, resetting to defaults.')
+    shouldResetCorrupted = true
+  }
+
+  if (settingsJson) {
     const editorFontSize = settingsJson.editorFontSize || defaultSettings.editorFontSize
     const editorWordWrap = settingsJson.editorWordWrap || defaultSettings.editorWordWrap
     const editorLineNumbers = settingsJson.editorLineNumbers || defaultSettings.editorLineNumbers
@@ -171,7 +218,10 @@ export const getSettings = () => {
       setSettings(settings)
     }
   } else {
-    settings = defaultSettings
+    if (shouldResetCorrupted) {
+      backupCorruptedSettings()
+    }
+    settings = { ...defaultSettings }
     setSettings(settings)
   }
 

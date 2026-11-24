@@ -2,6 +2,10 @@
   import { ref, watch } from 'vue'
   import { useSettingsStore } from '../stores/settings'
 
+  defineOptions({
+    inheritAttrs: false,
+  })
+
   // Define props
   const props = defineProps({
     modelValue: [String, Number, Boolean],
@@ -40,6 +44,7 @@
         color: settingsStore.colors.foreground,
         outlineColor: settingsStore.colors.border,
       }"
+      v-bind="$attrs"
     >
       <option value="" selected disabled>
         {{ placeholder }}
