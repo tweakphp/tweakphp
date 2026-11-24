@@ -6,20 +6,54 @@
   import SelectInput from '../../components/SelectInput.vue'
   import TextInput from '../../components/TextInput.vue'
   import SecondaryButton from '../../components/SecondaryButton.vue'
-  import { ref, onMounted } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+  import { useRoute } from 'vue-router'
+  import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
   import UpdateApp from '../../components/UpdateApp.vue'
   import ToastAlert from '@/components/ToastAlert.vue'
   import FormField from '../../components/forms/FormField.vue'
+  import DetectedPhpList from '../../components/DetectedPhpList.vue'
+  import events from '../../events'
 
   const saved = ref(false)
   const showToast = ref(false)
   const detecting = ref(false)
+  const hasScanned = ref(false)
   const detectedPaths = ref<string[]>([])
+  const phpFieldRef = ref<HTMLElement | null>(null)
   const settingsStore = useSettingsStore()
   const updateStore = useUpdateStore()
+  const route = useRoute()
+
+  const isPhpPathMissing = computed(() => !(settingsStore.settings.php ?? '').trim())
+
+  let pendingDetectReply: ((paths: string[]) => void) | null = null
+
+  const clearDetectListener = () => {
+    if (pendingDetectReply) {
+      window.ipcRenderer.removeListener('settings.detect-php.reply', pendingDetectReply)
+      pendingDetectReply = null
+    }
+  }
+
+  const focusPhpInput = async () => {
+    await nextTick()
+    const input = phpFieldRef.value?.querySelector<HTMLInputElement>('input')
+    input?.focus()
+  }
 
   onMounted(() => {
     window.ipcRenderer.on('settings.php-located', updatePhpSetting)
+    events.addEventListener('settings.focus-php', focusPhpInput)
+    if (route.query.missingPhp === '1') {
+      void focusPhpInput()
+    }
+  })
+
+  onBeforeUnmount(() => {
+    window.ipcRenderer.removeListener('settings.php-located', updatePhpSetting)
+    events.removeEventListener('settings.focus-php', focusPhpInput)
+    clearDetectListener()
   })
 
   const updatePhpSetting = (newPhpSetting: string) => {
@@ -37,12 +71,18 @@
   }
 
   const detectPhp = () => {
+    if (detecting.value) return
+    clearDetectListener()
     detecting.value = true
-    window.ipcRenderer.send('settings.detect-php')
-    window.ipcRenderer.once('settings.detect-php.reply', (paths: string[]) => {
+    hasScanned.value = false
+    pendingDetectReply = (paths: string[]) => {
+      pendingDetectReply = null
       detecting.value = false
+      hasScanned.value = true
       detectedPaths.value = paths || []
-    })
+    }
+    window.ipcRenderer.once('settings.detect-php.reply', pendingDetectReply)
+    window.ipcRenderer.send('settings.detect-php')
   }
 
   const selectDetectedPhp = (p: string) => {
@@ -79,27 +119,43 @@
       label-class="pt-2"
       divider
     >
-      <div class="flex flex-col w-full">
-        <div class="flex items-center space-x-2 w-full">
-          <TextInput id="php" v-model="settingsStore.settings.php" @change="saveSettings()" class="flex-1" />
+      <div ref="phpFieldRef" class="flex flex-col w-full">
+        <div
+          v-if="isPhpPathMissing"
+          role="alert"
+          class="mb-2 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-xs"
+        >
+          <ExclamationTriangleIcon class="mt-0.5 size-4 shrink-0 text-amber-500" />
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-amber-600 dark:text-amber-400">PHP path is not set</p>
+            <p class="mt-0.5 opacity-80">Required to run local PHP code. Enter the path below or click Detect.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full">
+          <TextInput
+            id="php"
+            v-model="settingsStore.settings.php"
+            placeholder="e.g. C:\php\php.exe or /usr/bin/php"
+            :class="['flex-1 h-8 font-mono text-xs', isPhpPathMissing ? '!outline-amber-500/60' : '']"
+            @change="saveSettings()"
+          />
           <SecondaryButton @click="detectPhp()" :disabled="detecting" class="whitespace-nowrap select-none">
+            <ArrowPathIcon class="mr-1.5 size-4" :class="{ 'animate-spin': detecting }" />
             {{ detecting ? 'Scanning...' : 'Detect' }}
           </SecondaryButton>
         </div>
-        <div v-if="detectedPaths.length > 0" class="mt-2 text-xs flex flex-col items-start w-full">
-          <span class="opacity-50 mb-1">Detected paths:</span>
-          <div class="flex flex-wrap gap-1 w-full max-h-24 overflow-y-auto pr-1">
-            <SecondaryButton
-              v-for="p in detectedPaths"
-              :key="p"
-              @click="selectDetectedPhp(p)"
-              class="!h-auto !border-transparent !bg-zinc-800 hover:!bg-primary-500/20 !px-2 !py-1 !text-[10px] !text-white text-left truncate max-w-[280px]"
-              :title="p"
-            >
-              {{ p }}
-            </SecondaryButton>
-          </div>
-        </div>
+        <DetectedPhpList
+          v-if="detectedPaths.length > 0"
+          class="mt-2.5"
+          :paths="detectedPaths"
+          :selected-path="settingsStore.settings.php"
+          dismissible
+          @select="selectDetectedPhp"
+          @dismiss="detectedPaths = []"
+        />
+        <p v-else-if="hasScanned && !detecting" class="mt-2 text-xs opacity-60">
+          No PHP binaries detected automatically. Please enter the path manually.
+        </p>
       </div>
     </FormField>
     <FormField
