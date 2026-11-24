@@ -99,3 +99,30 @@ contextBridge.exposeInMainWorld('historyApi', {
     ipcRenderer.removeAllListeners('code-redo.reply')
   },
 })
+
+/**
+ * Exposes the `copilotApi` to the renderer process.
+ */
+export interface ICopilotApi {
+  signIn: () => Promise<{ success: boolean; error: string | null }>
+  signOut: () => Promise<{ success: boolean }>
+  status: () => Promise<{ signedIn: boolean }>
+  onSignInCode: (callback: (data: { userCode: string; verificationUri: string }) => void) => void
+}
+
+contextBridge.exposeInMainWorld('copilotApi', {
+  signIn: () => {
+    return ipcRenderer.invoke('copilot:sign-in')
+  },
+  signOut: () => {
+    return ipcRenderer.invoke('copilot:sign-out')
+  },
+  status: () => {
+    return ipcRenderer.invoke('copilot:status')
+  },
+  onSignInCode: (callback: (data: { userCode: string; verificationUri: string }) => void) => {
+    ipcRenderer.on('copilot:sign-in-code', (_event, args) => {
+      callback(args)
+    })
+  },
+})

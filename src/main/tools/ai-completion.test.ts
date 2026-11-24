@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { EventEmitter } from 'node:events'
 import { AiCompletion } from './ai-completion'
 import fetch from 'node-fetch'
 import { getSettings } from '../settings'
@@ -9,6 +10,12 @@ vi.mock('node-fetch', () => ({
 
 vi.mock('../settings', () => ({
   getSettings: vi.fn(),
+  settingsDir: '/tmp',
+}))
+
+vi.mock('electron', () => ({
+  app: { getVersion: () => '0.14.0' },
+  shell: { openExternal: vi.fn() },
 }))
 
 describe('AiCompletion', () => {
@@ -217,6 +224,164 @@ describe('AiCompletion', () => {
       }
       expect((completer as any).isCommentToCodeScenario(context)).toBe(false)
       expect((completer as any).isInsideComment(context)).toBe(false)
+    })
+  })
+
+  describe('Copilot provider', () => {
+    const completionContext = {
+      completionMetadata: {
+        language: 'php',
+        textBeforeCursor: 'echo 1;',
+        textAfterCursor: '\necho 2;',
+        cursorPosition: { lineNumber: 1, column: 8 },
+      },
+    }
+
+    const makeCopilotAuth = (overrides: Record<string, unknown> = {}) =>
+      ({
+        getStatus: () => ({ signedIn: true }),
+        getCopilotToken: async () => ({
+          token: 'copilot-token',
+          apiEndpoint: 'https://api.test',
+          expiresAt: 9999999999,
+        }),
+        getCompletionsEndpoint: () => 'https://proxy.test',
+        getSessionId: () => 'session-id',
+        getMachineId: () => 'machine-id',
+        invalidateCopilotToken: vi.fn(),
+        ...overrides,
+      }) as any
+
+    /**
+     * Builds a mock streaming response that emits the given chunks once the
+     * completion code has attached its listeners.
+     */
+    const streamResponse = (chunks: string[], status = 200) => {
+      const body = new EventEmitter()
+      const response = { status, statusText: 'OK', body }
+      setImmediate(() => {
+        for (const chunk of chunks) {
+          body.emit('data', Buffer.from(chunk))
+        }
+        body.emit('end')
+      })
+      return response
+    }
+
+    it('returns error when not signed in', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiProvider: 'copilot',
+      } as any)
+
+      const completer = new AiCompletion(makeCopilotAuth({ getStatus: () => ({ signedIn: false }) }))
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.completion).toBeNull()
+      expect(result.error).toBe('Sign in to GitHub Copilot from Settings to use autocomplete.')
+    })
+
+    it('does not require an API key', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiApiKey: null,
+        aiProvider: 'copilot',
+      } as any)
+
+      const completer = new AiCompletion(makeCopilotAuth())
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.error).not.toBe('API key is not set.')
+    })
+
+    it('calls the copilot completions proxy with prefix and suffix', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiProvider: 'copilot',
+      } as any)
+
+      vi.mocked(fetch).mockResolvedValue(
+        streamResponse([
+          'data: {"choices":[{"text":" com"}]}\n\n',
+          'data: {"choices":[{"text":"pleted"}]}\n\n',
+          'data: [DONE]\n\n',
+        ]) as any
+      )
+
+      const completer = new AiCompletion(makeCopilotAuth())
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.completion).toBe(' completed')
+      expect(result.error).toBeNull()
+      expect(fetch).toHaveBeenCalledWith(
+        'https://proxy.test/v1/engines/copilot-codex/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer copilot-token',
+            'OpenAI-Intent': 'copilot-ghost',
+          }),
+        })
+      )
+
+      const body = JSON.parse((fetch as any).mock.calls[0][1].body)
+      expect(body.prompt).toBe('echo 1;')
+      expect(body.suffix).toBe('\necho 2;')
+      expect(body.stream).toBe(true)
+      expect(body.extra.language).toBe('php')
+    })
+
+    it('reassembles SSE chunks split across buffer boundaries', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiProvider: 'copilot',
+      } as any)
+
+      vi.mocked(fetch).mockResolvedValue(
+        streamResponse(['data: {"choices":[{"text":" he', 'llo"}]}\n\ndata: [DO', 'NE]\n\n']) as any
+      )
+
+      const completer = new AiCompletion(makeCopilotAuth())
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.completion).toBe(' hello')
+      expect(result.error).toBeNull()
+    })
+
+    it('refreshes the copilot token and retries once on 401', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiProvider: 'copilot',
+      } as any)
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ status: 401, statusText: 'Unauthorized' } as any)
+        .mockResolvedValueOnce(
+          streamResponse(['data: {"choices":[{"text":" retried"}]}\n\n', 'data: [DONE]\n\n']) as any
+        )
+
+      const auth = makeCopilotAuth()
+      const completer = new AiCompletion(auth)
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.completion).toBe(' retried')
+      expect(result.error).toBeNull()
+      expect(auth.invalidateCopilotToken).toHaveBeenCalledTimes(1)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('returns error on copilot API failure', async () => {
+      vi.mocked(getSettings).mockReturnValue({
+        aiProvider: 'copilot',
+      } as any)
+
+      const mockResponse = {
+        status: 403,
+        statusText: 'Forbidden',
+        text: async () => 'No subscription',
+      }
+      vi.mocked(fetch).mockResolvedValue(mockResponse as any)
+
+      const completer = new AiCompletion(makeCopilotAuth())
+      const result = await completer.getCompletions(completionContext, { info: {} } as any)
+
+      expect(result.completion).toBeNull()
+      expect(result.error).toContain('Copilot API error: 403')
     })
   })
 })
