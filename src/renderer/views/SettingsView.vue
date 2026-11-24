@@ -4,6 +4,8 @@
   import { useSettingsStore } from '../stores/settings'
   import AboutSettings from './settings/AboutSettings.vue'
   import GeneralSettings from './settings/GeneralSettings.vue'
+  import EditorSettings from './settings/EditorSettings.vue'
+  import OutputSettings from './settings/OutputSettings.vue'
   import LoadersSettings from './settings/LoadersSettings.vue'
   import MCPSettings from './settings/MCPSettings.vue'
   import { useRoute } from 'vue-router'
@@ -11,6 +13,8 @@
 
   const sections = [
     { id: 'general', label: 'General' },
+    { id: 'editor', label: 'Editor' },
+    { id: 'output', label: 'Output' },
     { id: 'ai', label: 'AI Completion' },
     { id: 'loaders', label: 'Loaders' },
     { id: 'mcp', label: 'MCP Server' },
@@ -126,6 +130,14 @@
 
           <section aria-label="General settings" class="scroll-mt-[10px]">
             <GeneralSettings />
+          </section>
+
+          <section id="settings-editor" aria-label="Editor settings" class="scroll-mt-[10px]">
+            <EditorSettings />
+          </section>
+
+          <section id="settings-output" aria-label="Output settings" class="scroll-mt-[10px]">
+            <OutputSettings />
           </section>
 
           <section id="settings-ai" aria-label="AI Completion settings" class="scroll-mt-[10px]">

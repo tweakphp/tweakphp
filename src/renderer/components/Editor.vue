@@ -128,14 +128,25 @@
     installThemes()
 
     if (editorContainer.value) {
+      const s = settingsStore.settings
+      const isOutput = props.language === 'output'
+      const fontSize = isOutput ? s.outputFontSize : s.editorFontSize
+      const wordWrap = isOutput ? s.outputWordWrap : s.editorWordWrap
+      const lineNumbers = isOutput ? s.outputLineNumbers : s.editorLineNumbers
+      const indentGuides = isOutput ? s.outputIndentGuides : s.editorIndentGuides
+
       editor = monaco.editor.create(editorContainer.value, {
         model: null,
         readOnly: props.readonly,
-        fontSize: settingsStore.settings.editorFontSize,
+        fontSize,
         minimap: {
           enabled: false,
         },
-        wordWrap: settingsStore.settings.editorWordWrap as 'on' | 'off' | 'wordWrapColumn' | 'bounded',
+        wordWrap: wordWrap as 'on' | 'off' | 'wordWrapColumn' | 'bounded',
+        lineNumbers: lineNumbers === 'off' ? 'off' : 'on',
+        guides: {
+          indentation: indentGuides !== 'off',
+        },
         theme: settingsStore.settings.theme,
         stickyScroll: {
           enabled: false,
