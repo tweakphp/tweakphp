@@ -2,6 +2,7 @@ import { execFile, execFileSync, execSync, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
+import { resolveWslPhpBinary } from '../utils/wsl-php'
 
 const queryLogArg = () => {
   const { queryLog, outputMode } = settings.getSettings()
@@ -180,6 +181,11 @@ export const getWslPhpExecutable = (phpPath: string | undefined, projectDistro?:
   return phpPath
 }
 
+const resolveEffectiveWslPhp = (phpPath: string | undefined, distro: string): string => {
+  const configured = getWslPhpExecutable(phpPath, distro)
+  return configured === 'php' ? resolveWslPhpBinary(distro) : configured
+}
+
 export const executeWindows = (
   connection: ConnectionConfig,
   pharPath: string,
@@ -194,7 +200,7 @@ export const executeWindows = (
     if (wsl.isWsl) {
       const distro = resolveWslDistro(wsl.distro!)
       if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
+        const phpExe = resolveEffectiveWslPhp(connection.php, distro)
         const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
         const projectPathWsl = translateWindowsToWslPath(targetPath, distro)
 
@@ -242,7 +248,7 @@ export const executeStreamingWindows = (
     if (wsl.isWsl) {
       const distro = resolveWslDistro(wsl.distro!)
       if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
+        const phpExe = resolveEffectiveWslPhp(connection.php, distro)
         const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
         const projectPathWsl = translateWindowsToWslPath(targetPath, distro)
 
@@ -334,7 +340,7 @@ export const infoWindows = (connection: ConnectionConfig, pharPath: string, load
     if (wsl.isWsl) {
       const distro = resolveWslDistro(wsl.distro!)
       if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
+        const phpExe = resolveEffectiveWslPhp(connection.php, distro)
         const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
         const projectPathWsl = translateWindowsToWslPath(connection.path, distro)
 
@@ -390,7 +396,7 @@ export const getPHPVersionWindows = (connection?: ConnectionConfig | string): st
     if (wsl.isWsl) {
       const distro = resolveWslDistro(wsl.distro!)
       if (distro) {
-        const phpExe = getWslPhpExecutable(phpPath, distro)
+        const phpExe = resolveEffectiveWslPhp(phpPath, distro)
         output = execFileSync('wsl', ['-d', distro, phpExe, '-v'], {
           encoding: 'utf8',
           shell: false,
