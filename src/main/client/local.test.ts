@@ -157,6 +157,21 @@ describe('LocalClient WSL Support', () => {
       expect(execFileSync).toHaveBeenCalledWith('wsl', ['-d', 'Ubuntu', 'php', '-v'], expect.any(Object))
     })
 
+    it('returns the PHP version when a Windows project uses a WSL PHP path', () => {
+      vi.mocked(execFileSync).mockReturnValue('PHP 8.5.1 (cli) (built: ...)\n' as any)
+      const version = getPHPVersion({
+        type: 'local',
+        php: '\\\\wsl.localhost\\Ubuntu\\home\\david\\.local\\share\\lerd\\bin\\php',
+        path: 'C:\\Users\\David\\project',
+      })
+      expect(version).toBe('8.5')
+      expect(execFileSync).toHaveBeenCalledWith(
+        'wsl',
+        ['-d', 'Ubuntu', '/home/david/.local/share/lerd/bin/php', '-v'],
+        expect.any(Object)
+      )
+    })
+
     it('returns null on execution error', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(execFileSync).mockImplementation(() => {
@@ -262,6 +277,39 @@ describe('LocalClient WSL Support', () => {
           'php',
           expect.any(String),
           '/home/david/project',
+          'execute',
+          expect.any(String),
+          '--query-log=false',
+        ],
+        expect.any(Object),
+        expect.any(Function)
+      )
+    })
+
+    it('executes a Windows project using wsl wrapper when PHP path is inside WSL', async () => {
+      const client = new LocalClient({
+        type: 'local',
+        path: 'C:\\Users\\David\\project',
+        php: '\\\\wsl.localhost\\Ubuntu\\home\\david\\.local\\share\\lerd\\bin\\php',
+      })
+
+      vi.mocked(execFile).mockImplementation((...args: any[]) => {
+        const cb = args[args.length - 1]
+        if (typeof cb === 'function') {
+          cb(null, 'TWEAKPHP_RESULT:{"status":"success"}')
+        }
+        return {} as any
+      })
+
+      await client.execute('echo "hello";')
+      expect(execFile).toHaveBeenCalledWith(
+        'wsl',
+        [
+          '-d',
+          'Ubuntu',
+          '/home/david/.local/share/lerd/bin/php',
+          expect.any(String),
+          '/mnt/c/Users/David/project',
           'execute',
           expect.any(String),
           '--query-log=false',
