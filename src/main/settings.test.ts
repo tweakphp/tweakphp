@@ -299,6 +299,27 @@ describe('Settings Management (settings.ts)', () => {
         const paths = detectPhpPaths()
         expect(paths).toContain('\\\\wsl.localhost\\Ubuntu\\usr\\bin\\php')
       })
+
+      it('detects user-space WSL PHP shims (such as Lerd) when which php fails', () => {
+        vi.mocked(execSync).mockImplementation((cmd: any) => {
+          if (cmd === 'where php') throw new Error('not found')
+          if (cmd.startsWith('wsl -l -q')) {
+            return Buffer.from('U\u0000b\u0000u\u0000n\u0000t\u0000u\u0000\n\u0000', 'utf8')
+          }
+          if (cmd.includes('which php')) {
+            throw new Error('php not found')
+          }
+          if (cmd.includes('lerd/bin/php')) {
+            return '/home/david/.local/share/lerd/bin/php\n'
+          }
+          return ''
+        })
+
+        vi.mocked(fs.existsSync).mockReturnValue(false)
+
+        const paths = detectPhpPaths()
+        expect(paths).toContain('\\\\wsl.localhost\\Ubuntu\\home\\david\\.local\\share\\lerd\\bin\\php')
+      })
     })
 
     describe('Non-Windows platform detection (Linux/macOS)', () => {

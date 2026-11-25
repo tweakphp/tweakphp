@@ -6,6 +6,7 @@ import { useSettingsStore } from '../stores/settings'
 import { createPinia, setActivePinia } from 'pinia'
 import { joinResultOutputs, visibleResults } from '../utils/output'
 import { useCodeExecution } from './useCodeExecution'
+import events from '../events'
 
 vi.mock('../themes', () => ({ themeNames: [], themeColors: {} }))
 
@@ -110,5 +111,46 @@ describe('streaming output', () => {
     expect(send).not.toHaveBeenCalled()
     expect(setExecuting).toHaveBeenCalledWith(false)
     expect(tab.value.result[0].output).toContain('No connection configured')
+  })
+
+  it('requests PHP path configuration instead of executing local code when PHP path is empty', () => {
+    setActivePinia(createPinia())
+    const settingsStore = useSettingsStore()
+    settingsStore.settings.php = ''
+    const setExecuting = vi.fn()
+    const send = vi.fn()
+    ;(window as any).ipcRenderer = { send }
+    const listener = vi.fn()
+    events.addEventListener('settings.php-required', listener)
+
+    const tab = ref<Tab>({
+      id: 7,
+      type: 'code',
+      name: 'Test',
+      code: 'echo 1;',
+      path: '/tmp/project',
+      execution: 'local',
+      result: [],
+      pane: { code: 50, result: 50 },
+      info: { name: '', php_version: '', version: '' },
+    })
+    const rawOutput = computed(() => '')
+    const execution = useCodeExecution({
+      tab,
+      rawOutput,
+      resultEditor: ref(null),
+      settingsStore,
+      executeStore: { setExecuting },
+      tabsStore: { getConnectionConfig: () => ({ type: 'local', path: '/tmp/project', php: '' }), updateTab: vi.fn() },
+      loadersStore: { get: () => undefined },
+    })
+
+    execution.executeHandler()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ tabId: 7 })
+    expect(setExecuting).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+    events.removeEventListener('settings.php-required', listener)
   })
 })

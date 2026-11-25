@@ -119,7 +119,7 @@ const info = async (event: Electron.IpcMainEvent, data: any) => {
     const result = await client.info(data.loader)
     event.reply('client.info.reply', result)
   } catch (error: any) {
-    throw new Error(error)
+    console.error('Failed to retrieve client info:', error instanceof Error ? error.message : error)
   } finally {
     client.disconnect()
   }

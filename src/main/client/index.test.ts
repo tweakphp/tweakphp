@@ -341,14 +341,19 @@ describe('IPC Router (index.ts)', () => {
       expect(mockEvent.reply).toHaveBeenCalledWith('client.info.reply', 'info-result')
     })
 
-    it('throws error on info failure', async () => {
+    it('logs error and disconnects without throwing on info failure', async () => {
       const mockEvent = { reply: vi.fn() }
       const payload = { connection: { type: 'local' } }
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       mockConnect.mockResolvedValue(undefined)
       mockInfo.mockRejectedValue(new Error('Info failed'))
 
-      await expect(ipcHandlers['client.info'](mockEvent, payload)).rejects.toThrow('Info failed')
+      await expect(ipcHandlers['client.info'](mockEvent, payload)).resolves.toBeUndefined()
+      expect(mockEvent.reply).not.toHaveBeenCalled()
+      expect(mockDisconnect).toHaveBeenCalled()
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to retrieve client info:', 'Info failed')
+      consoleSpy.mockRestore()
     })
   })
 

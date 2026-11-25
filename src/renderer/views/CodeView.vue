@@ -152,6 +152,9 @@
     const loaderCode = getLoader(loader ?? '')
 
     if (connection && tab.value.type === 'code') {
+      if (connection.type === 'local' && !(settingsStore.settings.php ?? '').trim()) {
+        return
+      }
       window.ipcRenderer.send('client.info', {
         connection: JSON.parse(JSON.stringify(connection)),
         loader: loaderCode,
@@ -175,14 +178,11 @@
     }
   }
 
+  let isMountedReady = false
+
   onMounted(async () => {
     window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
-    if (settingsStore.settings.php === '') {
-      await router.push({ name: 'settings' })
-      alert('PHP path is not set!')
-      return
-    }
     let params: any = route.params
     if (params.id) {
       let t = tabsStore.findTab(params.id)
@@ -202,7 +202,17 @@
       return
     }
 
+    const requiresLocalPhp = (tab.value.execution || 'local') === 'local'
+    if (requiresLocalPhp && !(settingsStore.settings.php ?? '').trim()) {
+      await router.replace({ name: 'settings', query: { missingPhp: '1' } })
+      await nextTick()
+      events.dispatchEvent(new CustomEvent('settings.php-required', { detail: { tabId: tab.value.id } }))
+      return
+    }
+
     getInfo()
+    await nextTick()
+    isMountedReady = true
 
     await applyPendingSnippetInsert()
 
@@ -242,6 +252,9 @@
   )
 
   watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type, () => tab.value.path], async () => {
+    if (!isMountedReady) {
+      return
+    }
     await nextTick()
     getInfo()
   })

@@ -7,6 +7,7 @@ import os from 'os'
 import { isWindows } from './system/platform.ts'
 import { execSync } from 'child_process'
 import { resolveOutputMode } from './utils/output-mode'
+import { detectWslPhpPathsInDistro } from './utils/wsl-php'
 
 const homeDir = os.homedir()
 
@@ -268,17 +269,10 @@ export const detectPhpPaths = (): string[] => {
         .filter(d => !d.toLowerCase().includes('docker'))
 
       for (const distro of distros) {
-        try {
-          const wslPhp = execSync(`wsl -d ${distro} which php`, {
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-            timeout: 1500,
-          }).trim()
-          if (wslPhp && !wslPhp.includes('not found') && wslPhp.startsWith('/')) {
-            const uncPath = `\\\\wsl.localhost\\${distro}${wslPhp.replace(/\//g, '\\')}`
-            pathsSet.add(uncPath)
-          }
-        } catch (e) {}
+        for (const wslPhp of detectWslPhpPathsInDistro(distro)) {
+          const uncPath = `\\\\wsl.localhost\\${distro}${wslPhp.replace(/\//g, '\\')}`
+          pathsSet.add(uncPath)
+        }
       }
     } catch (e) {}
   } else {

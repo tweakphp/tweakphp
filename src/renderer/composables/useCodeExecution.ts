@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
 import { parseTweakPhpError } from '../../shared/tweakphp-error'
+import events from '../events'
 import type { Result, Tab } from '../../types/tab.type'
 import type { ConnectionConfig as DockerConnectionConfig } from '../../types/docker.type'
 import type { ConnectionConfig as KubectlConnectionConfig } from '../../types/kubectl.type'
@@ -289,6 +290,10 @@ export function useCodeExecution(options: {
       return
     }
 
+    if (connection.type === 'local' && !(options.settingsStore.settings.php ?? '').trim()) {
+      events.dispatchEvent(new CustomEvent('settings.php-required', { detail: { tabId: options.tab.value.id } }))
+      return
+    }
     const { loader } = options.tab.value
     const selected = options.codeEditor?.value?.getSelectedText() ?? ''
     const code = selected !== '' ? selected : options.tab.value.code

@@ -2,6 +2,7 @@ import { execFile, execFileSync, execSync, spawn } from 'child_process'
 import { ConnectionConfig } from '../../types/local.type'
 import * as settings from '../settings'
 import { base64Encode } from '../utils/base64-encode'
+import { resolveWslPhpBinary } from '../utils/wsl-php'
 
 const queryLogArg = () => {
   const { queryLog, outputMode } = settings.getSettings()
@@ -180,6 +181,30 @@ export const getWslPhpExecutable = (phpPath: string | undefined, projectDistro?:
   return phpPath
 }
 
+const resolveEffectiveWslPhp = (phpPath: string | undefined, distro: string): string => {
+  const configured = getWslPhpExecutable(phpPath, distro)
+  return configured === 'php' ? resolveWslPhpBinary(distro) : configured
+}
+
+const resolveWslContext = (projectPath?: string, phpPath?: string): { distro: string; phpExe: string } | null => {
+  const projectWsl = getWslDetails(projectPath ?? '')
+  const phpWsl = getWslDetails(phpPath ?? '')
+  if (!projectWsl.isWsl && !phpWsl.isWsl) {
+    return null
+  }
+
+  const requestedDistro = projectWsl.isWsl ? projectWsl.distro : phpWsl.distro
+  const distro = resolveWslDistro(requestedDistro)
+  if (!distro) {
+    return null
+  }
+
+  return {
+    distro,
+    phpExe: resolveEffectiveWslPhp(phpPath, distro),
+  }
+}
+
 export const executeWindows = (
   connection: ConnectionConfig,
   pharPath: string,
@@ -189,26 +214,30 @@ export const executeWindows = (
 ): Promise<string> => {
   return new Promise(resolve => {
     const targetPath = projectPath || connection.path
-    const wsl = getWslDetails(targetPath)
+    const wslContext = resolveWslContext(targetPath, connection.php)
 
-    if (wsl.isWsl) {
-      const distro = resolveWslDistro(wsl.distro!)
-      if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
-        const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
-        const projectPathWsl = translateWindowsToWslPath(targetPath, distro)
+    if (wslContext) {
+      const pharPathWsl = translateWindowsToWslPath(pharPath, wslContext.distro)
+      const projectPathWsl = translateWindowsToWslPath(targetPath, wslContext.distro)
 
-        const args = ['-d', distro, phpExe, pharPathWsl, projectPathWsl, 'execute', base64Encode(code)]
-        if (loader) {
-          args.push(`--loader=${base64Encode(loader)}`)
-        }
-        args.push(queryLogArg())
-
-        execFile('wsl', args, { shell: false }, (_err, stdout) => {
-          resolve(stdout || '')
-        })
-        return
+      const args = [
+        '-d',
+        wslContext.distro,
+        wslContext.phpExe,
+        pharPathWsl,
+        projectPathWsl,
+        'execute',
+        base64Encode(code),
+      ]
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
       }
+      args.push(queryLogArg())
+
+      execFile('wsl', args, { shell: false }, (_err, stdout) => {
+        resolve(stdout || '')
+      })
+      return
     }
 
     const phpPath = connection.php || 'php'
@@ -233,25 +262,27 @@ export const executeStreamingWindows = (
 ): Promise<void> => {
   return new Promise(resolve => {
     const targetPath = connection.path
-    const wsl = getWslDetails(targetPath)
+    const wslContext = resolveWslContext(targetPath, connection.php)
 
     let phpPath = connection.php
     let args: string[] = []
     let useShell = process.platform === 'win32'
 
-    if (wsl.isWsl) {
-      const distro = resolveWslDistro(wsl.distro!)
-      if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
-        const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
-        const projectPathWsl = translateWindowsToWslPath(targetPath, distro)
+    if (wslContext) {
+      const pharPathWsl = translateWindowsToWslPath(pharPath, wslContext.distro)
+      const projectPathWsl = translateWindowsToWslPath(targetPath, wslContext.distro)
 
-        phpPath = 'wsl'
-        args = ['-d', distro, phpExe, pharPathWsl, projectPathWsl, 'execute-stream', base64Encode(code)]
-        useShell = false
-      } else {
-        args = [pharPath, targetPath, 'execute-stream', base64Encode(code)]
-      }
+      phpPath = 'wsl'
+      args = [
+        '-d',
+        wslContext.distro,
+        wslContext.phpExe,
+        pharPathWsl,
+        projectPathWsl,
+        'execute-stream',
+        base64Encode(code),
+      ]
+      useShell = false
     } else {
       args = [pharPath, targetPath, 'execute-stream', base64Encode(code)]
     }
@@ -329,29 +360,25 @@ export const executeStreamingWindows = (
 
 export const infoWindows = (connection: ConnectionConfig, pharPath: string, loader?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const wsl = getWslDetails(connection.path)
+    const wslContext = resolveWslContext(connection.path, connection.php)
 
-    if (wsl.isWsl) {
-      const distro = resolveWslDistro(wsl.distro!)
-      if (distro) {
-        const phpExe = getWslPhpExecutable(connection.php, distro)
-        const pharPathWsl = translateWindowsToWslPath(pharPath, distro)
-        const projectPathWsl = translateWindowsToWslPath(connection.path, distro)
+    if (wslContext) {
+      const pharPathWsl = translateWindowsToWslPath(pharPath, wslContext.distro)
+      const projectPathWsl = translateWindowsToWslPath(connection.path, wslContext.distro)
 
-        const args = ['-d', distro, phpExe, pharPathWsl, projectPathWsl, 'info']
-        if (loader) {
-          args.push(`--loader=${base64Encode(loader)}`)
-        }
-
-        execFile('wsl', args, { shell: false }, (error, stdout) => {
-          if (error) {
-            reject(error.message)
-            return
-          }
-          resolve(stdout?.replaceAll('\n', '') || '')
-        })
-        return
+      const args = ['-d', wslContext.distro, wslContext.phpExe, pharPathWsl, projectPathWsl, 'info']
+      if (loader) {
+        args.push(`--loader=${base64Encode(loader)}`)
       }
+
+      execFile('wsl', args, { shell: false }, (error, stdout) => {
+        if (error) {
+          reject(error.message)
+          return
+        }
+        resolve(stdout?.replaceAll('\n', '') || '')
+      })
+      return
     }
 
     const phpPath = connection.php || 'php'
@@ -384,20 +411,16 @@ export const getPHPVersionWindows = (connection?: ConnectionConfig | string): st
       }
     }
 
-    const wsl = getWslDetails(projectPath)
+    const wslContext = resolveWslContext(projectPath, phpPath)
     let output: string
 
-    if (wsl.isWsl) {
-      const distro = resolveWslDistro(wsl.distro!)
-      if (distro) {
-        const phpExe = getWslPhpExecutable(phpPath, distro)
-        output = execFileSync('wsl', ['-d', distro, phpExe, '-v'], {
-          encoding: 'utf8',
-          shell: false,
-        })
-        const match = output.match(/PHP\s+([0-9]+\.[0-9]+)/i)
-        return match ? match[1] : null
-      }
+    if (wslContext) {
+      output = execFileSync('wsl', ['-d', wslContext.distro, wslContext.phpExe, '-v'], {
+        encoding: 'utf8',
+        shell: false,
+      })
+      const match = output.match(/PHP\s+([0-9]+\.[0-9]+)/i)
+      return match ? match[1] : null
     }
 
     const phpExe = phpPath || 'php'
