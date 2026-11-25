@@ -178,6 +178,8 @@
     }
   }
 
+  let isMountedReady = false
+
   onMounted(async () => {
     window.ipcRenderer.on('lsp.restart.success', lspRestartSuccessListener)
 
@@ -209,6 +211,8 @@
     }
 
     getInfo()
+    await nextTick()
+    isMountedReady = true
 
     await applyPendingSnippetInsert()
 
@@ -248,6 +252,9 @@
   )
 
   watch([() => tab.value.execution, () => tab.value.loader, () => tab.value.type, () => tab.value.path], async () => {
+    if (!isMountedReady) {
+      return
+    }
     await nextTick()
     getInfo()
   })
