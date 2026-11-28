@@ -24,6 +24,9 @@ jobs:
       - name: Install NPM Dependencies
         run: npm install
 
+      - name: Download PHPantom language server
+        run: npm run update-phpantom
+
       - name: Import signing certificate
         if: matrix.os == 'macos-latest'
         env:

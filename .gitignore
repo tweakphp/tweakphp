@@ -27,6 +27,10 @@ release
 
 public/laravel
 
+# Downloaded PHPantom language server binaries (npm run update-phpantom)
+phpantom-bin/*
+!phpantom-bin/.gitkeep
+
 .env
 
 tweakphp.db

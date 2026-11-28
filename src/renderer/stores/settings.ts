@@ -16,6 +16,7 @@ export const useSettingsStore = defineStore('settings', () => {
     editorWordWrap: 'on',
     layout: 'vertical',
     outputMode: 'output',
+    languageServer: 'intelephense',
     vimMode: 'off',
     stackedDump: 'extended',
     windowWidth: 1100,
