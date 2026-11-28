@@ -1,5 +1,14 @@
 const { buildSync } = require('esbuild')
 const { copySync } = require('fs-extra')
+const fs = require('fs')
+
+// esbuild's '.node' loader emits content-hashed filenames, so stale native
+// addons would otherwise accumulate in dist/ (and end up packaged in the app)
+if (fs.existsSync('dist')) {
+  for (const file of fs.readdirSync('dist')) {
+    if (file.endsWith('.node')) fs.rmSync(`dist/${file}`)
+  }
+}
 
 const options = {
   platform: 'node',

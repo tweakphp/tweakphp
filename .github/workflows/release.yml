@@ -146,6 +146,34 @@ jobs:
             exit 1
           fi
 
+      - name: Verify asar composition (whitelisted node_modules, no dev files)
+        if: runner.os == 'macOS'
+        run: |
+          ASAR="release/mac-universal/TweakPHP.app/Contents/Resources/app.asar"
+          node -e '
+            const asar = require("@electron/asar");
+            const files = asar.listPackage(process.argv[1]);
+            const nm = new Set(files.filter((f) => f.startsWith("/node_modules/")).map((f) => f.split("/")[2]));
+            const allowed = new Set(["intelephense", "better-sqlite3", "bindings", ".bin"]);
+            const bad = [...nm].filter((x) => !allowed.has(x));
+            if (bad.length) {
+              console.error("::error::unexpected node_modules packages in app.asar:", bad.join(", "));
+              process.exit(1);
+            }
+            const junk = files.filter((f) => f.startsWith("/src/") || ["/PKGBUILD", "/.SRCINFO", "/install.sh", "/test-mcp-tools.sh", "/test-mcp-connection.js"].includes(f));
+            if (junk.length) {
+              console.error("::error::dev-only files packaged in app.asar:", junk.join(", "));
+              process.exit(1);
+            }
+            const required = ["/dist/main.js", "/dist/preload.js", "/package.json", "/migrations"];
+            const missing = required.filter((f) => !files.some((x) => x === f || x.startsWith(f + "/")));
+            if (missing.length) {
+              console.error("::error::required files missing from app.asar:", missing.join(", "));
+              process.exit(1);
+            }
+            console.log("asar composition OK:", [...nm].join(", "));
+          ' "$ASAR"
+
       - name: Build Linux packages
         if: runner.os == 'Linux'
         env:
